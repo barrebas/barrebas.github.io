@@ -3,6 +3,22 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2014/10/14/moving-to-github-pages/</loc>
+    
+    <lastmod>2014-10-14T21:26:55+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2014/10/14/knock-knock-knocking-on-roots-door/</loc>
+    
+    <lastmod>2014-10-14T21:21:59+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2014/10/03/tinyctf/</loc>
     
     <lastmod>2014-10-03T19:25:41+02:00</lastmod>
@@ -21,14 +37,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2014-10-14T21:15:51+02:00</lastmod>
+    <lastmod>2014-10-14T22:34:58+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2014-10-14T21:15:51+02:00</lastmod>
+    <lastmod>2014-10-14T22:34:58+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
