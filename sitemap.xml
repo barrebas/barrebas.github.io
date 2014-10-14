@@ -2,17 +2,33 @@
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   
+  <url>
+    <loc>http://barrebas.github.io/blog/2014/10/03/tinyctf/</loc>
+    
+    <lastmod>2014-10-03T19:25:41+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2014/09/25/CSAW-s3/</loc>
+    
+    <lastmod>2014-09-25T19:25:41+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2014-10-14T20:52:59+02:00</lastmod>
+    <lastmod>2014-10-14T21:15:51+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2014-10-14T20:52:59+02:00</lastmod>
+    <lastmod>2014-10-14T21:15:51+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

