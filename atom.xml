@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-10-15T17:41:35+02:00</updated>
+  <updated>2014-10-15T18:11:06+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -94,7 +94,45 @@ port: 55993
 &lt;snip&gt;</code></pre></div>
 
 
-<p>After a while, I ran <code>nmap</code> for the umpthieth time and lo and behold, <code>ssh</code> and <code>http</code> were open!</p>
+<p>After a while, I ran <code>nmap</code> for the umpthieth time and lo and behold, <code>ssh</code> and <code>http</code> were open! Later, when I rooted the box, I had a look at the script that sets up the port knocking. It randomizes the port order, so there&rsquo;s a one in six chance that my script gets it right. I modified it so that it completes the port-knocking every time:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
+
+<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+
+<span class="k">def</span> <span class="nf">knock</span><span class="p">(</span><span class="n">ports</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;port: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">a</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;10.8.7.101&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;port: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">b</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;10.8.7.101&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;port: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;10.8.7.101&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">2</span><span class="p">])))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;10.8.7.101&#39;</span><span class="p">,</span> <span class="mi">1337</span><span class="p">))</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">,</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+<span class="n">ports</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">portlist</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">permutations</span><span class="p">(</span><span class="n">ports</span><span class="p">):</span>
+    <span class="n">knock</span><span class="p">(</span><span class="n">portlist</span><span class="p">)</span></code></pre></div>
+
+
+
 
 <div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -T4 -p1-100
 
