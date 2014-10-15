@@ -354,7 +354,7 @@ gdb-peda<span class="err">$</span></code></pre></div>
         <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
 
 
-<p>Like I said, a CTF mindset and some very ugly Python code, but I was now able to encode my payload. I gave it a spin:</p>
+<p>Like I said, a CTF mindset and some very ugly Python code, but I was now able to encode my payload (updated version at end of post). I gave it a spin:</p>
 
 <div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python -c <span class="s1">&#39;print &quot;A&quot;*5000&#39;</span> &gt; in.tfc
 bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python ./enc.py
@@ -518,6 +518,46 @@ exit 0</code></pre></noscript></div>
 
 
 <p>I will leave a ROP exploit &lsquo;as an exercise to the reader&rsquo; :) knock-knock was a fun VM and so thanks to zer0w1re and c0ne!</p>
+
+<p>Updated <code>enc.py</code>:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
+<span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">outfile</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        
+        <span class="n">xor_key</span> <span class="o">=</span> <span class="o">-</span><span class="mh">0x15e54e61</span>
+        
+        <span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        
+        <span class="k">while</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">+=</span> <span class="s">&#39;A&#39;</span>
+            
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&lt;i&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&lt;i&#39;</span><span class="p">,</span> <span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span> <span class="p">)</span>
+            
+            <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+                <span class="n">xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="n">xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+        
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span>
+            
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;usage: {} &lt;infile&gt; &lt;outfile&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">xcrypt</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span></code></pre></div>
+
+
+
 </div>
 
 
