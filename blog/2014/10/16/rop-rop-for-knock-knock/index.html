@@ -408,6 +408,8 @@ write<span class="o">(</span>file1, <span class="p">&amp;</span>buf, sizeof<span
         <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
 
 
+<p>This python code will add blocks of read &amp; write ROP chain elements, just as many are needed for a certain file. This is also why we&rsquo;ve opened the output file as O_APPEND: each write will simply add to the existing file, no hassle!</p>
+
 <p>Unfortunately, if you want to read and write <em>really</em> large files, like <code>/bin/dash</code>, tfc crashes before it can even get to our ROP chain. I solve that with a little helper program:</p>
 
 <div class="highlight"><pre><code class="language-c" data-lang="c"><span class="cp">#include &lt;stdio.h&gt;</span>
@@ -426,7 +428,7 @@ write<span class="o">(</span>file1, <span class="p">&amp;</span>buf, sizeof<span
 
 <p>It worked! The file <code>write</code> is created with SUID set and contains the shell-spawning helper program. Mind you, when I was writing this ROP exploit, I used a local copy of <code>tfc</code> that was not running as root. When the <code>write</code> file was created, it had the SUID bit set, but as soon as something was written to it, the SUID bit was removed. This is security feature (?) is ignored when running as root! Lucky for me ;)</p>
 
-<p>So this is another way to root. I wonder how many more are there! :) Again, thanks zer0w1re and <a href="http://vulnhub.com">VulnHub</a> for hosting this VM!</p>
+<p>So this is another way to root. I wonder how many more are there! :) Again, thanks zer0w1re and <a href="http://vulnhub.com">VulnHub</a> for hosting this VM! Also cheers to leonjza for proof-reading this post!!</p>
 </div>
 
 
