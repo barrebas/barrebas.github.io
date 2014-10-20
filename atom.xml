@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-10-20T22:03:48+02:00</updated>
+  <updated>2014-10-20T22:09:36+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -544,7 +544,9 @@ write<span class="o">(</span>file1, <span class="p">&amp;</span>buf, sizeof<span
     <link href="http://barrebas.github.io/blog/2014/10/14/moving-to-github-pages/"/>
     <updated>2014-10-14T21:26:55+02:00</updated>
     <id>http://barrebas.github.io/blog/2014/10/14/moving-to-github-pages</id>
-    <content type="html"><![CDATA[
+    <content type="html"><![CDATA[<p>I&rsquo;ve decided to move my blog from <a href="http://staringintodevnull.blogspot.nl">staringintodevnull.blogspot.nl</a> to Github Pages. Because Markdown!</p>
+
+<p>I won&rsquo;t convert the old posts&ndash; they&rsquo;ll stay on Blogger.</p>
 ]]></content>
   </entry>
   
@@ -1527,7 +1529,7 @@ Good bye!</code></pre></div>
     <link href="http://barrebas.github.io/blog/2014/09/25/CSAW-s3/"/>
     <updated>2014-09-25T19:25:41+02:00</updated>
     <id>http://barrebas.github.io/blog/2014/09/25/CSAW-s3</id>
-    <content type="html"><![CDATA[<p>A while ago, we threw together a semi-official VulnHub CTF team. This team participated in the CSAW CTF. For me, it was a new and <em>humbling</em> experience. I didn&rsquo;t get a lot of flags but I managed to get this one.</p>
+    <content type="html"><![CDATA[<p>A while ago, we threw together a semi-official <a href="https://ctf-team.vulnhub.com">VulnHub CTF team</a>. This team participated in the CSAW CTF. For me, it was a new and <em>humbling</em> experience. I didn&rsquo;t get a lot of flags but I managed to get this one.</p>
 
 <!--more-->
 
