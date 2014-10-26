@@ -161,7 +161,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>So the slogan seems to be <code>gold&gt;silver</code>, and then the contents of <code>salt.txt</code> is appended. But how do we know what <code>salt.txt</code> contains on the remote server? I had another looks at the output of the Decompiler, and this bit stuck out:</p>
+<p>So the slogan seems to be <code>gold&gt;silver</code>, and then the contents of <code>salt.txt</code> is appended. But how do we know what <code>salt.txt</code> contains on the remote server? I had another look at the output of the Decompiler, and this bit stuck out:</p>
 
 <p><img src="/assets/hacklu-theunion/01.png" alt="" /></p>
 
@@ -196,7 +196,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>This led us to finding that the full password is <code>gold&gt;silverb</code>. Nice! Next, we where presented with a menu:</p>
+<p>This led us to finding that the full password is <code>gold&gt;silverb</code>. Nice! Next, we were presented with a menu:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -277,7 +277,7 @@
 
 <p><img src="/assets/hacklu-theunion/02.png" alt="" /></p>
 
-<p>There is a piece of code that is never actually executed when this trapdoor function is called from the menu, the <code>printf</code>. Oddly, the rest of the binary uses <code>putf</code>. I ran <code>gdb</code> and examined the pointer that is used and compare it to <code>printf</code>&hellip; It wasn&rsquo;t the same! On a hunch, I compared it to <code>system()</code>, which did match! So indeed, not everything is what it seems. With this in mind, we can modify the string format exploit. It should write the address of <code>printf@plt</code> to <code>free@plt</code>, so when a string is freed, <code>system()</code> is called with that string as argument. Command execution, here we come!</p>
+<p>There is a piece of code that is never actually executed when this trapdoor function is called from the menu, the <code>printf</code>. Oddly, the rest of the binary uses <code>puts</code>. I ran <code>gdb</code> and examined the pointer that is used and compare it to <code>printf</code>&hellip; It wasn&rsquo;t the same! On a hunch, I compared it to <code>system()</code>, which did match! So indeed, not everything is what it seems. With this in mind, we can modify the string format exploit. It should write the address of <code>printf@plt</code> to <code>free@plt</code>, so when a string is freed, <code>system()</code> is called with that string as argument. Command execution, here we come!</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
