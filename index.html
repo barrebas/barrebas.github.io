@@ -9,7 +9,7 @@
   <meta name="author" content="barrebas">
 
   
-  <meta name="description" content="Hack.lu 2014 was a very fun, western-themed CTF. For the Union, we were given an executable and a place to connect to. We need to find secret.txt and &hellip;">
+  <meta name="description" content="We are again given an ip address. Upon visiting, it turns out to be some rudimentary page. I immediately spotted a LFI vulnerability, surfing to http &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +65,184 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/01/defcamp-ctf-web-300/">Defcamp CTF: Web 300</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-01T15:11:55+01:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>3:11 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>We are again given an ip address. Upon visiting, it turns out to be some rudimentary page. I immediately spotted a LFI vulnerability, surfing to <code>http://10.13.37.13/?page=../../../../../../etc/passwd</code>.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/11/01/defcamp-ctf-web-300/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/01/defcamp-ctf-network-200/">Defcamp CTF: Network 200</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-01T15:08:59+01:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>3:08 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>This writeup is about Defcamp CTF&rsquo;s Network 200. Again, we get a clue!</p>
+
+<p><code>That ****ing manager got smarter. He moved to house number 22, but we got this: ****managers.pcap</code></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/11/01/defcamp-ctf-network-200/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/01/defcamp-ctf-network-100/">Defcamp CTF: Network 100</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-01T15:08:24+01:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>3:08 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>For this challenge, we&rsquo;re given the following clue:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>My manager lives at 10.13.37.21. Any guest is always welcome. But he has a secret. Can you find it out?</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A secret? Let&rsquo;s dig in!</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/11/01/defcamp-ctf-network-100/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/01/asis-ctf-secure-hobby/">ASIS-CTF: Secure Hobby</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-01T14:56:11+01:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>2:56 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>For Secure Hobby, a 250 point challenge, we were given a file and a place to connect to. The archive contained a binary, which looked okay enough to run. It opened a port on localhost. Upon connecting using <code>nc</code>, the program first crashes because it can&rsquo;t find <code>flag</code> and <code>namak</code>. After creating those files and connecting again, we are presented with the following:</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/11/01/asis-ctf-secure-hobby/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/01/asis-ctf-lottery/">ASIS-CTF: Lottery</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-01T14:52:32+01:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>2:52 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Lottery was a 100 point web challenge in the ASIS Finals CTF. The description only said &lsquo;Go here: <a href="http://asis-ctf.ir:12437">http://asis-ctf.ir:12437</a>&rsquo;. That webpage was mostly non-functional, but said that the 1234567890th visitor would win a <em>prize</em>. Gee, I wonder what that is? My browser informed me that there were no cookies, but I wasn&rsquo;t convinced.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/11/01/asis-ctf-lottery/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -233,41 +411,9 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2014/09/25/CSAW-s3/">CSAW CTF Expl 300: S3</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-09-25T19:25:41+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>7:25 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>A while ago, we threw together a semi-official <a href="https://ctf-team.vulnhub.com">VulnHub CTF team</a>. This team participated in the CSAW CTF. For me, it was a new and <em>humbling</em> experience. I didn&rsquo;t get a lot of flags but I managed to get this one.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2014/09/25/CSAW-s3/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
+    
+      <a class="prev" href="/posts/2">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -280,23 +426,23 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2014/10/26/hack-dot-lu-the-union-write-up/">Hack.lu the Union Write-up</a>
+        <a href="/blog/2014/11/01/defcamp-ctf-web-300/">Defcamp CTF: Web 300</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2014/10/16/rop-rop-for-knock-knock/">Rop-rop for Knock-knock</a>
+        <a href="/blog/2014/11/01/defcamp-ctf-network-200/">Defcamp CTF: Network 200</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2014/10/14/moving-to-github-pages/">Moving to GitHub Pages</a>
+        <a href="/blog/2014/11/01/defcamp-ctf-network-100/">Defcamp CTF: Network 100</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2014/10/14/knock-knock-knocking-on-roots-door/">Knock-knock-knocking on Root&#8217;s Door</a>
+        <a href="/blog/2014/11/01/asis-ctf-secure-hobby/">ASIS-CTF: Secure Hobby</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2014/10/03/tinyctf/">Tinyctf Writeup</a>
+        <a href="/blog/2014/11/01/asis-ctf-lottery/">ASIS-CTF: Lottery</a>
       </li>
     
   </ul>
