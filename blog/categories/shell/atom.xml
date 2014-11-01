@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Shell | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/shell/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-11-01T15:20:37+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Defcamp CTF: Network 100]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-100/"/>
+    <updated>2014-11-01T15:08:24+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-100</id>
+    <content type="html"><![CDATA[<p>For this challenge, we&rsquo;re given the following clue:</p>
+
+<p><code>My manager lives at 10.13.37.21. Any guest is always welcome. But he has a secret. Can you find it out?</code></p>
+
+<p>A secret? Let&rsquo;s dig in!</p>
+
+<!--more-->
+
+
+<p>I did a simple nmap scan of that box:</p>
+
+<pre><code class="bash">Starting Nmap 6.00 ( http://nmap.org ) at 2014-10-18 13:08 CEST
+Nmap scan report for 10.13.37.21
+Host is up (0.024s latency).
+Not shown: 998 closed ports
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+</code></pre>
+
+<p>The webpage has a login form, but I didn&rsquo;t have any credentials. The clue did say guests are always welcome, but <code>guest:guest</code> didn&rsquo;t work. However, these credentials <em>did</em> work for <code>ssh</code>! So I landed a shell on the box:</p>
+
+<pre><code class="bash">Welcome to Ubuntu 14.04.1 LTS (GNU/Linux 3.13.0-37-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com/
+Last login: Sat Oct 18 00:05:47 2014 from 10.13.37.1
+guest@n1:~$ ls
+toolkit
+guest@n1:~$ ls -alh
+total 32K
+drwxr-xr-x 4 guest guest 4.0K Oct 18 00:06 .
+drwxr-xr-x 4 root  root  4.0K Oct 17 01:40 ..
+-rw------- 1 guest guest    0 Oct 18 00:06 .bash_history
+-rw-r--r-- 1 guest guest  220 Oct 17 01:40 .bash_logout
+-rw-r--r-- 1 guest guest 3.6K Oct 17 01:40 .bashrc
+drwx------ 2 guest guest 4.0K Oct 17 01:42 .cache
+-rw-r--r-- 1 guest guest  675 Oct 17 01:40 .profile
+drwxr-xr-t 2 root  root  4.0K Oct 17 01:41 toolkit
+-rw------- 1 guest guest  777 Oct 18 00:06 .viminfo
+</code></pre>
+
+<p>For some reason, we could use <code>tcpdump</code> to look at incoming traffic:</p>
+
+<pre><code class="bash">guest@n1:~/toolkit$ ./tcpdump
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
+11:13:03.921683 IP n1.ssh &gt; 10.13.37.1.52543: Flags [P.], seq 1154997930:1154998122, ack 2969808471, win 349, options [nop,nop,TS val 10598245 ecr 188495], length 192
+11:13:03.934082 IP 10.13.37.1.52543 &gt; n1.ssh: Flags [.], ack 192, win 661, options [nop,nop,TS val 188517 ecr 10598245], length 0
+11:13:03.975864 IP 10.13.37.1.37658 &gt; n1.41730: Flags [S], seq 2811437647, win 1024, options [mss 1369], length 0
+11:13:03.975882 IP n1.41730 &gt; 10.13.37.1.37658: Flags [R.], seq 0, ack 2811437648, win 0, length 0
+11:13:03.987686 IP 10.13.37.1.43518 &gt; n1.41511: Flags [S], seq 4021855713, win 1024, options [mss 1369], length 0
+11:13:03.987704 IP n1.41511 &gt; 10.13.37.1.43518: Flags [R.], seq 0, ack 402185571
+</code></pre>
+
+<p>But we&rsquo;re looking for a flag! I wanted to see what made the login page tick.</p>
+
+<pre><code class="bash">guest@n1:~/toolkit$ cat /var/www/html/index.php 
+&lt;?php
+
+error_reporting(0);
+ini_set('display_errors', 0);
+
+if(isset($_POST['pass']) &amp;&amp; strlen($_POST['pass']) &lt; 12) {
+    echo 'Validation failed: The password field too short.'; die();
+}
+
+if(isset($_POST['user'])) {
+  if($_POST['user'] == 'manager' &amp;&amp; md5($_POST['pass']) == 'e701a78ce9d38201e9fc17737be0996d') {
+    echo 'The secret is behind &lt;strong&gt;0f388689dc4728cfde0de9a1ee47c8d3&lt;/strong&gt;. Don\'t tell anyone!';
+  } else {
+    echo 'Wrong username or password.';
+  }
+  die();
+}
+
+?&gt;
+&lt;!DOCTYPE html&gt;
+...snip...
+</code></pre>
+
+<p>Apparently, the flag is &lsquo;behind&rsquo; <code>0f388689dc4728cfde0de9a1ee47c8d3</code>. This md5 hash decrypts to <code>ididyourmom</code>, which is also the flag. What a nasty secret this manager has!</p>
+]]></content>
+  </entry>
+  
+</feed>

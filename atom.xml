@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-01T15:15:48+01:00</updated>
+  <updated>2014-11-01T15:20:37+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -2915,7 +2915,7 @@ Good bye!</code></pre></div>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[CSAW CTF Expl 300: S3]]></title>
+    <title type="html"><![CDATA[CSAW CTF Expploit 300: S3]]></title>
     <link href="http://barrebas.github.io/blog/2014/09/25/CSAW-s3/"/>
     <updated>2014-09-25T19:25:41+02:00</updated>
     <id>http://barrebas.github.io/blog/2014/09/25/CSAW-s3</id>

@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Reversing | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/reversing/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-11-01T15:20:37+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Defcamp CTF: Network 200]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-200/"/>
+    <updated>2014-11-01T15:08:59+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-200</id>
+    <content type="html"><![CDATA[<p>This writeup is about Defcamp CTF&rsquo;s Network 200. Again, we get a clue!</p>
+
+<p><code>That ****ing manager got smarter. He moved to house number 22, but we got this: ****managers.pcap</code></p>
+
+<!--more-->
+
+
+<p>Profanity aside, house number 22 probably means that the ip address of this challenge is <code>10.13.37.21</code>. The pcap file contains network traffic of the manager logging in to the page at 10.13.37.21. Upon examination of this page, it seems it generates a nonce. This nonce is to encode the md5 of the password, which it then sent over as GET parameters.</p>
+
+<p>Looking at the pcap file, Swappage quickly identified this:</p>
+
+<pre><code>user=manager&amp;nonce=7413734ab666ce02cf27c9862c96a8e7&amp;pass=3ecd6317a873b18e7dde351ac094ee3b
+</code></pre>
+
+<p>So we need to reverse this nonce-based encryption to get the md5&#8217;ed password of manager. The source of the login page reveals that the nonce is valid for about 100 seconds and the function that is used to generate the encoded password:</p>
+
+<pre><code class="javascript">$('.hook-submit').click(function(){
+  var h1 = md5($('#pass').val());
+  var h2 = $('#nonce').val();
+  var xor = myxor(h1, h2);
+  $('#hiddenpass').val(xor);
+  setTimeout(function() { $('#form').submit(); }, 100);
+});
+</code></pre>
+
+<p>This threw me off. I thought the nonce and md5 were <code>XOR</code>ed together. I couldn&rsquo;t be further from the truth. After wasting some time, I investigated the javascript:</p>
+
+<pre><code class="javascript">...snip...
+
+function hex2n(c) {
+    if(is_numeric(c)) return parseInt(c);
+    return ord(c) - ord('a') + 10;
+}
+
+function n2hex(n) {
+    if(n &lt; 10) { return '' + n; }
+    return chr(ord('a') + n - 10);
+}
+
+function myxor(h1, h2) {
+    var xored = '';
+    for(i = 0; i&lt;h1.length; i++) {
+        var c1 = h1.charAt(i);
+        var c2 = h2.charAt(i);
+        alert(hex2n(c1)); // DEBUG by barrebas
+        alert(hex2n(c2)); // DEBUG by barrebas
+        alert(n2hex((hex2n(c1) + hex2n(c2)) % 16)); // DEBUG by barrebas
+        xored += n2hex((hex2n(c1) + hex2n(c2)) % 16);
+    } 
+    return xored;
+}
+</code></pre>
+
+<p>With a few carefully placed <code>alert()</code>s, I was able to figure out that the <code>myxor</code> function takes each hex character of the nonce and the md5. These values are converted to integers and then added together. After a modulus 16 the hex-representation of the result is added to the output.</p>
+
+<p>I wrote a small piece of python to do the reverse operation for me, given the nonce and the encoded md5:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+nonce = 'efa6085790a0294851202602a4833ad1'
+epass = '3ecd6317a873b18e7dde351ac094ee3b'
+
+def makeHex(c):
+    return hex(c)[2:]
+
+def getHex(c):
+    return int(''.join(('0',c)), 16)
+
+output = ''
+for i in range(len(epass)):
+    output += makeHex((getHex(epass[i]) - getHex(nonce[i])) % 16)
+
+print output
+</code></pre>
+
+<p>This returned the md5 of the managers&#8217; password: <code>cabaf0ddf21df38cbeb77c94a40e4654</code>. Unfortunately, the Mighty Google did not return any hits when searching for it. Who needs it anyway? We have the md5 of the password, all we need to do is to re-encode it with a new nonce and submit it! I refreshed the login page, grabbed the nonce and ran the following piece of python:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+nonce = 'efa6085790a0294851202602a4833ad1'
+epass = '3ecd6317a873b18e7dde351ac094ee3b'
+passval = 'cabaf0ddf21df38cbeb77c94a40e4654'
+
+def makeHex(c):
+    return hex(c)[2:]
+
+def getHex(c):
+    return int(''.join(('0',c)), 16)
+
+output = ''
+for i in range(len(epass)):
+    output += makeHex((getHex(passval[i]) + getHex(nonce[i])) % 16)
+
+print output
+</code></pre>
+
+<p>This returned a new, encoded md5 of the password. I copied it and entered <code>manager:idontcare</code> in the login form. I intercepted this request with TamperData, substituting the new, encoded md5 value for the old one and hit submit. Lo and behold:</p>
+
+<pre><code>The secret is behind bb00403ebcbfa0748bcbee426acfdb5b :)
+</code></pre>
+
+<p>Which is the md5 of <code>youtoo</code>, which thankfully was the proper flag!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ASIS-CTF: Secure Hobby]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-secure-hobby/"/>
+    <updated>2014-11-01T14:56:11+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-secure-hobby</id>
+    <content type="html"><![CDATA[<p>For Secure Hobby, a 250 point challenge, we were given a file and a place to connect to. The archive contained a binary, which looked okay enough to run. It opened a port on localhost. Upon connecting using <code>nc</code>, the program first crashes because it can&rsquo;t find <code>flag</code> and <code>namak</code>. After creating those files and connecting again, we are presented with the following:</p>
+
+<!--more-->
+
+
+<pre><code class="bash">$ nc localhost 35565
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+1
+Enter username: test
+Your key for login is: 6447567a64413d3d098f6bcd4621d373cade4e832627b4f6
+</code></pre>
+
+<p>Hmm. The second function verifies a login and the third displays a secret. Trying to register the user &lsquo;admin&rsquo; resulted in an error. Still, it&rsquo;s fair to assume we need to get the secret of the admin user. Let&rsquo;s break this key down.</p>
+
+<pre><code class="bash">$ echo -ne 'test' |md5sum
+098f6bcd4621d373cade4e832627b4f6  -
+</code></pre>
+
+<p>This looks like the last part of the login. What about the start? It seems to end with <code>\x3d</code> which is ASCII <code>=</code>. This screams base64!</p>
+
+<pre><code class="bash">$ xxd -p -r
+6447567a64413d3d
+dGVzdA==
+$ echo -ne 'dGVzdA==' |base64 -d
+test
+</code></pre>
+
+<p>So putting it all together again:</p>
+
+<pre><code class="bash">$ echo -ne 'admin' |base64
+YWRtaW4=
+$ echo -ne 'admin' |md5sum
+21232f297a57a5a743894a0e4a801fc3  -
+xxd -p 
+YWRtaW4=
+595752746157343d0a
+</code></pre>
+
+<p>Looks like <code>595752746157343d21232f297a57a5a743894a0e4a801fc3</code> is the login we need! But alas, this doesn’t work. On the remote box, registering <code>test</code> returns:</p>
+
+<pre><code class="bash">$ nc asis-ctf.ir 12439
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+1
+Enter username: test
+Your key for login is: 6447567a64413d3dd0211e3e26985465726312d056f9339f
+</code></pre>
+
+<p>It has to do with the <code>namak</code> file. Namak is Persian for salt.</p>
+
+<pre><code class="bash">$ echo '0' &gt; namak
+</code></pre>
+
+<p>Now, registering test on the localhost server returns <code>Your key for login is: 6447567a64413d3d1c13f2701648e0b0d46d8a2a5a131a53</code>. Furthermore, it looks like the salt is prepended to before hashing. We grabbed md5(salt) using a small Python script:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+from socket import *
+import time, re, struct
+
+s = socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 35565))
+s.connect(('asis-ctf.ir', 12439))
+
+print s.recv(256)
+
+s.send('1\n')
+print s.recv(256)
+
+s.send('\n')
+
+print s.recv(200)
+print s.recv(200)
+</code></pre>
+
+<p>The output showed:</p>
+
+<pre><code class="bash">Enter username: 
+Your key for login is: 
+5624717e9a5fd673f17f5678c6303ffe
+</code></pre>
+
+<p>So the md5 of the salt would be <code>5624717e9a5fd673f17f5678c6303ffe</code>. I enlisted the help of NullMode to crack this hash, but to no avail. Instead of cracking this hash (seems inpossible), we decided to focus on the string comparison. We cannot register a username containing <code>admin</code>, but perhaps we can circumvent this checking system somehow. First, I tried:</p>
+
+<pre><code>admin                                              #
+</code></pre>
+
+<p>But this led to the same error message. Apparently, the username is not truncated. Instead, we assumed the check-string-for-admin uses normal string routines. These stop when they encounter a null-byte. Hash-functions on the other hand, do not. Let&rsquo;s register a user <code>\x00admin</code> using Python:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+from socket import *
+import time, re, struct
+
+s = socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 35565))
+s.connect(('asis-ctf.ir', 12439))
+
+print s.recv(256)
+
+s.send('1\n')
+print s.recv(256)
+
+s.send('\x00admin\n')
+
+print s.recv(200)
+print s.recv(200)
+</code></pre>
+
+<p>This little gem returned <code>4147466b62576c7503812bbd45e23c059a0eab18e936b7ed</code>. Let&rsquo;s try it out!</p>
+
+<pre><code class="bash">$ nc asis-ctf.ir 12439
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+2
+Enter key: 4147466b62576c7503812bbd45e23c059a0eab18e936b7ed
+OK
+User admin authenticated
+</code></pre>
+
+<p>Holy crap, it worked! Let&rsquo;s grab that secret! Fingers crossed:</p>
+
+<pre><code class="bash">$ nc asis-ctf.ir 12439
+-------------------------------------------------
+|   Welcome to Super Secure Auth Engine |
+-------------------------------------------------
+
+1) Register
+2) Login check
+3) Show my secret
+
+Enjoy ;)
+3
+Enter key: 4147466b62576c7503812bbd45e23c059a0eab18e936b7ed
+The flag is: ASIS_65cc76f02093977bfd7629086e813666
+</code></pre>
+
+<p>BOOM! We just landed another flag :) This one was actually fun to solve!</p>
+]]></content>
+  </entry>
+  
+</feed>
