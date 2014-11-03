@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-03T22:24:20+01:00</updated>
+  <updated>2014-11-03T22:28:13+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -1439,7 +1439,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>That <code>diskimage.tar.gz</code> looks interesting. I copied it over to my box and unpacked it. It was, unsurprisingly, a disk image, containing <code>Secret.rar</code>. Furthermore, the file seemed to be mostly empty, but had one deleted file! The file looked like it used to be a .WAV file. I recovered it:</p>
+<p>That <code>diskimage.tar.gz</code> looks interesting. I copied it over to my box and unpacked it. It was, unsurprisingly, a disk image, containing <code>Secret.rar</code>. Furthermore, the disk image seemed to be mostly empty. However, browsing through it using a hex-editor, it had one deleted file! The file looked like it used to be a .WAV file. I recovered it:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>

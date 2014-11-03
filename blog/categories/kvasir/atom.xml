@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Kvasir, | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/kvasir/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-03T22:24:20+01:00</updated>
+  <updated>2014-11-03T22:28:13+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -792,7 +792,7 @@ $ cat note.txt
 Looks like Kefka may have been abusing our removable media policy.  I've extracted this image to have a look.
 </code></pre>
 
-<p>That <code>diskimage.tar.gz</code> looks interesting. I copied it over to my box and unpacked it. It was, unsurprisingly, a disk image, containing <code>Secret.rar</code>. Furthermore, the file seemed to be mostly empty, but had one deleted file! The file looked like it used to be a .WAV file. I recovered it:</p>
+<p>That <code>diskimage.tar.gz</code> looks interesting. I copied it over to my box and unpacked it. It was, unsurprisingly, a disk image, containing <code>Secret.rar</code>. Furthermore, the disk image seemed to be mostly empty. However, browsing through it using a hex-editor, it had one deleted file! The file looked like it used to be a .WAV file. I recovered it:</p>
 
 <pre><code class="bash">diskimage: x86 boot sector, code offset 0x3c, OEM-ID "MSDOS5.0", sectors/cluster 2, root entries 512, Media descriptor 0xf8, sectors/FAT 238, heads 255, hidden sectors 63, sectors 122031 (volumes &gt; 32 MB) , reserved 0x1, serial number 0xad6f8bf, unlabeled, FAT (16 bit)
 root@tritonal:/# mount -t vfat -o loop,ro,noexec diskimage /mnt
