@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Shell | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/shell/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-01T15:21:30+01:00</updated>
+  <updated>2014-11-03T22:20:39+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Defcamp CTF: Network 100]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-100/"/>
-    <updated>2014-11-01T15:08:24+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-100</id>
+    <link href="http://barrebas.github.io/blog/2014/10/31/defcamp-ctf-network-100/"/>
+    <updated>2014-10-31T15:08:24+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/31/defcamp-ctf-network-100</id>
     <content type="html"><![CDATA[<p>For this challenge, we&rsquo;re given the following clue:</p>
 
 <p><code>My manager lives at 10.13.37.21. Any guest is always welcome. But he has a secret. Can you find it out?</code></p>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Asis, | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/asis/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-01T15:21:30+01:00</updated>
+  <updated>2014-11-03T22:20:39+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[ASIS-CTF: Secure Hobby]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-secure-hobby/"/>
-    <updated>2014-11-01T14:56:11+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-secure-hobby</id>
+    <link href="http://barrebas.github.io/blog/2014/10/31/asis-ctf-secure-hobby/"/>
+    <updated>2014-10-31T14:56:11+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/31/asis-ctf-secure-hobby</id>
     <content type="html"><![CDATA[<p>For Secure Hobby, a 250 point challenge, we were given a file and a place to connect to. The archive contained a binary, which looked okay enough to run. It opened a port on localhost. Upon connecting using <code>nc</code>, the program first crashes because it can&rsquo;t find <code>flag</code> and <code>namak</code>. After creating those files and connecting again, we are presented with the following:</p>
 
 <!--more-->
@@ -183,9 +183,9 @@ The flag is: ASIS_65cc76f02093977bfd7629086e813666
   
   <entry>
     <title type="html"><![CDATA[ASIS-CTF: Lottery]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery/"/>
-    <updated>2014-11-01T14:52:32+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery</id>
+    <link href="http://barrebas.github.io/blog/2014/10/31/asis-ctf-lottery/"/>
+    <updated>2014-10-31T14:52:32+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/31/asis-ctf-lottery</id>
     <content type="html"><![CDATA[<p>Lottery was a 100 point web challenge in the ASIS Finals CTF. The description only said &lsquo;Go here: <a href="http://asis-ctf.ir:12437">http://asis-ctf.ir:12437</a>&rsquo;. That webpage was mostly non-functional, but said that the 1234567890th visitor would win a <em>prize</em>. Gee, I wonder what that is? My browser informed me that there were no cookies, but I wasn&rsquo;t convinced.</p>
 
 <!--more-->

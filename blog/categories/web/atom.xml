@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Web | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/web/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-01T15:21:30+01:00</updated>
+  <updated>2014-11-03T22:20:39+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[ASIS-CTF: Lottery]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery/"/>
-    <updated>2014-11-01T14:52:32+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/01/asis-ctf-lottery</id>
+    <link href="http://barrebas.github.io/blog/2014/10/31/asis-ctf-lottery/"/>
+    <updated>2014-10-31T14:52:32+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/31/asis-ctf-lottery</id>
     <content type="html"><![CDATA[<p>Lottery was a 100 point web challenge in the ASIS Finals CTF. The description only said &lsquo;Go here: <a href="http://asis-ctf.ir:12437">http://asis-ctf.ir:12437</a>&rsquo;. That webpage was mostly non-functional, but said that the 1234567890th visitor would win a <em>prize</em>. Gee, I wonder what that is? My browser informed me that there were no cookies, but I wasn&rsquo;t convinced.</p>
 
 <!--more-->
