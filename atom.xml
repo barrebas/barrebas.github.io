@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-11-08T14:21:39+01:00</updated>
+  <updated>2014-11-08T14:24:27+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -3929,15 +3929,6 @@ If the filename begins with "|", the filename is interpreted as a command to whi
 
 
 <p>The flag is <code>The flag is: solving_equations_is_lots_of_fun</code>. That was the last challenge done!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/06/"/>
-    <updated>2014-11-06T22:51:34+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/</id>
-    <content type="html"><![CDATA[
 ]]></content>
   </entry>
   
