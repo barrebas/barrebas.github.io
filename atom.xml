@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-02T22:07:05+01:00</updated>
+  <updated>2014-12-11T19:45:20+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,30 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Don't Hate the Playground, Hate the Game]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground/"/>
+    <updated>2014-12-11T19:11:06+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground</id>
+    <content type="html"><![CDATA[<p>Several months ago, Peleus approached me and asked me to participate in a beta-test of an upcoming Offsec &ldquo;Playground&rdquo;. I still feel honored for being selected! Together with several others, I was given over two weeks of intensive beta-breaking :)</p>
+
+<!-- more -->
+
+
+<p>Some background about myself: I have been absorbed in the infosec field almost four years ago, starting with Over the Wire&rsquo;s wargames. Since then, I&rsquo;ve discovered the awesome <a href="https://vulnhub.com">VulnHub.com</a> and I have been addicted ever since. I have no formal background in computer science, nor have I taken <a href="http://www.offensive-security.com/information-security-training/penetration-testing-with-kali-linux/">PWK</a> or <a href="http://www.offensive-security.com/information-security-training/cracking-the-perimeter/">CTP</a> <em>yet</em>. Still, someone thought I was good enough to participate and I jumped at the chance.</p>
+
+<p>The playground is a network, a pentest lab, built from the ground up by the Offsec crew. It contains virtual machines for us to attack and try to compromise. I was given a VPN connection to the playground. The playground itself consisted of a DMZ and several subnets. A Kali image was provided as well, which I downloaded a week into the beta-test (my mistake, should&rsquo;ve gotten it earlier). The playground offered a huge variety of machines, ranging from Linux, FreeBSD, Windows all the way to Citrix and SCADA systems. Each machine had a unique entrypoint. Some machines could only be compromised by first rooting another box. This was very nice and gave the playground an interconnected feel. Other boxes allowed pivoting into one of the other subnets. In total, there were more than fourty! boxes available.</p>
+
+<p>The difficulty ranged from super-easy, google-click-root to mind-bendingly hard. I managed to pop ten boxes, which put me at the lower end of the spectrum. Nevertheless, I can say I&rsquo;ve learned a ton from this experience. I can now see why Offensive Security&rsquo;s slogan is &ldquo;Try Harder&rdquo; ;)</p>
+
+<p>I think this experience has made a couple of things clear. First, I <em>really</em> need to do PWK. Second, there&rsquo;s always more to learn and more boxes to hack! Overall, I&rsquo;d say if you have the opportunity, definitely try your hand at the Playground: you will not be disappointed!</p>
+
+<p>Finally, I&rsquo;d like to give a shout-out to Peleus for recruiting me and g0tmi1k, muts and the rest of the offsec crew for accepting me as a beta-tester. Last, but not least, thanks to my fellow beta-testers for sharing the pain and joy of attacking the playground! It has been an awesome learning experience, thank you!</p>
+
+<p>&ldquo;<strong>Be not afraid of growing slowly, be afraid only of standing still.</strong>&rdquo; &ndash;random Chinese Proverb that I find appropriate ;)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[9447 CTF: Rolling]]></title>
@@ -246,7 +270,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>This is the fifth character of the password and seems to be <code>r</code>. I did a quick <code>set $edx=$eax</code> and moved on. The next bytes were <code>oll</code>. Then, the password function borked, because it was using the first four characters to generate the next four! Hence the name of the binary, <code>rolling</code>&hellip;</p>
+<p>This is the fifth character of the password and seems to be <code>r</code>. I did a quick <code>set $edx=$eax</code> and moved on. The next bytes were <code>oll</code>, so I expected the following check to be for <code>i</code>. However, the password function borked, because it was using the first four characters to generate the next four! I had only entered four in total. The name of the binary, <code>rolling</code>, makes a bit more sense now :)</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>

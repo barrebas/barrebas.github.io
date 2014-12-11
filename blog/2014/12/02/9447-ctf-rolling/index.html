@@ -312,7 +312,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>This is the fifth character of the password and seems to be <code>r</code>. I did a quick <code>set $edx=$eax</code> and moved on. The next bytes were <code>oll</code>. Then, the password function borked, because it was using the first four characters to generate the next four! Hence the name of the binary, <code>rolling</code>&hellip;</p>
+<p>This is the fifth character of the password and seems to be <code>r</code>. I did a quick <code>set $edx=$eax</code> and moved on. The next bytes were <code>oll</code>, so I expected the following check to be for <code>i</code>. However, the password function borked, because it was using the first four characters to generate the next four! I had only entered four in total. The name of the binary, <code>rolling</code>, makes a bit more sense now :)</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -389,6 +389,8 @@
         <a class="basic-alignment left" href="/blog/2014/12/01/9447-ctf-booty/" title="Previous Post: 9447 CTF: booty">&laquo; 9447 CTF: booty</a>
       
       
+        <a class="basic-alignment right" href="/blog/2014/12/11/dont-hate-the-playground/" title="Next Post: Don't hate the Playground, Hate the Game">Don&#8217;t hate the Playground, Hate the Game &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -408,6 +410,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/12/11/dont-hate-the-playground/">Don&#8217;t Hate the Playground, Hate the Game</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/12/02/9447-ctf-rolling/">9447 CTF: Rolling</a>
       </li>
     
@@ -421,10 +427,6 @@
     
       <li class="post">
         <a href="/blog/2014/11/06/picoctf-hardcore-rop/">PicoCTF - Hardcore ROP</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/11/06/picoctf-write-ups/">PicoCTF Write-Ups</a>
       </li>
     
   </ul>
