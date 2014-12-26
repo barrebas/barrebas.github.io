@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Defcamp | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/defcamp/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-11T19:45:20+01:00</updated>
+  <updated>2014-12-24T12:12:27+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,116 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Defcamp CTF: Network 200]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-200/"/>
+    <updated>2014-11-01T15:08:59+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-200</id>
+    <content type="html"><![CDATA[<p>This writeup is about Defcamp CTF&rsquo;s Network 200. Again, we get a clue!</p>
+
+<p><code>That ****ing manager got smarter. He moved to house number 22, but we got this: ****managers.pcap</code></p>
+
+<!--more-->
+
+
+<p>Profanity aside, house number 22 probably means that the ip address of this challenge is <code>10.13.37.21</code>. The pcap file contains network traffic of the manager logging in to the page at 10.13.37.21. Upon examination of this page, it seems it generates a nonce. This nonce is to encode the md5 of the password, which it then sent over as GET parameters.</p>
+
+<p>Looking at the pcap file, Swappage quickly identified this:</p>
+
+<pre><code>user=manager&amp;nonce=7413734ab666ce02cf27c9862c96a8e7&amp;pass=3ecd6317a873b18e7dde351ac094ee3b
+</code></pre>
+
+<p>So we need to reverse this nonce-based encryption to get the md5&#8217;ed password of manager. The source of the login page reveals that the nonce is valid for about 100 seconds and the function that is used to generate the encoded password:</p>
+
+<pre><code class="javascript">$('.hook-submit').click(function(){
+  var h1 = md5($('#pass').val());
+  var h2 = $('#nonce').val();
+  var xor = myxor(h1, h2);
+  $('#hiddenpass').val(xor);
+  setTimeout(function() { $('#form').submit(); }, 100);
+});
+</code></pre>
+
+<p>This threw me off. I thought the nonce and md5 were <code>XOR</code>ed together. I couldn&rsquo;t be further from the truth. After wasting some time, I investigated the javascript:</p>
+
+<pre><code class="javascript">...snip...
+
+function hex2n(c) {
+    if(is_numeric(c)) return parseInt(c);
+    return ord(c) - ord('a') + 10;
+}
+
+function n2hex(n) {
+    if(n &lt; 10) { return '' + n; }
+    return chr(ord('a') + n - 10);
+}
+
+function myxor(h1, h2) {
+    var xored = '';
+    for(i = 0; i&lt;h1.length; i++) {
+        var c1 = h1.charAt(i);
+        var c2 = h2.charAt(i);
+        alert(hex2n(c1)); // DEBUG by barrebas
+        alert(hex2n(c2)); // DEBUG by barrebas
+        alert(n2hex((hex2n(c1) + hex2n(c2)) % 16)); // DEBUG by barrebas
+        xored += n2hex((hex2n(c1) + hex2n(c2)) % 16);
+    } 
+    return xored;
+}
+</code></pre>
+
+<p>With a few carefully placed <code>alert()</code>s, I was able to figure out that the <code>myxor</code> function takes each hex character of the nonce and the md5. These values are converted to integers and then added together. After a modulus 16 the hex-representation of the result is added to the output.</p>
+
+<p>I wrote a small piece of python to do the reverse operation for me, given the nonce and the encoded md5:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+nonce = 'efa6085790a0294851202602a4833ad1'
+epass = '3ecd6317a873b18e7dde351ac094ee3b'
+
+def makeHex(c):
+    return hex(c)[2:]
+
+def getHex(c):
+    return int(''.join(('0',c)), 16)
+
+output = ''
+for i in range(len(epass)):
+    output += makeHex((getHex(epass[i]) - getHex(nonce[i])) % 16)
+
+print output
+</code></pre>
+
+<p>This returned the md5 of the managers&#8217; password: <code>cabaf0ddf21df38cbeb77c94a40e4654</code>. Unfortunately, the Mighty Google did not return any hits when searching for it. Who needs it anyway? We have the md5 of the password, all we need to do is to re-encode it with a new nonce and submit it! I refreshed the login page, grabbed the nonce and ran the following piece of python:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+nonce = 'efa6085790a0294851202602a4833ad1'
+epass = '3ecd6317a873b18e7dde351ac094ee3b'
+passval = 'cabaf0ddf21df38cbeb77c94a40e4654'
+
+def makeHex(c):
+    return hex(c)[2:]
+
+def getHex(c):
+    return int(''.join(('0',c)), 16)
+
+output = ''
+for i in range(len(epass)):
+    output += makeHex((getHex(passval[i]) + getHex(nonce[i])) % 16)
+
+print output
+</code></pre>
+
+<p>This returned a new, encoded md5 of the password. I copied it and entered <code>manager:idontcare</code> in the login form. I intercepted this request with TamperData, substituting the new, encoded md5 value for the old one and hit submit. Lo and behold:</p>
+
+<pre><code>The secret is behind bb00403ebcbfa0748bcbee426acfdb5b :)
+</code></pre>
+
+<p>Which is the md5 of <code>youtoo</code>, which thankfully was the proper flag!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Defcamp CTF: Web 300]]></title>
@@ -103,6 +213,95 @@ echo `cat 575b3f3f5318b2afbfe91ed860a4b10c.txt`;
 </code></pre>
 
 <p>After hitting the LFI again, I was presented with the flag: <code>johnnybravo</code>!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Defcamp CTF: Network 100]]></title>
+    <link href="http://barrebas.github.io/blog/2014/10/31/defcamp-ctf-network-100/"/>
+    <updated>2014-10-31T15:08:24+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/10/31/defcamp-ctf-network-100</id>
+    <content type="html"><![CDATA[<p>For this challenge, we&rsquo;re given the following clue:</p>
+
+<p><code>My manager lives at 10.13.37.21. Any guest is always welcome. But he has a secret. Can you find it out?</code></p>
+
+<p>A secret? Let&rsquo;s dig in!</p>
+
+<!--more-->
+
+
+<p>I did a simple nmap scan of that box:</p>
+
+<pre><code class="bash">Starting Nmap 6.00 ( http://nmap.org ) at 2014-10-18 13:08 CEST
+Nmap scan report for 10.13.37.21
+Host is up (0.024s latency).
+Not shown: 998 closed ports
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+</code></pre>
+
+<p>The webpage has a login form, but I didn&rsquo;t have any credentials. The clue did say guests are always welcome, but <code>guest:guest</code> didn&rsquo;t work. However, these credentials <em>did</em> work for <code>ssh</code>! So I landed a shell on the box:</p>
+
+<pre><code class="bash">Welcome to Ubuntu 14.04.1 LTS (GNU/Linux 3.13.0-37-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com/
+Last login: Sat Oct 18 00:05:47 2014 from 10.13.37.1
+guest@n1:~$ ls
+toolkit
+guest@n1:~$ ls -alh
+total 32K
+drwxr-xr-x 4 guest guest 4.0K Oct 18 00:06 .
+drwxr-xr-x 4 root  root  4.0K Oct 17 01:40 ..
+-rw------- 1 guest guest    0 Oct 18 00:06 .bash_history
+-rw-r--r-- 1 guest guest  220 Oct 17 01:40 .bash_logout
+-rw-r--r-- 1 guest guest 3.6K Oct 17 01:40 .bashrc
+drwx------ 2 guest guest 4.0K Oct 17 01:42 .cache
+-rw-r--r-- 1 guest guest  675 Oct 17 01:40 .profile
+drwxr-xr-t 2 root  root  4.0K Oct 17 01:41 toolkit
+-rw------- 1 guest guest  777 Oct 18 00:06 .viminfo
+</code></pre>
+
+<p>For some reason, we could use <code>tcpdump</code> to look at incoming traffic:</p>
+
+<pre><code class="bash">guest@n1:~/toolkit$ ./tcpdump
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
+11:13:03.921683 IP n1.ssh &gt; 10.13.37.1.52543: Flags [P.], seq 1154997930:1154998122, ack 2969808471, win 349, options [nop,nop,TS val 10598245 ecr 188495], length 192
+11:13:03.934082 IP 10.13.37.1.52543 &gt; n1.ssh: Flags [.], ack 192, win 661, options [nop,nop,TS val 188517 ecr 10598245], length 0
+11:13:03.975864 IP 10.13.37.1.37658 &gt; n1.41730: Flags [S], seq 2811437647, win 1024, options [mss 1369], length 0
+11:13:03.975882 IP n1.41730 &gt; 10.13.37.1.37658: Flags [R.], seq 0, ack 2811437648, win 0, length 0
+11:13:03.987686 IP 10.13.37.1.43518 &gt; n1.41511: Flags [S], seq 4021855713, win 1024, options [mss 1369], length 0
+11:13:03.987704 IP n1.41511 &gt; 10.13.37.1.43518: Flags [R.], seq 0, ack 402185571
+</code></pre>
+
+<p>But we&rsquo;re looking for a flag! I wanted to see what made the login page tick.</p>
+
+<pre><code class="bash">guest@n1:~/toolkit$ cat /var/www/html/index.php 
+&lt;?php
+
+error_reporting(0);
+ini_set('display_errors', 0);
+
+if(isset($_POST['pass']) &amp;&amp; strlen($_POST['pass']) &lt; 12) {
+    echo 'Validation failed: The password field too short.'; die();
+}
+
+if(isset($_POST['user'])) {
+  if($_POST['user'] == 'manager' &amp;&amp; md5($_POST['pass']) == 'e701a78ce9d38201e9fc17737be0996d') {
+    echo 'The secret is behind &lt;strong&gt;0f388689dc4728cfde0de9a1ee47c8d3&lt;/strong&gt;. Don\'t tell anyone!';
+  } else {
+    echo 'Wrong username or password.';
+  }
+  die();
+}
+
+?&gt;
+&lt;!DOCTYPE html&gt;
+...snip...
+</code></pre>
+
+<p>Apparently, the flag is &lsquo;behind&rsquo; <code>0f388689dc4728cfde0de9a1ee47c8d3</code>. This md5 hash decrypts to <code>ididyourmom</code>, which is also the flag. What a nasty secret this manager has!</p>
 ]]></content>
   </entry>
   

