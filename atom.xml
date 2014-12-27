@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-27T15:20:21+01:00</updated>
+  <updated>2014-12-27T20:46:30+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -75,7 +75,7 @@
 
 <p><img src="http://barrebas.github.io/assets/hv14/hv14-12.png" alt="" /></p>
 
-<p>Tricky, especially the call that emerges:</p>
+<p>Cool <em>and</em> a nice anti-disassembler tactic, this self-modifying code. It can be tricky to reverse, in this case especially the call that emerges:</p>
 
 <p><img src="http://barrebas.github.io/assets/hv14/hv14-13.png" alt="" /></p>
 
