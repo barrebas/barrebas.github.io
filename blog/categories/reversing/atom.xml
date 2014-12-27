@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Reversing | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/reversing/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-27T10:31:15+01:00</updated>
+  <updated>2014-12-27T15:20:21+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,112 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Hackvent 2014 - Reversing Day 23]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/27/hackvent-2014-reversing-day-23/"/>
+    <updated>2014-12-27T14:45:39+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/27/hackvent-2014-reversing-day-23</id>
+    <content type="html"><![CDATA[<p>Someone passed me a binary and said &lsquo;Here, you&rsquo;ll enjoy this one&rsquo;. I most certainly did&hellip;</p>
+
+<!-- more -->
+
+
+<p>The guy also gave one hint, which I needed later. I started checking out the binary, which turned out to be a 32-bit Windows PE executable. I downloaded <a href="http://modern.ie">an XP VM</a> and an old, familiar friend: <a href="http://www.ollydbg.de">OllyDbg 1.10</a>, arguably the best debugger for Windows.</p>
+
+<p>Starting up the binary, I was presented with a simple dialog:</p>
+
+<p><img src="/assets/hv14/hv14-00.png" alt="" /></p>
+
+<p>I tried entering a string to check, but it didn&rsquo;t do anything. I set a few breakpoints, but when I switched back to the dialog, the binary crashed!</p>
+
+<p><img src="/assets/hv14/hv14-01.png" alt="" /></p>
+
+<p>What was going on here? <code>IsDebuggerPresent</code> was not referenced in the code, but maybe something else was going on. I set a memory breakpoint on a piece of code where I previously had set a breakpoint and pressed F9.</p>
+
+<p><img src="/assets/hv14/hv14-02.png" alt="" /></p>
+
+<p>Then, the binary stopped here:</p>
+
+<p><img src="/assets/hv14/hv14-03.png" alt="" /></p>
+
+<p>Quite interesting! The binary checks itself for <code>0xCC</code> bytes, aka <code>INT 3</code>. There were two of those checks, one at <code>0x4025e0</code> and one at <code>0x402536</code>. I modified the following <code>JNZ</code> to a <code>JMP</code> so the code would never do anything when it found a breakpoint. Now I could set breakpoints where ever I liked!</p>
+
+<p>Back to the <code>SendDlgItemMessageA</code> calls.</p>
+
+<p><img src="/assets/hv14/hv14-04.png" alt="" /></p>
+
+<p>The binary checks the length of our input and if it is exactly <code>0x1D</code> or 29 bytes, it continues by fetching the input. It checks the input for <code>-</code> characters at specific places. From this I deduced that the format of the input should be <code>ABCD-DEFG-HIJK-LMNO-PQRS-TUVW</code>. I entered that and pressed check, ending up here:</p>
+
+<p><img src="/assets/hv14/hv14-06.png" alt="" /></p>
+
+<p>The code now sends a message to its message queue, but I didn&rsquo;t know the location of the handler. No worries; I stepped into the call with F7 until I was in NTDLL.dll, and then set a memory breakpoint on the code area at <code>0x401000</code>. A break-on-access also works.</p>
+
+<p><img src="/assets/hv14/hv14-07.png" alt="" /></p>
+
+<p>After pressing F9, this landed me at the handler!</p>
+
+<p><img src="/assets/hv14/hv14-08.png" alt="" /></p>
+
+<p>I traced through this function with F7, finally ending up here:</p>
+
+<p><img src="/assets/hv14/hv14-09.png" alt="" /></p>
+
+<p>The code takes the first four bytes of our input, XORs them with a certain value and then proceeds to call the code at the resulting value&hellip; Only problem is, there was no code at <code>0x703234BD</code>! I remembered the hint I got at the beginning: &ldquo;the flag probably starts with <code>HV14</code>&rdquo;. I changed the input to <code>HV14-ABCD-DEFG-HIJK-LMNO-PQRS</code> and restarted it again, to end up at the same CALL EAX:</p>
+
+<p><img src="/assets/hv14/hv14-10.png" alt="" /></p>
+
+<p>With a single F7, I ended up here:</p>
+
+<p><img src="/assets/hv14/hv14-11.png" alt="" /></p>
+
+<p>Here, some tricky stuff starts happening! A call to <code>VirtualProtect</code> makes the code in front of us writeable, and the binary starts modifying that code:</p>
+
+<p><img src="/assets/hv14/hv14-12.png" alt="" /></p>
+
+<p>Tricky, especially the call that emerges:</p>
+
+<p><img src="/assets/hv14/hv14-13.png" alt="" /></p>
+
+<p>Carefully using F7, I traced passed this anti-disassembler trick and found myself at this CALL ECX:</p>
+
+<p><img src="/assets/hv14/hv14-14.png" alt="" /></p>
+
+<p>I stepped into it, landing at this position. Now it becomes really interesting, the binary apparently calls a function that does <em>something</em> with our input, then sends another message to the message queue. I decided to place a breakpoint at <code>0x4022B3</code> and pressed F9; I would examine the function later. First see what happens:</p>
+
+<p><img src="/assets/hv14/hv14-15.png" alt="" /></p>
+
+<p>Indeed, we land at the message handler. After decrypting a string, the binary does a byte-by-byte comparison of our mangled input and some other buffer:</p>
+
+<p><img src="/assets/hv14/hv14-17.png" alt="" /></p>
+
+<p>The code that comes after it congratulates us, but only if the buffer equals our mangled input. I decided to find out where our input was being mangled. I restarted the binary and set a memory breakpoint on the first four bytes of the input:</p>
+
+<p><img src="/assets/hv14/hv14-18.png" alt="" /></p>
+
+<p>Pressing F9, the code breaks at the CALL EAX, of course. Another F9 lands us here:</p>
+
+<p><img src="/assets/hv14/hv14-19.png" alt="" /></p>
+
+<p>Ah! The first byte of our input, &lsquo;H&rsquo;, is being XOR&#8217;ed with another value. This is repeated for all the bytes in the input:</p>
+
+<p><img src="/assets/hv14/hv14-20.png" alt="" /></p>
+
+<p>I wrote down (literally!) all the values that were used in <code>AL</code> and finally, I ended up at the REPE CMPS instruction:</p>
+
+<p><img src="/assets/hv14/hv14-21.png" alt="" /></p>
+
+<p>I took note of the values at <code>EDI</code> and together with the values from the XOR statement earlier, I had all the thing necessary to grab the flag! Sprinkle in some Python magic:</p>
+
+<p><img src="/assets/hv14/hv14-22.png" alt="" /></p>
+
+<p>And we have the flag!</p>
+
+<p><img src="/assets/hv14/hv14-23.png" alt="" /></p>
+
+<p>It has been a while since I got to use OllyDbg to reverse a Windows binary. Between the self-modifying code, the use of the flag and <code>SendMessage</code> to control code execution, this was a very enjoyable challenge!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Advent CTF 2014 - Bruteforce]]></title>
@@ -662,174 +768,6 @@ print output
 </code></pre>
 
 <p>Which is the md5 of <code>youtoo</code>, which thankfully was the proper flag!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ASIS-CTF: Secure Hobby]]></title>
-    <link href="http://barrebas.github.io/blog/2014/10/31/asis-ctf-secure-hobby/"/>
-    <updated>2014-10-31T14:56:11+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/10/31/asis-ctf-secure-hobby</id>
-    <content type="html"><![CDATA[<p>For Secure Hobby, a 250 point challenge, we were given a file and a place to connect to. The archive contained a binary, which looked okay enough to run. It opened a port on localhost. Upon connecting using <code>nc</code>, the program first crashes because it can&rsquo;t find <code>flag</code> and <code>namak</code>. After creating those files and connecting again, we are presented with the following:</p>
-
-<!--more-->
-
-
-<pre><code class="bash">$ nc localhost 35565
--------------------------------------------------
-|   Welcome to Super Secure Auth Engine |
--------------------------------------------------
-
-1) Register
-2) Login check
-3) Show my secret
-
-Enjoy ;)
-1
-Enter username: test
-Your key for login is: 6447567a64413d3d098f6bcd4621d373cade4e832627b4f6
-</code></pre>
-
-<p>Hmm. The second function verifies a login and the third displays a secret. Trying to register the user &lsquo;admin&rsquo; resulted in an error. Still, it&rsquo;s fair to assume we need to get the secret of the admin user. Let&rsquo;s break this key down.</p>
-
-<pre><code class="bash">$ echo -ne 'test' |md5sum
-098f6bcd4621d373cade4e832627b4f6  -
-</code></pre>
-
-<p>This looks like the last part of the login. What about the start? It seems to end with <code>\x3d</code> which is ASCII <code>=</code>. This screams base64!</p>
-
-<pre><code class="bash">$ xxd -p -r
-6447567a64413d3d
-dGVzdA==
-$ echo -ne 'dGVzdA==' |base64 -d
-test
-</code></pre>
-
-<p>So putting it all together again:</p>
-
-<pre><code class="bash">$ echo -ne 'admin' |base64
-YWRtaW4=
-$ echo -ne 'admin' |md5sum
-21232f297a57a5a743894a0e4a801fc3  -
-xxd -p 
-YWRtaW4=
-595752746157343d0a
-</code></pre>
-
-<p>Looks like <code>595752746157343d21232f297a57a5a743894a0e4a801fc3</code> is the login we need! But alas, this doesn’t work. On the remote box, registering <code>test</code> returns:</p>
-
-<pre><code class="bash">$ nc asis-ctf.ir 12439
--------------------------------------------------
-|   Welcome to Super Secure Auth Engine |
--------------------------------------------------
-
-1) Register
-2) Login check
-3) Show my secret
-
-Enjoy ;)
-1
-Enter username: test
-Your key for login is: 6447567a64413d3dd0211e3e26985465726312d056f9339f
-</code></pre>
-
-<p>It has to do with the <code>namak</code> file. Namak is Persian for salt.</p>
-
-<pre><code class="bash">$ echo '0' &gt; namak
-</code></pre>
-
-<p>Now, registering test on the localhost server returns <code>Your key for login is: 6447567a64413d3d1c13f2701648e0b0d46d8a2a5a131a53</code>. Furthermore, it looks like the salt is prepended to before hashing. We grabbed md5(salt) using a small Python script:</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-from socket import *
-import time, re, struct
-
-s = socket(AF_INET, SOCK_STREAM)
-#s.connect(('localhost', 35565))
-s.connect(('asis-ctf.ir', 12439))
-
-print s.recv(256)
-
-s.send('1\n')
-print s.recv(256)
-
-s.send('\n')
-
-print s.recv(200)
-print s.recv(200)
-</code></pre>
-
-<p>The output showed:</p>
-
-<pre><code class="bash">Enter username: 
-Your key for login is: 
-5624717e9a5fd673f17f5678c6303ffe
-</code></pre>
-
-<p>So the md5 of the salt would be <code>5624717e9a5fd673f17f5678c6303ffe</code>. I enlisted the help of NullMode to crack this hash, but to no avail. Instead of cracking this hash (seems inpossible), we decided to focus on the string comparison. We cannot register a username containing <code>admin</code>, but perhaps we can circumvent this checking system somehow. First, I tried:</p>
-
-<pre><code>admin                                              #
-</code></pre>
-
-<p>But this led to the same error message. Apparently, the username is not truncated. Instead, we assumed the check-string-for-admin uses normal string routines. These stop when they encounter a null-byte. Hash-functions on the other hand, do not. Let&rsquo;s register a user <code>\x00admin</code> using Python:</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-from socket import *
-import time, re, struct
-
-s = socket(AF_INET, SOCK_STREAM)
-#s.connect(('localhost', 35565))
-s.connect(('asis-ctf.ir', 12439))
-
-print s.recv(256)
-
-s.send('1\n')
-print s.recv(256)
-
-s.send('\x00admin\n')
-
-print s.recv(200)
-print s.recv(200)
-</code></pre>
-
-<p>This little gem returned <code>4147466b62576c7503812bbd45e23c059a0eab18e936b7ed</code>. Let&rsquo;s try it out!</p>
-
-<pre><code class="bash">$ nc asis-ctf.ir 12439
--------------------------------------------------
-|   Welcome to Super Secure Auth Engine |
--------------------------------------------------
-
-1) Register
-2) Login check
-3) Show my secret
-
-Enjoy ;)
-2
-Enter key: 4147466b62576c7503812bbd45e23c059a0eab18e936b7ed
-OK
-User admin authenticated
-</code></pre>
-
-<p>Holy crap, it worked! Let&rsquo;s grab that secret! Fingers crossed:</p>
-
-<pre><code class="bash">$ nc asis-ctf.ir 12439
--------------------------------------------------
-|   Welcome to Super Secure Auth Engine |
--------------------------------------------------
-
-1) Register
-2) Login check
-3) Show my secret
-
-Enjoy ;)
-3
-Enter key: 4147466b62576c7503812bbd45e23c059a0eab18e936b7ed
-The flag is: ASIS_65cc76f02093977bfd7629086e813666
-</code></pre>
-
-<p>BOOM! We just landed another flag :) This one was actually fun to solve!</p>
 ]]></content>
   </entry>
   
