@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Cfy | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/cfy/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-30T11:05:59+01:00</updated>
+  <updated>2014-12-30T12:34:52+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -35,7 +35,17 @@ What do you want to do?
 3) quit
 </code></pre>
 
-<p>With option 2, we have an arbitrary read ability, but we have to pass in the pointer in raw hex. This allows us to leak <code>libc</code> address from the got:</p>
+<p>With option 2, we have an arbitrary read ability, but we have to pass in the pointer in raw hex. This allows us to leak a <code>libc</code> address from the GOT. I chose to leak <code>printf</code> because I figured that one would have been resolved by the time our input was handled.</p>
+
+<p>Finding the address of <code>printf</code> pointer in GOT was done like this:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/31c3/cfy$ objdump -d -M intel ./cfy |grep "printf" -A2 
+00000000004005e0 &lt;printf@plt&gt;:
+  4005e0:   ff 25 3a 0a 20 00       jmp    QWORD PTR [rip+0x200a3a]        # 601020 &lt;_GLOBAL_OFFSET_TABLE_+0x20&gt;
+  4005e6:   68 01 00 00 00          push   0x1
+</code></pre>
+
+<p>So the pointer to <code>printf</code> is located at <code>0x601020</code> in the binary. This script grabs that value via the &ldquo;parse from pointer&rdquo; option:</p>
 
 <pre><code class="python">#!/usr/bin/python
 
@@ -62,7 +72,7 @@ time.sleep(0.5)
 print s.recv(1000)
 </code></pre>
 
-<p>Given us the ouput:</p>
+<p>Which gives us the output:</p>
 
 <pre><code class="bash">bas@tritonal:~/tmp/31c3/cfy$ python read.py 
 What do you want to do?
@@ -82,7 +92,7 @@ What do you want to do?
 3) quit
 </code></pre>
 
-<p>Unfortunately, running the python script again shows a different output value. This means that ASLR is enabled. Furthermore, I didn&rsquo;t know what version of <code>libc</code> was running!</p>
+<p>Unfortunately, running the python script again shows a different address for <code>printf</code>. This means that ASLR is enabled. Furthermore, I didn&rsquo;t know what version of <code>libc</code> was running!</p>
 
 <p>I turned my attention to gaining code execution. This was more trivial, although it wasn&rsquo;t a straight-forward buffer overflow. The binary asks the user for a choice. That choice is converted from a string to an int. From this int, the binary looks up the relevant code to handle the request:</p>
 

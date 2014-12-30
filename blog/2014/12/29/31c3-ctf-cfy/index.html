@@ -108,7 +108,22 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>With option 2, we have an arbitrary read ability, but we have to pass in the pointer in raw hex. This allows us to leak <code>libc</code> address from the got:</p>
+<p>With option 2, we have an arbitrary read ability, but we have to pass in the pointer in raw hex. This allows us to leak a <code>libc</code> address from the GOT. I chose to leak <code>printf</code> because I figured that one would have been resolved by the time our input was handled.</p>
+
+<p>Finding the address of <code>printf</code> pointer in GOT was done like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/31c3/cfy<span class="nv">$ </span>objdump -d -M intel ./cfy <span class="p">|</span>grep <span class="s2">&quot;printf&quot;</span> -A2
+</span><span class='line'>00000000004005e0 &lt;<span class="nb">printf</span>@plt&gt;:
+</span><span class='line'>  4005e0: ff <span class="m">25</span> 3a 0a <span class="m">20</span> <span class="m">00</span>      jmp    QWORD PTR <span class="o">[</span>rip+0x200a3a<span class="o">]</span>        <span class="c"># 601020 &lt;_GLOBAL_OFFSET_TABLE_+0x20&gt;</span>
+</span><span class='line'>  4005e6: <span class="m">68</span> <span class="m">01</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   0x1
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the pointer to <code>printf</code> is located at <code>0x601020</code> in the binary. This script grabs that value via the &ldquo;parse from pointer&rdquo; option:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -159,7 +174,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Given us the ouput:</p>
+<p>Which gives us the output:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -196,7 +211,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Unfortunately, running the python script again shows a different output value. This means that ASLR is enabled. Furthermore, I didn&rsquo;t know what version of <code>libc</code> was running!</p>
+<p>Unfortunately, running the python script again shows a different address for <code>printf</code>. This means that ASLR is enabled. Furthermore, I didn&rsquo;t know what version of <code>libc</code> was running!</p>
 
 <p>I turned my attention to gaining code execution. This was more trivial, although it wasn&rsquo;t a straight-forward buffer overflow. The binary asks the user for a choice. That choice is converted from a string to an int. From this int, the binary looks up the relevant code to handle the request:</p>
 
