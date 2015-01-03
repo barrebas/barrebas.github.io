@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Weekly | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/weekly/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-30T12:34:52+01:00</updated>
+  <updated>2015-01-03T09:27:00+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,30 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Weekly Roundup 2015 #1]]></title>
+    <link href="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/"/>
+    <updated>2015-01-03T08:54:42+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1</id>
+    <content type="html"><![CDATA[<p>Time for another weekly round-up of interesting links!</p>
+
+<!-- more -->
+
+
+<p>I&rsquo;ll kick this one off with a very interesting blog about <a href="http://v0ids3curity.blogspot.in/2014/12/return-to-vdso-using-elf-auxiliary.html">bypassing ASLR on 64 bit systems using ELF auxilliary vectors</a> by Reno Robert. This technique leaks the address of the VDSO (Virtual Dynamic Shared Object). The VDSO can then be used as a source for ROP gadgets. The entire process of writing a functioning exploit is described in great detail, with a proof-of-concept in <code>python</code>. Furthermore, the author notes that the address of VDSO is not very random, making bruteforcing an option even on 64 bit systems. Very nice read, very detailed!</p>
+
+<p>I&rsquo;d like to follow up this exploitation goodness with a link to Google&rsquo;s Project Zero blog: <a href="http://googleprojectzero.blogspot.nl/2015/01/finding-and-exploiting-ntpd.html">Finding and exploiting ntpd vulnerabilities</a> by Stephen Röttger. This is a really in-depth story about fuzzing the NTPD daemon, coming up with something that barely looks like a vulnerability and through pure persistence, turning it into a full exploit. Amazing stuff!</p>
+
+<p>If you like wargames, this one is sure to get your blood pumping: <a href="https://overthewire.org/wargames/drifter/">Drifter over at Overthewire</a> is online! It&rsquo;s a wargame along the lines of <a href="http://overthewire.org/wargames/vortex/">Vortex</a>, which I&rsquo;ve started playing this week. If you want to learn about binary exploitation, <a href="https://overthewire.org/">overthewire</a> is <strong>the</strong> place to start!</p>
+
+<p>The folks over at rapid7 have now officially said <a href="https://community.rapid7.com/community/metasploit/blog/2014/12/08/good-bye-msfpayload-and-msfencode">farewell to msfpayload &amp; msfencode</a>. These awesome tools are being superseded by <code>msfvenom</code>. This blog post gives a basic rundown of the new tool and five good examples of it&rsquo;s usage. Further documentation about <code>msfvenom</code> can be found on <a href="https://github.com/rapid7/metasploit-framework/wiki/How-to-use-msfvenom">rapid7&rsquo;s github</a>.</p>
+
+<p>Some things to look forward to in the land of VulnHub VMs: <a href="https://r3v3rs3r.wordpress.com">c0ne</a> is currently making a VM focused on binary exploitation. I can say from first hand that these binaries are really fun to exploit! Furthermore, strata&rsquo;s VM is being beta-tested and is due soon.</p>
+
+<p>Finally, <a href="http://blog.vulnhub.com/2014/01/vulnhub-turns-0x01.html">VulnHub&rsquo;s birthday</a> is coming up. A little mouse told me there might just be a new competition coming&hellip;</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Staring Into /dev/null Weekly Roundup]]></title>

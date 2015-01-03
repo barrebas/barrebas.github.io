@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Don&#8217;t Hate the Playground, Hate the Game - staring into /dev/null</title>
+  <title>Weekly Roundup 2015 #1 - staring into /dev/null</title>
   <meta name="author" content="barrebas">
 
   
-  <meta name="description" content="Several months ago, Peleus approached me and asked me to participate in a beta-test of an upcoming Offsec &ldquo;Playground&rdquo;. I still feel &hellip;">
+  <meta name="description" content="Time for another weekly round-up of interesting links! I&rsquo;ll kick this one off with a very interesting blog about bypassing ASLR on 64 bit &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground">
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
@@ -68,7 +68,7 @@
   
   <header>
     
-      <h1 class="entry-title">Don&#8217;t Hate the Playground, Hate the Game</h1>
+      <h1 class="entry-title">Weekly Roundup 2015 #1</h1>
     
     
       <p class="meta">
@@ -77,29 +77,29 @@
 
 
 
-<time class='entry-date' datetime='2014-12-11T19:11:06+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>7:11 pm</span></time>
+<time class='entry-date' datetime='2015-01-03T08:54:42+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>8:54 am</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>Several months ago, Peleus approached me and asked me to participate in a beta-test of an upcoming Offsec &ldquo;Playground&rdquo;. I still feel honored for being selected! Together with several others, I was given over two weeks of intensive beta-breaking :)</p>
+<div class="entry-content"><p>Time for another weekly round-up of interesting links!</p>
 
 <!-- more -->
 
 
-<p>Some background about myself: I have been absorbed in the infosec field almost four years ago, starting with Over the Wire&rsquo;s wargames. Since then, I&rsquo;ve discovered the awesome <a href="https://vulnhub.com">VulnHub.com</a> and I have been addicted ever since. I have no formal background in computer science, nor have I taken <a href="http://www.offensive-security.com/information-security-training/penetration-testing-with-kali-linux/">PWK</a> or <a href="http://www.offensive-security.com/information-security-training/cracking-the-perimeter/">CTP</a> <em>yet</em>. Still, someone thought I was good enough to participate and I jumped at the chance.</p>
+<p>I&rsquo;ll kick this one off with a very interesting blog about <a href="http://v0ids3curity.blogspot.in/2014/12/return-to-vdso-using-elf-auxiliary.html">bypassing ASLR on 64 bit systems using ELF auxilliary vectors</a> by Reno Robert. This technique leaks the address of the VDSO (Virtual Dynamic Shared Object). The VDSO can then be used as a source for ROP gadgets. The entire process of writing a functioning exploit is described in great detail, with a proof-of-concept in <code>python</code>. Furthermore, the author notes that the address of VDSO is not very random, making bruteforcing an option even on 64 bit systems. Very nice read, very detailed!</p>
 
-<p>The playground is a network, a pentest lab, built from the ground up by the Offsec crew. It contains virtual machines for us to attack and try to compromise. I was given a VPN connection to the playground. The playground itself consisted of a DMZ and several subnets. A Kali image was provided as well, which I downloaded a week into the beta-test (my mistake, should&rsquo;ve gotten it earlier). The playground offered a huge variety of machines, ranging from Linux, FreeBSD, Windows all the way to Citrix and SCADA systems. Each machine had a unique entrypoint. Some machines could only be compromised by first rooting another box. This was very nice and gave the playground an interconnected feel. Other boxes allowed pivoting into one of the other subnets. In total, there were more than fourty! boxes available.</p>
+<p>I&rsquo;d like to follow up this exploitation goodness with a link to Google&rsquo;s Project Zero blog: <a href="http://googleprojectzero.blogspot.nl/2015/01/finding-and-exploiting-ntpd.html">Finding and exploiting ntpd vulnerabilities</a> by Stephen Röttger. This is a really in-depth story about fuzzing the NTPD daemon, coming up with something that barely looks like a vulnerability and through pure persistence, turning it into a full exploit. Amazing stuff!</p>
 
-<p>The difficulty ranged from super-easy, google-click-root to mind-bendingly hard. I managed to pop ten boxes, which put me at the lower end of the spectrum. Nevertheless, I can say I&rsquo;ve learned a ton from this experience. I can now see why Offensive Security&rsquo;s slogan is &ldquo;Try Harder&rdquo; ;)</p>
+<p>If you like wargames, this one is sure to get your blood pumping: <a href="https://overthewire.org/wargames/drifter/">Drifter over at Overthewire</a> is online! It&rsquo;s a wargame along the lines of <a href="http://overthewire.org/wargames/vortex/">Vortex</a>, which I&rsquo;ve started playing this week. If you want to learn about binary exploitation, <a href="https://overthewire.org/">overthewire</a> is <strong>the</strong> place to start!</p>
 
-<p>I think this experience has made a couple of things clear. First, I <em>really</em> need to do PWK. Second, there&rsquo;s always more to learn and more boxes to hack! Overall, I&rsquo;d say if you have the opportunity, definitely try your hand at the Playground: you will not be disappointed!</p>
+<p>The folks over at rapid7 have now officially said <a href="https://community.rapid7.com/community/metasploit/blog/2014/12/08/good-bye-msfpayload-and-msfencode">farewell to msfpayload &amp; msfencode</a>. These awesome tools are being superseded by <code>msfvenom</code>. This blog post gives a basic rundown of the new tool and five good examples of it&rsquo;s usage. Further documentation about <code>msfvenom</code> can be found on <a href="https://github.com/rapid7/metasploit-framework/wiki/How-to-use-msfvenom">rapid7&rsquo;s github</a>.</p>
 
-<p>Finally, I&rsquo;d like to give a shout-out to Peleus for recruiting me and g0tmi1k, muts and the rest of the offsec crew for accepting me as a beta-tester. Last, but not least, thanks to my fellow beta-testers for sharing the pain and joy of attacking the playground! It has been an awesome learning experience, thank you!</p>
+<p>Some things to look forward to in the land of VulnHub VMs: <a href="https://r3v3rs3r.wordpress.com">c0ne</a> is currently making a VM focused on binary exploitation. I can say from first hand that these binaries are really fun to exploit! Furthermore, strata&rsquo;s VM is being beta-tested and is due soon.</p>
 
-<p>&ldquo;<strong>Be not afraid of growing slowly, be afraid only of standing still.</strong>&rdquo; &ndash;random Chinese Proverb that I find appropriate ;)</p>
+<p>Finally, <a href="http://blog.vulnhub.com/2014/01/vulnhub-turns-0x01.html">VulnHub&rsquo;s birthday</a> is coming up. A little mouse told me there might just be a new competition coming&hellip;</p>
 </div>
 
 
@@ -115,12 +115,12 @@
 
 
 
-<time class='entry-date' datetime='2014-12-11T19:11:06+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>7:11 pm</span></time>
+<time class='entry-date' datetime='2015-01-03T08:54:42+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>8:54 am</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/offsec/'>offsec</a>
+    <a class='category' href='/blog/categories/2015/'>2015</a>, <a class='category' href='/blog/categories/roundup/'>roundup</a>, <a class='category' href='/blog/categories/weekly/'>weekly</a>
   
 </span>
 
@@ -129,7 +129,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/" >Tweet</a>
   
   
   
@@ -138,10 +138,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/12/02/9447-ctf-rolling/" title="Previous Post: 9447 CTF: rolling">&laquo; 9447 CTF: rolling</a>
+        <a class="basic-alignment left" href="/blog/2014/12/29/31c3-ctf-cfy/" title="Previous Post: 31C3 CTF - cfy">&laquo; 31C3 CTF - cfy</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/12/17/adctf-2014-oh-my-scanf/" title="Next Post: Advent CTF 2014 - Oh My Scanf">Advent CTF 2014 - Oh My Scanf &raquo;</a>
       
     </p>
   </footer>
@@ -207,8 +205,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground/';
-        var disqus_url = 'http://barrebas.github.io/blog/2014/12/11/dont-hate-the-playground/';
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/';
         var disqus_script = 'embed.js';
       
     (function () {

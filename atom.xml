@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2014-12-30T12:34:52+01:00</updated>
+  <updated>2015-01-03T09:27:00+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,30 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Weekly Roundup 2015 #1]]></title>
+    <link href="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/"/>
+    <updated>2015-01-03T08:54:42+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1</id>
+    <content type="html"><![CDATA[<p>Time for another weekly round-up of interesting links!</p>
+
+<!-- more -->
+
+
+<p>I&rsquo;ll kick this one off with a very interesting blog about <a href="http://v0ids3curity.blogspot.in/2014/12/return-to-vdso-using-elf-auxiliary.html">bypassing ASLR on 64 bit systems using ELF auxilliary vectors</a> by Reno Robert. This technique leaks the address of the VDSO (Virtual Dynamic Shared Object). The VDSO can then be used as a source for ROP gadgets. The entire process of writing a functioning exploit is described in great detail, with a proof-of-concept in <code>python</code>. Furthermore, the author notes that the address of VDSO is not very random, making bruteforcing an option even on 64 bit systems. Very nice read, very detailed!</p>
+
+<p>I&rsquo;d like to follow up this exploitation goodness with a link to Google&rsquo;s Project Zero blog: <a href="http://googleprojectzero.blogspot.nl/2015/01/finding-and-exploiting-ntpd.html">Finding and exploiting ntpd vulnerabilities</a> by Stephen Röttger. This is a really in-depth story about fuzzing the NTPD daemon, coming up with something that barely looks like a vulnerability and through pure persistence, turning it into a full exploit. Amazing stuff!</p>
+
+<p>If you like wargames, this one is sure to get your blood pumping: <a href="https://overthewire.org/wargames/drifter/">Drifter over at Overthewire</a> is online! It&rsquo;s a wargame along the lines of <a href="http://overthewire.org/wargames/vortex/">Vortex</a>, which I&rsquo;ve started playing this week. If you want to learn about binary exploitation, <a href="https://overthewire.org/">overthewire</a> is <strong>the</strong> place to start!</p>
+
+<p>The folks over at rapid7 have now officially said <a href="https://community.rapid7.com/community/metasploit/blog/2014/12/08/good-bye-msfpayload-and-msfencode">farewell to msfpayload &amp; msfencode</a>. These awesome tools are being superseded by <code>msfvenom</code>. This blog post gives a basic rundown of the new tool and five good examples of it&rsquo;s usage. Further documentation about <code>msfvenom</code> can be found on <a href="https://github.com/rapid7/metasploit-framework/wiki/How-to-use-msfvenom">rapid7&rsquo;s github</a>.</p>
+
+<p>Some things to look forward to in the land of VulnHub VMs: <a href="https://r3v3rs3r.wordpress.com">c0ne</a> is currently making a VM focused on binary exploitation. I can say from first hand that these binaries are really fun to exploit! Furthermore, strata&rsquo;s VM is being beta-tested and is due soon.</p>
+
+<p>Finally, <a href="http://blog.vulnhub.com/2014/01/vulnhub-turns-0x01.html">VulnHub&rsquo;s birthday</a> is coming up. A little mouse told me there might just be a new competition coming&hellip;</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[31C3 CTF - Cfy]]></title>
@@ -9470,84 +9494,6 @@ If the filename begins with "|", the filename is interpreted as a command to whi
 
 
 <p>BOOM! We just landed another flag :) This one was actually fun to solve!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ASIS-CTF: Lottery]]></title>
-    <link href="http://barrebas.github.io/blog/2014/10/31/asis-ctf-lottery/"/>
-    <updated>2014-10-31T14:52:32+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/10/31/asis-ctf-lottery</id>
-    <content type="html"><![CDATA[<p>Lottery was a 100 point web challenge in the ASIS Finals CTF. The description only said &lsquo;Go here: <a href="http://asis-ctf.ir:12437">http://asis-ctf.ir:12437</a>&rsquo;. That webpage was mostly non-functional, but said that the 1234567890th visitor would win a <em>prize</em>. Gee, I wonder what that is? My browser informed me that there were no cookies, but I wasn&rsquo;t convinced.</p>
-
-<!--more-->
-
-
-<p><img src="http://barrebas.github.io/assets/asisctf/lottery-01.png" alt="" /></p>
-
-<p>I turned to <code>curl</code>. Luckily, curl informed me that there was indeed a cookie been set. A cookie named &lsquo;Visitor&rsquo;, no less:</p>
-
-<p><img src="http://barrebas.github.io/assets/asisctf/lottery-02.png" alt="" /></p>
-
-<p>The value looked like base64 so I decoded it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ echo -ne 'MTM4NjozNjM3NjNlNWMzZGMzYTY4YjM5OTA1OGMzNGFlY2YyYw==' |base64 -d
-</span><span class='line'>1386:363763e5c3dc3a68b399058c34aecf2c</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Hmm. I figured that first number was a visitor number. What could the second string be? MD5 maybe?</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ echo -ne 1386 |md5sum
-</span><span class='line'>363763e5c3dc3a68b399058c34aecf2c  -</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Spot on. It&rsquo;s now easy to fake the right cookie:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ echo -ne 1234567890 |md5sum
-</span><span class='line'>e807f1fcf82d132f9bb018ca6738a19f  -
-</span><span class='line'>$ echo -ne '1234567890:e807f1fcf82d132f9bb018ca6738a19f' |base64
-</span><span class='line'>MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg==</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And feed it into curl:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ curl -v http://asis-ctf.ir:12437/ --cookie "Visitor=MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg=="
-</span><span class='line'>* About to connect() to asis-ctf.ir port 12437 (#0)
-</span><span class='line'>*   Trying 87.107.124.12...
-</span><span class='line'>* connected
-</span><span class='line'>* Connected to asis-ctf.ir (87.107.124.12) port 12437 (#0)
-</span><span class='line'>&gt; GET / HTTP/1.1
-</span><span class='line'>&gt; User-Agent: curl/7.26.0
-</span><span class='line'>&gt; Host: asis-ctf.ir:12437
-</span><span class='line'>&gt; Accept: */*
-</span><span class='line'>&gt; Cookie: Visitor=MTIzNDU2Nzg5MDplODA3ZjFmY2Y4MmQxMzJmOWJiMDE4Y2E2NzM4YTE5Zg==
-</span><span class='line'>&gt; 
-</span><span class='line'>...snip...
-</span><span class='line'>Google+"&gt;&lt;/a&gt; &lt;/div&gt;&lt;/div&gt;&lt;div class="data-wrapper"&gt;&lt;p class="title"&gt;The 1234567890 th visitor, the prize awarded.&lt;/p&gt;&lt;div class="content"&gt;Anyone who has visited our site is the 1234567890 th Special prizes are awarded. &lt;br/&gt;the flag is: ASIS_9f1af649f25108144fc38a01f8767c0c&lt;/div&gt;&lt;/div&gt;&lt;div class="footer"&gt;&lt;div class="p</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The flag is <code>ASIS_9f1af649f25108144fc38a01f8767c0c</code>. Easy!</p>
 ]]></content>
   </entry>
   

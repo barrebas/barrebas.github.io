@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Roundup | staring into /dev/null]]></title>
-  <link href="http://barrebas.github.io/blog/categories/roundup/atom.xml" rel="self"/>
+  <title><![CDATA[Category: 2015 | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/2015/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
   <updated>2015-01-03T09:27:00+01:00</updated>
   <id>http://barrebas.github.io/</id>
@@ -34,30 +34,6 @@
 <p>Some things to look forward to in the land of VulnHub VMs: <a href="https://r3v3rs3r.wordpress.com">c0ne</a> is currently making a VM focused on binary exploitation. I can say from first hand that these binaries are really fun to exploit! Furthermore, strata&rsquo;s VM is being beta-tested and is due soon.</p>
 
 <p>Finally, <a href="http://blog.vulnhub.com/2014/01/vulnhub-turns-0x01.html">VulnHub&rsquo;s birthday</a> is coming up. A little mouse told me there might just be a new competition coming&hellip;</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Staring Into /dev/null Weekly Roundup]]></title>
-    <link href="http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup/"/>
-    <updated>2014-12-27T09:52:56+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup</id>
-    <content type="html"><![CDATA[<p>Extra, extra! Interesting stuff found on the internet in the past week!</p>
-
-<!-- more -->
-
-
-<p>This week really kicked off some awesome work on format string vulnerabilities! First, <a href="https://twitter.com/leonjza">leonjza</a> shows the process of <a href="https://asciinema.org/a/14960">writing an format string exploit</a> in visual form. Next, <a href="http://r3v3rs3r.wordpress.com">c0ne</a> made a <a href="http://r3v3rs3r.wordpress.com/2014/12/26/i-love-format-string-vulnerabilities/">great script</a> to help with the tedious work that is involved when exploiting format strings.</p>
-
-<p>I came across this technique for <a href="http://www.shelliscoming.com/2014/03/hidden-bind-shell-keep-your-shellcode.html">hiding bind shells</a> by <a href="https://twitter.com/borjamerino">@BorjaMerino</a>. I wonder if it is possible to port this to Linux&hellip;</p>
-
-<p>To combat holiday boredom, a new VM was released on Vulnhub the other day, named <a href="https://www.vulnhub.com/entry/pegasus-1,109/">Pegasus</a> by <a href="https://twitter.com/TheKnapsy">Knapsy</a>. It&rsquo;s a very fun and tricky VM, I recommend it!</p>
-
-<p>Super useful, something I have seen before, but then I lost the link: <a href="http://redsymbol.net/articles/unofficial-bash-strict-mode/">Use the Unofficial Bash Strict Mode (Unless You Looove Debugging)</a> by Aaron Maxwell aka <a href="https://twitter.com/redsymbol/">redsymbol</a>.</p>
-
-<p>Lastly, I always enjoy writeups about breaking botnet panels. This one by Malware Tech <a href="http://www.malwaretech.com/2014/12/phase-bot-exploiting-c-panel.html">is quite entertaining</a>.</p>
-
-<p>I&rsquo;d like to make this a recurring thing. Let me know what you think about it!</p>
 ]]></content>
   </entry>
   
