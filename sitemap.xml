@@ -3,6 +3,14 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mentalnote/</loc>
+    
+    <lastmod>2015-01-11T21:40:18+01:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup/</loc>
     
     <lastmod>2015-01-11T18:52:35+01:00</lastmod>
@@ -229,14 +237,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2015-01-11T20:29:46+01:00</lastmod>
+    <lastmod>2015-01-11T22:43:49+01:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2015-01-11T20:29:46+01:00</lastmod>
+    <lastmod>2015-01-11T22:43:49+01:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
