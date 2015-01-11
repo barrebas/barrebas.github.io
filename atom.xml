@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-11T23:23:25+01:00</updated>
+  <updated>2015-01-11T23:25:17+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -14,7 +14,7 @@
 
   
   <entry>
-    <title type="html"><![CDATA[HackIM CTF: Sbox]]></title>
+    <title type="html"><![CDATA[HackIM CTF - Sbox]]></title>
     <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox/"/>
     <updated>2015-01-11T22:52:27+01:00</updated>
     <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox</id>
@@ -818,7 +818,7 @@
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[HackIM CTF: Mixme Writeup]]></title>
+    <title type="html"><![CDATA[HackIM CTF - Mixme]]></title>
     <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup/"/>
     <updated>2015-01-11T18:52:35+01:00</updated>
     <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup</id>

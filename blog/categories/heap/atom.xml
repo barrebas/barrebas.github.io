@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Heap | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/heap/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-11T23:23:25+01:00</updated>
+  <updated>2015-01-11T23:25:17+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -307,7 +307,7 @@ flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[HackIM CTF: Mixme Writeup]]></title>
+    <title type="html"><![CDATA[HackIM CTF - Mixme]]></title>
     <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup/"/>
     <updated>2015-01-11T18:52:35+01:00</updated>
     <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup</id>
