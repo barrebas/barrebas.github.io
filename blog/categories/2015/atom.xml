@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 2015 | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/2015/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-12T18:27:39+01:00</updated>
+  <updated>2015-01-12T19:02:13+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -24,6 +24,8 @@
 
 
 <p>I want to kick this one off with a beautiful writeup by <a href="https://twitter.com/dronesec">drone</a> on a <a href="https://hatriot.github.io/blog/2015/01/06/ntpdc-exploit/">local ntpdc overflow</a>. drone really takes you down the rabbit hole in terms of exploit dev and even manages to find that Debian x86 does not ship with PAE enabled. This means that protections such as NX are not enabled on these systems! Very detailed writeup which discusses the buffer overflows and the use of ROP and I highly recommend it.</p>
+
+<p>No less than three VMs were released on VulnHub this week! <a href="https://www.vulnhub.com/entry/pandoras-box-1,111/">Pandora&rsquo;s Box</a> by c0ne and <a href="https://www.vulnhub.com/entry/the-purge-1,110/">the Purge</a> and <a href="https://www.vulnhub.com/entry/the-frequency-1,112/">theFrequency</a> by strata. I highly recommend Pandora&rsquo;s Box if you like exploit dev. I finished the Purge, which felt quite polished and is <em>really</em> left-field. Still working on the Frequency, which shows me a whole different world of audio stego!</p>
 
 <p>Apparently, ASUS routers have a vulnerable service listening on UDP 9999 with runs with root privileges. This <em>infosrv</em> serivce <a href="https://github.com/jduck/asus-cmd">contains a vulnerability</a> that allows unauthenticated root command execution. There&rsquo;s also a published <a href="http://www.exploit-db.com/exploits/35688/">exploit</a> already. It&rsquo;s a pretty interesting writeup, including technical details. It seems to boil down to a programmer mistakenly using <em>memcpy</em> where he or she meant to use <em>memcmp</em>. Ouch.</p>
 
