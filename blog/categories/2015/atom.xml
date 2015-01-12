@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 2015 | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/2015/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-11T23:25:17+01:00</updated>
+  <updated>2015-01-12T18:25:08+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,24 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Weekly Roundup 2015 #2]]></title>
+    <link href="http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/"/>
+    <updated>2015-01-12T18:02:00+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2</id>
+    <content type="html"><![CDATA[<p>A bit later and shorter than planned due to the CTF, but here&rsquo;s another weekly roundup!</p>
+
+<!-- more -->
+
+
+<p>I want to kick this one off with a beautiful writeup by <a href="https://twitter.com/dronesec">drone</a> on a <a href="https://hatriot.github.io/blog/2015/01/06/ntpdc-exploit/">local ntpdc overflow</a>. drone really takes you down the rabbit hole in terms of exploit dev and even manages to find that Debian x86 does not ship with PAE enabled. This means that protections such as NX are not enabled on these systems! Very detailed writeup which discusses the buffer overflows and the use of ROP and I highly recommend it.</p>
+
+<p>Apparently, ASUS routers have a vulnerable service listening on UDP 9999 with runs with root privileges. This <em>infosrv</em> serivce <a href="https://github.com/jduck/asus-cmd">contains a vulnerability</a> that allows unauthenticated root command execution. There&rsquo;s also a published <a href="http://www.exploit-db.com/exploits/35688/">exploit</a> already. It&rsquo;s a pretty interesting writeup, including technical details. It seems to boil down to a programmer mistakenly using <em>memcpy</em> where he or she meant to use <em>memcmp</em>. Ouch.</p>
+
+<p>Finally, I came across this blog that describes SROP or <a href="http://thisissecurity.net/2015/01/03/playing-with-signals-an-overview-on-sigreturn-oriented-programming/">Sigreturn Oriented Programming</a>, a variation on ROP. According to the blog post, it&rsquo;s a very reliable technique. The way I understand it, you need to overwrite a saved return address to execute a <em>sigreturn</em> syscall, which in turn allows one to call any syscall by forging the appropriate <code>uc_mcontect</code> struct in memory. This is convenient as one needs less gadgets to pull it off. Cool stuff! Hope to see this in one of the VulnHub VMs once :)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Weekly Roundup 2015 #1]]></title>

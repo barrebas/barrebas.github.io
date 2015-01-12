@@ -3,6 +3,14 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/</loc>
+    
+    <lastmod>2015-01-12T18:02:00+01:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-sbox/</loc>
     
     <lastmod>2015-01-11T22:52:27+01:00</lastmod>
@@ -245,14 +253,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2015-01-11T23:25:17+01:00</lastmod>
+    <lastmod>2015-01-12T18:25:08+01:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2015-01-11T23:25:17+01:00</lastmod>
+    <lastmod>2015-01-12T18:25:08+01:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-11T23:25:17+01:00</updated>
+  <updated>2015-01-12T18:25:08+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,24 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Weekly Roundup 2015 #2]]></title>
+    <link href="http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/"/>
+    <updated>2015-01-12T18:02:00+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2</id>
+    <content type="html"><![CDATA[<p>A bit later and shorter than planned due to the CTF, but here&rsquo;s another weekly roundup!</p>
+
+<!-- more -->
+
+
+<p>I want to kick this one off with a beautiful writeup by <a href="https://twitter.com/dronesec">drone</a> on a <a href="https://hatriot.github.io/blog/2015/01/06/ntpdc-exploit/">local ntpdc overflow</a>. drone really takes you down the rabbit hole in terms of exploit dev and even manages to find that Debian x86 does not ship with PAE enabled. This means that protections such as NX are not enabled on these systems! Very detailed writeup which discusses the buffer overflows and the use of ROP and I highly recommend it.</p>
+
+<p>Apparently, ASUS routers have a vulnerable service listening on UDP 9999 with runs with root privileges. This <em>infosrv</em> serivce <a href="https://github.com/jduck/asus-cmd">contains a vulnerability</a> that allows unauthenticated root command execution. There&rsquo;s also a published <a href="http://www.exploit-db.com/exploits/35688/">exploit</a> already. It&rsquo;s a pretty interesting writeup, including technical details. It seems to boil down to a programmer mistakenly using <em>memcpy</em> where he or she meant to use <em>memcmp</em>. Ouch.</p>
+
+<p>Finally, I came across this blog that describes SROP or <a href="http://thisissecurity.net/2015/01/03/playing-with-signals-an-overview-on-sigreturn-oriented-programming/">Sigreturn Oriented Programming</a>, a variation on ROP. According to the blog post, it&rsquo;s a very reliable technique. The way I understand it, you need to overwrite a saved return address to execute a <em>sigreturn</em> syscall, which in turn allows one to call any syscall by forging the appropriate <code>uc_mcontect</code> struct in memory. This is convenient as one needs less gadgets to pull it off. Cool stuff! Hope to see this in one of the VulnHub VMs once :)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[HackIM CTF - Sbox]]></title>
@@ -10365,187 +10383,6 @@ If the filename begins with "|", the filename is interpreted as a command to whi
 
 
 <p>Yes! Done! I enjoyed this VM very much. Many many thanks to <a href="https://twitter.com/_RastaMouse">Rasta Mouse</a> for this awesome VM and of course <a href="http://vulnhub.com">g0tmi1k</a> for hostin it!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Defcamp CTF: Network 200]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-200/"/>
-    <updated>2014-11-01T15:08:59+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/01/defcamp-ctf-network-200</id>
-    <content type="html"><![CDATA[<p>This writeup is about Defcamp CTF&rsquo;s Network 200. Again, we get a clue!</p>
-
-<p><code>That ****ing manager got smarter. He moved to house number 22, but we got this: ****managers.pcap</code></p>
-
-<!--more-->
-
-
-<p>Profanity aside, house number 22 probably means that the ip address of this challenge is <code>10.13.37.21</code>. The pcap file contains network traffic of the manager logging in to the page at 10.13.37.21. Upon examination of this page, it seems it generates a nonce. This nonce is to encode the md5 of the password, which it then sent over as GET parameters.</p>
-
-<p>Looking at the pcap file, Swappage quickly identified this:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>user=manager&nonce=7413734ab666ce02cf27c9862c96a8e7&pass=3ecd6317a873b18e7dde351ac094ee3b</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So we need to reverse this nonce-based encryption to get the md5&#8217;ed password of manager. The source of the login page reveals that the nonce is valid for about 100 seconds and the function that is used to generate the encoded password:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.hook-submit&#39;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span>
-</span><span class='line'>  <span class="kd">var</span> <span class="nx">h1</span> <span class="o">=</span> <span class="nx">md5</span><span class="p">(</span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#pass&#39;</span><span class="p">).</span><span class="nx">val</span><span class="p">());</span>
-</span><span class='line'>  <span class="kd">var</span> <span class="nx">h2</span> <span class="o">=</span> <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#nonce&#39;</span><span class="p">).</span><span class="nx">val</span><span class="p">();</span>
-</span><span class='line'>  <span class="kd">var</span> <span class="nx">xor</span> <span class="o">=</span> <span class="nx">myxor</span><span class="p">(</span><span class="nx">h1</span><span class="p">,</span> <span class="nx">h2</span><span class="p">);</span>
-</span><span class='line'>  <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#hiddenpass&#39;</span><span class="p">).</span><span class="nx">val</span><span class="p">(</span><span class="nx">xor</span><span class="p">);</span>
-</span><span class='line'>  <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#form&#39;</span><span class="p">).</span><span class="nx">submit</span><span class="p">();</span> <span class="p">},</span> <span class="mi">100</span><span class="p">);</span>
-</span><span class='line'><span class="p">});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This threw me off. I thought the nonce and md5 were <code>XOR</code>ed together. I couldn&rsquo;t be further from the truth. After wasting some time, I investigated the javascript:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="p">...</span><span class="nx">snip</span><span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">function</span> <span class="nx">hex2n</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="nx">is_numeric</span><span class="p">(</span><span class="nx">c</span><span class="p">))</span> <span class="k">return</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">c</span><span class="p">);</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nx">ord</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">-</span> <span class="nx">ord</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">function</span> <span class="nx">n2hex</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="nx">n</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="s1">&#39;&#39;</span> <span class="o">+</span> <span class="nx">n</span><span class="p">;</span> <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nx">chr</span><span class="p">(</span><span class="nx">ord</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="nx">n</span> <span class="o">-</span> <span class="mi">10</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">function</span> <span class="nx">myxor</span><span class="p">(</span><span class="nx">h1</span><span class="p">,</span> <span class="nx">h2</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="kd">var</span> <span class="nx">xored</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">for</span><span class="p">(</span><span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">&lt;</span><span class="nx">h1</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="kd">var</span> <span class="nx">c1</span> <span class="o">=</span> <span class="nx">h1</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span>
-</span><span class='line'>      <span class="kd">var</span> <span class="nx">c2</span> <span class="o">=</span> <span class="nx">h2</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span>
-</span><span class='line'>      <span class="nx">alert</span><span class="p">(</span><span class="nx">hex2n</span><span class="p">(</span><span class="nx">c1</span><span class="p">));</span> <span class="c1">// DEBUG by barrebas</span>
-</span><span class='line'>      <span class="nx">alert</span><span class="p">(</span><span class="nx">hex2n</span><span class="p">(</span><span class="nx">c2</span><span class="p">));</span> <span class="c1">// DEBUG by barrebas</span>
-</span><span class='line'>      <span class="nx">alert</span><span class="p">(</span><span class="nx">n2hex</span><span class="p">((</span><span class="nx">hex2n</span><span class="p">(</span><span class="nx">c1</span><span class="p">)</span> <span class="o">+</span> <span class="nx">hex2n</span><span class="p">(</span><span class="nx">c2</span><span class="p">))</span> <span class="o">%</span> <span class="mi">16</span><span class="p">));</span> <span class="c1">// DEBUG by barrebas</span>
-</span><span class='line'>      <span class="nx">xored</span> <span class="o">+=</span> <span class="nx">n2hex</span><span class="p">((</span><span class="nx">hex2n</span><span class="p">(</span><span class="nx">c1</span><span class="p">)</span> <span class="o">+</span> <span class="nx">hex2n</span><span class="p">(</span><span class="nx">c2</span><span class="p">))</span> <span class="o">%</span> <span class="mi">16</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nx">xored</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>With a few carefully placed <code>alert()</code>s, I was able to figure out that the <code>myxor</code> function takes each hex character of the nonce and the md5. These values are converted to integers and then added together. After a modulus 16 the hex-representation of the result is added to the output.</p>
-
-<p>I wrote a small piece of python to do the reverse operation for me, given the nonce and the encoded md5:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">nonce</span> <span class="o">=</span> <span class="s">&#39;efa6085790a0294851202602a4833ad1&#39;</span>
-</span><span class='line'><span class="n">epass</span> <span class="o">=</span> <span class="s">&#39;3ecd6317a873b18e7dde351ac094ee3b&#39;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">makeHex</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nb">hex</span><span class="p">(</span><span class="n">c</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]</span>
-</span><span class='line'>  
-</span><span class='line'><span class="k">def</span> <span class="nf">getHex</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="s">&#39;0&#39;</span><span class="p">,</span><span class="n">c</span><span class="p">)),</span> <span class="mi">16</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
-</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">epass</span><span class="p">)):</span>
-</span><span class='line'>  <span class="n">output</span> <span class="o">+=</span> <span class="n">makeHex</span><span class="p">((</span><span class="n">getHex</span><span class="p">(</span><span class="n">epass</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">-</span> <span class="n">getHex</span><span class="p">(</span><span class="n">nonce</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span> <span class="o">%</span> <span class="mi">16</span><span class="p">)</span>
-</span><span class='line'>  
-</span><span class='line'><span class="k">print</span> <span class="n">output</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This returned the md5 of the managers&#8217; password: <code>cabaf0ddf21df38cbeb77c94a40e4654</code>. Unfortunately, the Mighty Google did not return any hits when searching for it. Who needs it anyway? We have the md5 of the password, all we need to do is to re-encode it with a new nonce and submit it! I refreshed the login page, grabbed the nonce and ran the following piece of python:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">nonce</span> <span class="o">=</span> <span class="s">&#39;efa6085790a0294851202602a4833ad1&#39;</span>
-</span><span class='line'><span class="n">epass</span> <span class="o">=</span> <span class="s">&#39;3ecd6317a873b18e7dde351ac094ee3b&#39;</span>
-</span><span class='line'><span class="n">passval</span> <span class="o">=</span> <span class="s">&#39;cabaf0ddf21df38cbeb77c94a40e4654&#39;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">makeHex</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nb">hex</span><span class="p">(</span><span class="n">c</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]</span>
-</span><span class='line'>  
-</span><span class='line'><span class="k">def</span> <span class="nf">getHex</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="s">&#39;0&#39;</span><span class="p">,</span><span class="n">c</span><span class="p">)),</span> <span class="mi">16</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">output</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
-</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">epass</span><span class="p">)):</span>
-</span><span class='line'>  <span class="n">output</span> <span class="o">+=</span> <span class="n">makeHex</span><span class="p">((</span><span class="n">getHex</span><span class="p">(</span><span class="n">passval</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">+</span> <span class="n">getHex</span><span class="p">(</span><span class="n">nonce</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span> <span class="o">%</span> <span class="mi">16</span><span class="p">)</span>
-</span><span class='line'>  
-</span><span class='line'><span class="k">print</span> <span class="n">output</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This returned a new, encoded md5 of the password. I copied it and entered <code>manager:idontcare</code> in the login form. I intercepted this request with TamperData, substituting the new, encoded md5 value for the old one and hit submit. Lo and behold:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">The</span> <span class="n">secret</span> <span class="ow">is</span> <span class="n">behind</span> <span class="n">bb00403ebcbfa0748bcbee426acfdb5b</span> <span class="p">:)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Which is the md5 of <code>youtoo</code>, which thankfully was the proper flag!</p>
 ]]></content>
   </entry>
   

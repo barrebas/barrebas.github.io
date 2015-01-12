@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Weekly Roundup 2015 #1 - staring into /dev/null</title>
+  <title>Weekly Roundup 2015 #2 - staring into /dev/null</title>
   <meta name="author" content="barrebas">
 
   
-  <meta name="description" content="Time for another weekly round-up of interesting links! I&rsquo;ll kick this one off with a very interesting blog about bypassing ASLR on 64 bit &hellip;">
+  <meta name="description" content="A bit later and shorter than planned due to the CTF, but here&rsquo;s another weekly roundup! I want to kick this one off with a beautiful writeup by &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1">
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
@@ -68,7 +68,7 @@
   
   <header>
     
-      <h1 class="entry-title">Weekly Roundup 2015 #1</h1>
+      <h1 class="entry-title">Weekly Roundup 2015 #2</h1>
     
     
       <p class="meta">
@@ -77,29 +77,23 @@
 
 
 
-<time class='entry-date' datetime='2015-01-03T08:54:42+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>8:54 am</span></time>
+<time class='entry-date' datetime='2015-01-12T18:02:00+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>6:02 pm</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>Time for another weekly round-up of interesting links!</p>
+<div class="entry-content"><p>A bit later and shorter than planned due to the CTF, but here&rsquo;s another weekly roundup!</p>
 
 <!-- more -->
 
 
-<p>I&rsquo;ll kick this one off with a very interesting blog about <a href="http://v0ids3curity.blogspot.in/2014/12/return-to-vdso-using-elf-auxiliary.html">bypassing ASLR on 64 bit systems using ELF auxilliary vectors</a> by Reno Robert. This technique leaks the address of the VDSO (Virtual Dynamic Shared Object). The VDSO can then be used as a source for ROP gadgets. The entire process of writing a functioning exploit is described in great detail, with a proof-of-concept in <code>python</code>. Furthermore, the author notes that the address of VDSO is not very random, making bruteforcing an option even on 64 bit systems. Very nice read, very detailed!</p>
+<p>I want to kick this one off with a beautiful writeup by <a href="https://twitter.com/dronesec">drone</a> on a <a href="https://hatriot.github.io/blog/2015/01/06/ntpdc-exploit/">local ntpdc overflow</a>. drone really takes you down the rabbit hole in terms of exploit dev and even manages to find that Debian x86 does not ship with PAE enabled. This means that protections such as NX are not enabled on these systems! Very detailed writeup which discusses the buffer overflows and the use of ROP and I highly recommend it.</p>
 
-<p>I&rsquo;d like to follow up this exploitation goodness with a link to Google&rsquo;s Project Zero blog: <a href="http://googleprojectzero.blogspot.nl/2015/01/finding-and-exploiting-ntpd.html">Finding and exploiting ntpd vulnerabilities</a> by Stephen Röttger. This is a really in-depth story about fuzzing the NTPD daemon, coming up with something that barely looks like a vulnerability and through pure persistence, turning it into a full exploit. Amazing stuff!</p>
+<p>Apparently, ASUS routers have a vulnerable service listening on UDP 9999 with runs with root privileges. This <em>infosrv</em> serivce <a href="https://github.com/jduck/asus-cmd">contains a vulnerability</a> that allows unauthenticated root command execution. There&rsquo;s also a published <a href="http://www.exploit-db.com/exploits/35688/">exploit</a> already. It&rsquo;s a pretty interesting writeup, including technical details. It seems to boil down to a programmer mistakenly using <em>memcpy</em> where he or she meant to use <em>memcmp</em>. Ouch.</p>
 
-<p>If you like wargames, this one is sure to get your blood pumping: <a href="https://overthewire.org/wargames/drifter/">Drifter over at Overthewire</a> is online! It&rsquo;s a wargame along the lines of <a href="http://overthewire.org/wargames/vortex/">Vortex</a>, which I&rsquo;ve started playing this week. If you want to learn about binary exploitation, <a href="https://overthewire.org/">overthewire</a> is <strong>the</strong> place to start!</p>
-
-<p>The folks over at rapid7 have now officially said <a href="https://community.rapid7.com/community/metasploit/blog/2014/12/08/good-bye-msfpayload-and-msfencode">farewell to msfpayload &amp; msfencode</a>. These awesome tools are being superseded by <code>msfvenom</code>. This blog post gives a basic rundown of the new tool and five good examples of it&rsquo;s usage. Further documentation about <code>msfvenom</code> can be found on <a href="https://github.com/rapid7/metasploit-framework/wiki/How-to-use-msfvenom">rapid7&rsquo;s github</a>.</p>
-
-<p>Some things to look forward to in the land of VulnHub VMs: <a href="https://r3v3rs3r.wordpress.com">c0ne</a> is currently making a VM focused on binary exploitation. I can say from first hand that these binaries are really fun to exploit! Furthermore, strata&rsquo;s VM is being beta-tested and is due soon.</p>
-
-<p>Finally, <a href="http://blog.vulnhub.com/2014/01/vulnhub-turns-0x01.html">VulnHub&rsquo;s birthday</a> is coming up. A little mouse told me there might just be a new competition coming&hellip;</p>
+<p>Finally, I came across this blog that describes SROP or <a href="http://thisissecurity.net/2015/01/03/playing-with-signals-an-overview-on-sigreturn-oriented-programming/">Sigreturn Oriented Programming</a>, a variation on ROP. According to the blog post, it&rsquo;s a very reliable technique. The way I understand it, you need to overwrite a saved return address to execute a <em>sigreturn</em> syscall, which in turn allows one to call any syscall by forging the appropriate <code>uc_mcontect</code> struct in memory. This is convenient as one needs less gadgets to pull it off. Cool stuff! Hope to see this in one of the VulnHub VMs once :)</p>
 </div>
 
 
@@ -115,7 +109,7 @@
 
 
 
-<time class='entry-date' datetime='2015-01-03T08:54:42+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>8:54 am</span></time>
+<time class='entry-date' datetime='2015-01-12T18:02:00+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>6:02 pm</span></time>
       
 
 <span class="categories">
@@ -129,7 +123,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/" >Tweet</a>
   
   
   
@@ -138,10 +132,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/12/29/31c3-ctf-cfy/" title="Previous Post: 31C3 CTF - cfy">&laquo; 31C3 CTF - cfy</a>
+        <a class="basic-alignment left" href="/blog/2015/01/11/hackim-ctf-sbox/" title="Previous Post: HackIM CTF - sbox">&laquo; HackIM CTF - sbox</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2015/01/11/hackim-ctf-mixme-writeup/" title="Next Post: HackIM CTF - mixme">HackIM CTF - mixme &raquo;</a>
       
     </p>
   </footer>
@@ -207,8 +199,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/';
-        var disqus_url = 'http://barrebas.github.io/blog/2015/01/03/weekly-roundup-2015-number-1/';
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/';
         var disqus_script = 'embed.js';
       
     (function () {
