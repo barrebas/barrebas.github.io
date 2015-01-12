@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-12T19:02:13+01:00</updated>
+  <updated>2015-01-12T22:36:57+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -842,7 +842,7 @@
     <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup/"/>
     <updated>2015-01-11T18:52:35+01:00</updated>
     <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup</id>
-    <content type="html"><![CDATA[<p><code>mixme</code> was a 500 points exploitation challenge of the NullCon HackIM ctf. We solved it with just 20 minutes on the clock!</p>
+    <content type="html"><![CDATA[<p><code>mixme</code> was a 400 points exploitation challenge of the NullCon HackIM ctf. We solved it with just 20 minutes on the clock!</p>
 
 <!-- more -->
 
@@ -1265,7 +1265,7 @@
 <span class='line-number'>13</span>
 <span class='line-number'>14</span>
 <span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/nullcon/exp500<span class="nv">$ </span>ssh <span class="nb">test</span>@54.163.248.69 -vvv
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/nullcon/mixme<span class="nv">$ </span>ssh <span class="nb">test</span>@54.163.248.69 -vvv
 </span><span class='line'>OpenSSH_6.0p1 Debian-4+deb7u2, OpenSSL 1.0.1e <span class="m">11</span> Feb 2013
 </span><span class='line'>debug1: Reading configuration data /etc/ssh/ssh_config
 </span><span class='line'>debug1: /etc/ssh/ssh_config line 19: Applying options <span class="k">for</span> *
@@ -1323,7 +1323,7 @@
 <span class='line-number'>36</span>
 <span class='line-number'>37</span>
 <span class='line-number'>38</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/nullcon/exp500/libc<span class="nv">$ </span><span class="k">for</span> i in <span class="sb">`</span>ls<span class="sb">`</span><span class="p">;</span> <span class="k">do</span> <span class="nb">echo</span> <span class="nv">$i</span><span class="p">;</span> <span class="nb">echo</span><span class="p">;</span> xxd <span class="nv">$i</span> <span class="p">|</span> egrep <span class="s1">&#39;83.?c0.?01.?75&#39;</span><span class="p">;</span> <span class="nb">echo</span><span class="p">;</span> <span class="k">done</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/nullcon/mixme/libc<span class="nv">$ </span><span class="k">for</span> i in <span class="sb">`</span>ls<span class="sb">`</span><span class="p">;</span> <span class="k">do</span> <span class="nb">echo</span> <span class="nv">$i</span><span class="p">;</span> <span class="nb">echo</span><span class="p">;</span> xxd <span class="nv">$i</span> <span class="p">|</span> egrep <span class="s1">&#39;83.?c0.?01.?75&#39;</span><span class="p">;</span> <span class="nb">echo</span><span class="p">;</span> <span class="k">done</span>
 </span><span class='line'>
 </span><span class='line'>
 </span><span class='line'>libc-2.15-0ubuntu10.9.so
@@ -1654,7 +1654,7 @@
 <span class='line-number'>13</span>
 <span class='line-number'>14</span>
 <span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@ubuntu-VirtualBox:/home/ubuntu/nullcon/exp500# python exploit.py
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@ubuntu-VirtualBox:/home/ubuntu/nullcon/mixme# python exploit.py
 </span><span class='line'><span class="o">[</span>+<span class="o">]</span> overflowing a to <span class="nb">set </span>b to free@got
 </span><span class='line'><span class="o">[</span>+<span class="o">]</span> replacing free<span class="o">()</span> with <span class="nb">printf</span><span class="o">()</span>
 </span><span class='line'><span class="o">[</span>+<span class="o">]</span> triggering format string
@@ -1672,7 +1672,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>The flag was <code>aw3s0m3++_hipp1e_pwn_r0ckst4r</code>. This one was really though and I&rsquo;m glad I managed to beat it with just 20 minutes on the clock!</p>
+<p>The flag was <code>aw3s0m3++_hipp1e_pwn_r0ckst4r</code>. This one was really though and I&rsquo;m glad I managed to beat it with just 20 minutes left for the ctf!</p>
 ]]></content>
   </entry>
   
