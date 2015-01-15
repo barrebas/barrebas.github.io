@@ -1,0 +1,319 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>By the Numbers - theFrequency Writeup - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Within a few days of releasing thePurge, strata decided to release yet another VM! This one was called theFrequency&hellip; It presents a very nice &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">By the Numbers - theFrequency Writeup</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-01-15T17:21:58+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:21 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Within a few days of releasing thePurge, strata decided to release yet another VM! This one was called theFrequency&hellip; It presents a very nice challenge involving radio signal encoding and audio stego. I needed several hints to solve this one, but it was worth it!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>I downloaded it and did the normal nmap dance. Like many VMs these days, only one port was open. It was, of course, <code>http</code>, serving only a single mp3 file:</p>
+
+<p><img src="/assets/freq/webserver.png" alt="" /></p>
+
+<h2>DA-DIT-DA</h2>
+
+<p>It&rsquo;s some kind of ambient mix, but at certain points in the audio you can hear weird noises and clicks. This sounded like audio stego to me! After downloading, I fired up <a href="http://www.sonicvisualiser.org/">Sonic Visualizer</a> and loaded the mp3. Select &lsquo;Layer > Add spectrogram&rsquo; or press <code>Ctrl+G</code> to visualize the sound. Right away, we can hear/see something that can only be Morse:</p>
+
+<p><img src="/assets/freq/first-visualizer.png" alt="" /></p>
+
+<p>I just used a <a href="https://en.wikipedia.org/wiki/Morse_code">Morse lookup table</a> to decode it by ear/hand:</p>
+
+<p><img src="/assets/freq/morse.png" alt="" /></p>
+
+<p>It decoded to <code>THE PASSWORD FOR LEVEL ONE IS THEFREQUENCY2015.</code> I then tried to use <code>ssh</code> to login to VM, only to be rejected. I had to use <code>sftp</code>, apparently. After logging in with lowercase <code>thefrequency12015.</code>, I grabbed the only file that was present. This was part of a larger SSH key. Gotta catch &lsquo;em all!</p>
+
+<h2>LIGHTWRITER</h2>
+
+<p>The second series of clicks is further away in the audio, at around 17 minutes. Looking at the spectrogram:</p>
+
+<p><img src="/assets/freq/hellschreiber.png" alt="" /></p>
+
+<p>I couldn&rsquo;t really figure out what this was. strata gave two hints, being <a href="http://wb8nut.com/digital/">this page full of digital radio mode examples</a> and saying something like &lsquo;you can almost read the letters&rsquo;. This meant that it had to be Hellschreiber (German for Lightwriter, I believe). But I couldn&rsquo;t figure out how to decode it by hand in Sonic Visualizer. I got pretty close:</p>
+
+<p><img src="/assets/freq/level2.png" alt="" /></p>
+
+<p>I could barely make out <code>THE PASSWORD FOR LEVEL TWO IS</code> and then&hellip; I started looking at the symbols, some looked very similar. I started seeing some letters. Looking at the Hellschreiber wikipedia page, it turned out Hellschreiber was invented by Rudolf Hell. This was also the password; I finally managed to decode it to <code>RUDOLFHELL1920</code>.</p>
+
+<p>Then I managed to install <code>fldigi</code> on an Ubuntu 12.04 VM. This made it significantly easier. I extracted the relevant part of the mp3 with <code>audacity</code> and merged the stereo channels to mono (otherwise <code>fldigi</code> complains).</p>
+
+<p><img src="/assets/freq/level2-fldigi.png" alt="" /></p>
+
+<p>Again I could sftp to the VM and grab part of the key.</p>
+
+<h2>IT SOUNDS JUST AS BAD AS IT LOOKS</h2>
+
+<p>Onto level three! It sounds warbling, almost dissonant (for those of you that read Stephen King, &ldquo;It sounds Hawaian, doesn&rsquo;t it?&rdquo;). You can find it around 30:40, and from the digital modes page earlier, I thought that it was RTTY. It sure sounded like it! <code>fldigi</code> did not agree. It turned out to be BPSK31:</p>
+
+<p><img src="/assets/freq/level3-psk.png" alt="" /></p>
+
+<p>The key was coming together now. Level four was found around 41 minutes and sounded even worse. I had no idea how to decode it, but luckily strata gave me a hint. The bandwidth on this audio encoding scheme was 2 kHz and I tried all the modes that allowed for this bandwidth. It was the MT63 mode, used also by emergency services. You have to keep the sample running for a while, as only the first part really contains information.</p>
+
+<p><img src="/assets/freq/level4-fldigi.png" alt="" /></p>
+
+<p>Level five was next, and turned out to be RTTY!</p>
+
+<p><img src="/assets/freq/level5.png" alt="" /></p>
+
+<p>I could actually hear this, also for the next one. Level six was THROB and that describes the sound quite accurately.</p>
+
+<p><img src="/assets/freq/level5-rtty.png" alt="" /></p>
+
+<p><img src="/assets/freq/level6-throb.png" alt="" /></p>
+
+<p>So now I had all the pieces of the key! I pieced them together and threw them at the root login&hellip; only to be asked for a passphrase. Bah! I thought, back to the mp3 and look for the passphrase. I looked at level six again:</p>
+
+<p><img src="/assets/freq/level6-olivia.png" alt="" /></p>
+
+<p>There seemed to be something at around 8 kHz! I stumbled upon <a href="http://www.hfradio.org.uk/html/digital_modes.html">this page</a> which made me believe it was encoded using <code>olivia</code> or <code>contestia</code>. I extracted that piece, applied a high-pass filter with a cutoff around 6 kHz and amplified the signal. But I could <strong>not</strong> get <code>fldigi</code> to decode it. After consulting with strata, it seemed that this was actually <em>part of the ambient mix itself</em>. Talk about stego!</p>
+
+<p>So now what? I had to update my <code>ssh</code> to go login. The version on my own box did not support the key format. I opened a Kali box, got the latest &amp; greatest source tarball for OpenSSH, which was version 6.7p1. After that was done compiling, I could login as root using the acquired private key.</p>
+
+<h2>Victory at last</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># cat flag.txt                                                                 </span>
+</span><span class='line'>https://www.youtube.com/watch?v<span class="o">=</span>KEZTkvjSmHQ
+</span><span class='line'>
+</span><span class='line'>c5c8e00567f44fe9155655ddba163547
+</span><span class='line'><span class="c"># hostname                                                                     </span>
+</span><span class='line'>frequency.local
+</span><span class='line'><span class="c"># id</span>
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>0<span class="o">(</span>wheel<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>0<span class="o">(</span>wheel<span class="o">)</span>, 2<span class="o">(</span>kmem<span class="o">)</span>, 3<span class="o">(</span>sys<span class="o">)</span>, 4<span class="o">(</span>tty<span class="o">)</span>, 5<span class="o">(</span>operator<span class="o">)</span>, 20<span class="o">(</span>staff<span class="o">)</span>, 31<span class="o">(</span>guest<span class="o">)</span>
+</span><span class='line'><span class="c"># whoami</span>
+</span><span class='line'>root
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Learned a ton while doing this one, very left-field VM, very different from the usual VMs on VulnHub! Overall, I&rsquo;d say it&rsquo;s perfect material for CTF training!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-01-15T17:21:58+01:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:21 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/boot2root/'>boot2root</a>, <a class='category' href='/blog/categories/thefrequency/'>thefrequency</a>, <a class='category' href='/blog/categories/vm/'>vm</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/01/12/weekly-roundup-2015-number-2/" title="Previous Post: Weekly Roundup 2015 #2">&laquo; Weekly Roundup 2015 #2</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/01/15/by-the-numbers-thefrequency-writeup/">By the Numbers - theFrequency Writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/12/weekly-roundup-2015-number-2/">Weekly Roundup 2015 #2</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/hackim-ctf-sbox/">HackIM CTF - Sbox</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/hackim-ctf-mentalnote/">HackIM CTF - MentalNote</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/hackim-ctf-mixme-writeup/">HackIM CTF - Mixme</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

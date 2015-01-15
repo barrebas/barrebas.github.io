@@ -3,6 +3,14 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup/</loc>
+    
+    <lastmod>2015-01-15T17:21:58+01:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2015/01/12/weekly-roundup-2015-number-2/</loc>
     
     <lastmod>2015-01-12T18:02:00+01:00</lastmod>
@@ -253,14 +261,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2015-01-12T22:36:57+01:00</lastmod>
+    <lastmod>2015-01-15T18:45:40+01:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2015-01-12T22:36:57+01:00</lastmod>
+    <lastmod>2015-01-15T18:45:40+01:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

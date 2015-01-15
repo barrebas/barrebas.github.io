@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Thefrequency | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/thefrequency/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-01-15T18:45:40+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[By the Numbers - theFrequency Writeup]]></title>
+    <link href="http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup/"/>
+    <updated>2015-01-15T17:21:58+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/01/15/by-the-numbers-thefrequency-writeup</id>
+    <content type="html"><![CDATA[<p>Within a few days of releasing thePurge, strata decided to release yet another VM! This one was called theFrequency&hellip; It presents a very nice challenge involving radio signal encoding and audio stego. I needed several hints to solve this one, but it was worth it!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>I downloaded it and did the normal nmap dance. Like many VMs these days, only one port was open. It was, of course, <code>http</code>, serving only a single mp3 file:</p>
+
+<p><img src="/assets/freq/webserver.png" alt="" /></p>
+
+<h2>DA-DIT-DA</h2>
+
+<p>It&rsquo;s some kind of ambient mix, but at certain points in the audio you can hear weird noises and clicks. This sounded like audio stego to me! After downloading, I fired up <a href="http://www.sonicvisualiser.org/">Sonic Visualizer</a> and loaded the mp3. Select &lsquo;Layer > Add spectrogram&rsquo; or press <code>Ctrl+G</code> to visualize the sound. Right away, we can hear/see something that can only be Morse:</p>
+
+<p><img src="/assets/freq/first-visualizer.png" alt="" /></p>
+
+<p>I just used a <a href="https://en.wikipedia.org/wiki/Morse_code">Morse lookup table</a> to decode it by ear/hand:</p>
+
+<p><img src="/assets/freq/morse.png" alt="" /></p>
+
+<p>It decoded to <code>THE PASSWORD FOR LEVEL ONE IS THEFREQUENCY2015.</code> I then tried to use <code>ssh</code> to login to VM, only to be rejected. I had to use <code>sftp</code>, apparently. After logging in with lowercase <code>thefrequency12015.</code>, I grabbed the only file that was present. This was part of a larger SSH key. Gotta catch &lsquo;em all!</p>
+
+<h2>LIGHTWRITER</h2>
+
+<p>The second series of clicks is further away in the audio, at around 17 minutes. Looking at the spectrogram:</p>
+
+<p><img src="/assets/freq/hellschreiber.png" alt="" /></p>
+
+<p>I couldn&rsquo;t really figure out what this was. strata gave two hints, being <a href="http://wb8nut.com/digital/">this page full of digital radio mode examples</a> and saying something like &lsquo;you can almost read the letters&rsquo;. This meant that it had to be Hellschreiber (German for Lightwriter, I believe). But I couldn&rsquo;t figure out how to decode it by hand in Sonic Visualizer. I got pretty close:</p>
+
+<p><img src="/assets/freq/level2.png" alt="" /></p>
+
+<p>I could barely make out <code>THE PASSWORD FOR LEVEL TWO IS</code> and then&hellip; I started looking at the symbols, some looked very similar. I started seeing some letters. Looking at the Hellschreiber wikipedia page, it turned out Hellschreiber was invented by Rudolf Hell. This was also the password; I finally managed to decode it to <code>RUDOLFHELL1920</code>.</p>
+
+<p>Then I managed to install <code>fldigi</code> on an Ubuntu 12.04 VM. This made it significantly easier. I extracted the relevant part of the mp3 with <code>audacity</code> and merged the stereo channels to mono (otherwise <code>fldigi</code> complains).</p>
+
+<p><img src="/assets/freq/level2-fldigi.png" alt="" /></p>
+
+<p>Again I could sftp to the VM and grab part of the key.</p>
+
+<h2>IT SOUNDS JUST AS BAD AS IT LOOKS</h2>
+
+<p>Onto level three! It sounds warbling, almost dissonant (for those of you that read Stephen King, &ldquo;It sounds Hawaian, doesn&rsquo;t it?&rdquo;). You can find it around 30:40, and from the digital modes page earlier, I thought that it was RTTY. It sure sounded like it! <code>fldigi</code> did not agree. It turned out to be BPSK31:</p>
+
+<p><img src="/assets/freq/level3-psk.png" alt="" /></p>
+
+<p>The key was coming together now. Level four was found around 41 minutes and sounded even worse. I had no idea how to decode it, but luckily strata gave me a hint. The bandwidth on this audio encoding scheme was 2 kHz and I tried all the modes that allowed for this bandwidth. It was the MT63 mode, used also by emergency services. You have to keep the sample running for a while, as only the first part really contains information.</p>
+
+<p><img src="/assets/freq/level4-fldigi.png" alt="" /></p>
+
+<p>Level five was next, and turned out to be RTTY!</p>
+
+<p><img src="/assets/freq/level5.png" alt="" /></p>
+
+<p>I could actually hear this, also for the next one. Level six was THROB and that describes the sound quite accurately.</p>
+
+<p><img src="/assets/freq/level5-rtty.png" alt="" /></p>
+
+<p><img src="/assets/freq/level6-throb.png" alt="" /></p>
+
+<p>So now I had all the pieces of the key! I pieced them together and threw them at the root login&hellip; only to be asked for a passphrase. Bah! I thought, back to the mp3 and look for the passphrase. I looked at level six again:</p>
+
+<p><img src="/assets/freq/level6-olivia.png" alt="" /></p>
+
+<p>There seemed to be something at around 8 kHz! I stumbled upon <a href="http://www.hfradio.org.uk/html/digital_modes.html">this page</a> which made me believe it was encoded using <code>olivia</code> or <code>contestia</code>. I extracted that piece, applied a high-pass filter with a cutoff around 6 kHz and amplified the signal. But I could <strong>not</strong> get <code>fldigi</code> to decode it. After consulting with strata, it seemed that this was actually <em>part of the ambient mix itself</em>. Talk about stego!</p>
+
+<p>So now what? I had to update my <code>ssh</code> to go login. The version on my own box did not support the key format. I opened a Kali box, got the latest &amp; greatest source tarball for OpenSSH, which was version 6.7p1. After that was done compiling, I could login as root using the acquired private key.</p>
+
+<h2>Victory at last</h2>
+
+<pre><code class="bash"># cat flag.txt                                                                 
+https://www.youtube.com/watch?v=KEZTkvjSmHQ
+
+c5c8e00567f44fe9155655ddba163547
+# hostname                                                                     
+frequency.local
+# id
+uid=0(root) gid=0(wheel) groups=0(wheel), 2(kmem), 3(sys), 4(tty), 5(operator), 20(staff), 31(guest)
+# whoami
+root
+</code></pre>
+
+<p>Learned a ton while doing this one, very left-field VM, very different from the usual VMs on VulnHub! Overall, I&rsquo;d say it&rsquo;s perfect material for CTF training!</p>
+]]></content>
+  </entry>
+  
+</feed>
