@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-15T18:45:40+01:00</updated>
+  <updated>2015-01-15T18:57:21+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -39,7 +39,7 @@
 
 <p><img src="http://barrebas.github.io/assets/freq/morse.png" alt="" /></p>
 
-<p>It decoded to <code>THE PASSWORD FOR LEVEL ONE IS THEFREQUENCY2015.</code> I then tried to use <code>ssh</code> to login to VM, only to be rejected. I had to use <code>sftp</code>, apparently. After logging in with lowercase <code>thefrequency12015.</code>, I grabbed the only file that was present. This was part of a larger SSH key. Gotta catch &lsquo;em all!</p>
+<p>It decoded to <code>THE PASSWORD FOR LEVEL ONE IS THEFREQUENCY2015.</code> I then tried to use <code>ssh</code> to login to VM, only to be rejected. I had to use <code>sftp</code>, apparently. After logging in with lowercase <code>thefrequency2015.</code>, I grabbed the only file that was present. This was part of a larger SSH key. Gotta catch &lsquo;em all!</p>
 
 <h2>LIGHTWRITER</h2>
 
