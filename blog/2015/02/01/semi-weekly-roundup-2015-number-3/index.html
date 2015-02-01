@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Staring Into /dev/null Weekly Roundup - staring into /dev/null</title>
+  <title>(Semi) Weekly Roundup 2015 #3 - staring into /dev/null</title>
   <meta name="author" content="barrebas">
 
   
-  <meta name="description" content="Extra, extra! Interesting stuff found on the internet in the past week! This week really kicked off some awesome work on format string &hellip;">
+  <meta name="description" content="So maybe &lsquo;weekly&rsquo; isn&rsquo;t really the right word for these posts ;] With all the stuff going on in the weekends, I kinda missed a few &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup">
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
@@ -68,7 +68,7 @@
   
   <header>
     
-      <h1 class="entry-title">Staring Into /dev/null Weekly Roundup</h1>
+      <h1 class="entry-title">(Semi) Weekly Roundup 2015 #3</h1>
     
     
       <p class="meta">
@@ -77,29 +77,29 @@
 
 
 
-<time class='entry-date' datetime='2014-12-27T09:52:56+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>27</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>9:52 am</span></time>
+<time class='entry-date' datetime='2015-02-01T17:01:44+01:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>5:01 pm</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>Extra, extra! Interesting stuff found on the internet in the past week!</p>
+<div class="entry-content"><p>So maybe &lsquo;weekly&rsquo; isn&rsquo;t really the right word for these posts ;]</p>
 
 <!-- more -->
 
 
-<p>This week really kicked off some awesome work on format string vulnerabilities! First, <a href="https://twitter.com/leonjza">leonjza</a> shows the process of <a href="https://asciinema.org/a/14960">writing an format string exploit</a> in visual form. Next, <a href="http://r3v3rs3r.wordpress.com">c0ne</a> made a <a href="http://r3v3rs3r.wordpress.com/2014/12/26/i-love-format-string-vulnerabilities/">great script</a> to help with the tedious work that is involved when exploiting format strings.</p>
+<p>With all the stuff going on in the weekends, I kinda missed a few of these roundups.</p>
 
-<p>I came across this technique for <a href="http://www.shelliscoming.com/2014/03/hidden-bind-shell-keep-your-shellcode.html">hiding bind shells</a> by <a href="https://twitter.com/borjamerino">@BorjaMerino</a>. I wonder if it is possible to port this to Linux&hellip;</p>
+<p>Don&rsquo;t have anything to do and fancy winning awesome prizes? Head over to <a href="https://vulnhub.com">VulnHub.com</a> and give <a href="https://www.vulnhub.com/entry/sokar-1,113/">Sokar</a> by <a href="https://twitter.com/_RastaMouse">rasta_mouse</a> a spin! VulnHub is two years old and this VM is run as a competition to celebrate!</p>
 
-<p>To combat holiday boredom, a new VM was released on Vulnhub the other day, named <a href="https://www.vulnhub.com/entry/pegasus-1,109/">Pegasus</a> by <a href="https://twitter.com/TheKnapsy">Knapsy</a>. It&rsquo;s a very fun and tricky VM, I recommend it!</p>
+<p>This <a href="https://labs.mwrinfosecurity.com/blog/2014/08/15/windows-8-kernel-memory-protections-bypass/">post by mwrsecurity</a> goes into great detail about bypassing Windows 8 kernel memory protection strategies. It talks about allocating user-land memory and then corrupting paging structures, so that the kernel thinks believes that piece of memory is executable as kernel-land code&hellip; Pretty clever stuff!</p>
 
-<p>Super useful, something I have seen before, but then I lost the link: <a href="http://redsymbol.net/articles/unofficial-bash-strict-mode/">Use the Unofficial Bash Strict Mode (Unless You Looove Debugging)</a> by Aaron Maxwell aka <a href="https://twitter.com/redsymbol/">redsymbol</a>.</p>
+<p>I came across this exploit, which allows attackers to change the <a href="http://packetstormsecurity.com/files/130113/D-Link-DSL-2740R-Unauthenticated-Remote-DNS-Change.html">DNS settings of a specific model D-Link router</a> remotely and <em>unauthenticated</em>. Scary stuff! Makes you wonder if manufacturers spend any time at all securing these appliances&hellip;</p>
 
-<p>Lastly, I always enjoy writeups about breaking botnet panels. This one by Malware Tech <a href="http://www.malwaretech.com/2014/12/phase-bot-exploiting-c-panel.html">is quite entertaining</a>.</p>
+<p>This <a href="http://powerofcommunity.net/poc2014/tombkeeper.pdf">PDF slidedeck</a> shows how to break out of a JavaScript virtual machine by abusing JS string objects. It&rsquo;s not very detailed and the explanation lacks a bit, but it&rsquo;s still quite an intriguing look into how these exploits work.</p>
 
-<p>I&rsquo;d like to make this a recurring thing. Let me know what you think about it!</p>
+<p>And finally, a while ago I found <a href="http://www.willhackforsushi.com/?p=581">this blog on willhackforsushi.com</a> which actually refers to one of my <a href="http://staringintodevnull.blogspot.nl/2013/12/making-it-ra1nx.html">old boot2root writeups</a>! In that VM, I had difficulty getting <code>sqlmap</code> to upload a webshell and I finally did it manually. The problem was fixed by Josh by starting with valid data for the SQL injection! The SQL code that stores the webshell on the remote server needs at least one valid line from the database and this condition is only triggered when valid input (like an <em>existing</em> username) is supplied. Good job figuring out the root cause!</p>
 </div>
 
 
@@ -115,12 +115,12 @@
 
 
 
-<time class='entry-date' datetime='2014-12-27T09:52:56+01:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>27</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>9:52 am</span></time>
+<time class='entry-date' datetime='2015-02-01T17:01:44+01:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>5:01 pm</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/links/'>links</a>, <a class='category' href='/blog/categories/roundup/'>roundup</a>, <a class='category' href='/blog/categories/twitter/'>twitter</a>, <a class='category' href='/blog/categories/weekly/'>weekly</a>
+    <a class='category' href='/blog/categories/2015/'>2015</a>, <a class='category' href='/blog/categories/roundup/'>roundup</a>, <a class='category' href='/blog/categories/weekly/'>weekly</a>
   
 </span>
 
@@ -129,7 +129,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3/" >Tweet</a>
   
   
   
@@ -138,10 +138,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/12/24/advent-ctf-2014-bruteforce/" title="Previous Post: Advent CTF 2014 - Bruteforce">&laquo; Advent CTF 2014 - Bruteforce</a>
+        <a class="basic-alignment left" href="/blog/2015/01/15/by-the-numbers-thefrequency-writeup/" title="Previous Post: By the Numbers - theFrequency writeup">&laquo; By the Numbers - theFrequency writeup</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/12/27/hackvent-2014-reversing-day-23/" title="Next Post: Hackvent 2014 - Reversing Day 23">Hackvent 2014 - Reversing Day 23 &raquo;</a>
       
     </p>
   </footer>
@@ -207,8 +205,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup/';
-        var disqus_url = 'http://barrebas.github.io/blog/2014/12/27/staring-into-slash-dev-slash-null-weekly-roundup/';
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3/';
         var disqus_script = 'embed.js';
       
     (function () {

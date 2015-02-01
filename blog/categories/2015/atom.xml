@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 2015 | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/2015/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-01-15T18:57:21+01:00</updated>
+  <updated>2015-02-01T17:23:16+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,30 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[(Semi) Weekly Roundup 2015 #3]]></title>
+    <link href="http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3/"/>
+    <updated>2015-02-01T17:01:44+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/02/01/semi-weekly-roundup-2015-number-3</id>
+    <content type="html"><![CDATA[<p>So maybe &lsquo;weekly&rsquo; isn&rsquo;t really the right word for these posts ;]</p>
+
+<!-- more -->
+
+
+<p>With all the stuff going on in the weekends, I kinda missed a few of these roundups.</p>
+
+<p>Don&rsquo;t have anything to do and fancy winning awesome prizes? Head over to <a href="https://vulnhub.com">VulnHub.com</a> and give <a href="https://www.vulnhub.com/entry/sokar-1,113/">Sokar</a> by <a href="https://twitter.com/_RastaMouse">rasta_mouse</a> a spin! VulnHub is two years old and this VM is run as a competition to celebrate!</p>
+
+<p>This <a href="https://labs.mwrinfosecurity.com/blog/2014/08/15/windows-8-kernel-memory-protections-bypass/">post by mwrsecurity</a> goes into great detail about bypassing Windows 8 kernel memory protection strategies. It talks about allocating user-land memory and then corrupting paging structures, so that the kernel thinks believes that piece of memory is executable as kernel-land code&hellip; Pretty clever stuff!</p>
+
+<p>I came across this exploit, which allows attackers to change the <a href="http://packetstormsecurity.com/files/130113/D-Link-DSL-2740R-Unauthenticated-Remote-DNS-Change.html">DNS settings of a specific model D-Link router</a> remotely and <em>unauthenticated</em>. Scary stuff! Makes you wonder if manufacturers spend any time at all securing these appliances&hellip;</p>
+
+<p>This <a href="http://powerofcommunity.net/poc2014/tombkeeper.pdf">PDF slidedeck</a> shows how to break out of a JavaScript virtual machine by abusing JS string objects. It&rsquo;s not very detailed and the explanation lacks a bit, but it&rsquo;s still quite an intriguing look into how these exploits work.</p>
+
+<p>And finally, a while ago I found <a href="http://www.willhackforsushi.com/?p=581">this blog on willhackforsushi.com</a> which actually refers to one of my <a href="http://staringintodevnull.blogspot.nl/2013/12/making-it-ra1nx.html">old boot2root writeups</a>! In that VM, I had difficulty getting <code>sqlmap</code> to upload a webshell and I finally did it manually. The problem was fixed by Josh by starting with valid data for the SQL injection! The SQL code that stores the webshell on the remote server needs at least one valid line from the database and this condition is only triggered when valid input (like an <em>existing</em> username) is supplied. Good job figuring out the root cause!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Weekly Roundup 2015 #2]]></title>
