@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-18T20:55:20+01:00</updated>
+  <updated>2015-03-18T20:59:19+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -146,7 +146,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>In short, the program takes two inputs and uses <code>strcpy()</code> to copy these to the stack. However, the saved return address on the stack is protected from overwriting by a custom stack canary. The way around is to exploit the buffer overflow to overwrite on of the arguments to the second <code>strcpy()</code>: the pointer to the second buffer. If we control that pointer, we basically have a write-what-where. I choose to overflow the pointer to the second buffer with the address of <code>exit@plt</code>. This way, after overwriting the stack canary, the program will try to exit, but <code>exit@plt</code> will point to attacker-controlled shellcode on the stack.</p>
+<p>In short, the program takes two inputs and uses <code>strcpy()</code> to copy these to the stack. However, the saved return address on the stack is protected from overwriting by a custom stack canary. The way around is to exploit the buffer overflow to overwrite one of the arguments to the second <code>strcpy()</code>: the pointer to the second buffer. If we control that pointer, we basically have a write-what-where. I chose to overflow the pointer to the second buffer with the address of <code>exit@plt</code>. This way, after overwriting the stack canary, the program will try to exit, but <code>exit@plt</code> will point to attacker-controlled shellcode on the stack.</p>
 
 <p>Putting it all together:</p>
 
