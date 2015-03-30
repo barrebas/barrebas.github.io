@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-30T21:10:32+02:00</updated>
+  <updated>2015-03-30T22:04:46+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,486 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[0ctf - R0ops]]></title>
+    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-r0ops/"/>
+    <updated>2015-03-30T21:15:09+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-r0ops</id>
+    <content type="html"><![CDATA[<p><code>r0ops</code> was a reversing challenge, worth only 150 points. Based on the amount of points, I expected it to be relatively easy, but I was in for a ride down the rabbit hole&hellip;</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>The binary opens binds to a port and waits for incoming connections. Upon connecting with <code>nc</code>, nothing much happens. While trying to run it in <code>gdb</code>, I encountered the first anti-debugger trick:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>;;; nice anti-debugger code
+</span><span class='line'> dead448: ba 00 00 00 00          mov    edx,0x0
+</span><span class='line'> dead44d: be 01 00 00 00          mov    esi,0x1
+</span><span class='line'> dead452: bf 02 00 00 00          mov    edi,0x2
+</span><span class='line'> dead457: e8 c4 32 55 f2          call   400720 &lt;socket@plt&gt;
+</span><span class='line'> dead45c: 89 45 fc                mov    DWORD PTR [rbp-0x4],eax
+</span><span class='line'> dead45f: 83 7d fc 03             cmp    DWORD PTR [rbp-0x4],0x3      ; anti-gdb trick
+</span><span class='line'> dead463: 74 07                   je     dead46c &lt;div+0x320&gt;
+</span><span class='line'> dead465: b8 00 00 00 00          mov    eax,0x0
+</span><span class='line'> dead46a: eb 50                   jmp    dead4bc &lt;div+0x370&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>gdb</code> opens more file descriptors. The binary rightly expects the socket handle to be file descriptor 3; if it encounter anything else, it must be because <code>gdb</code> is running.</p>
+
+<p>Examing the output of <code>objdump</code>, I quickly learned that the main program is just a stub to load a ROP chain:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ;;; accept calls
+</span><span class='line'> dead3af: eb 02                   jmp    dead3b3 &lt;div+0x267&gt;
+</span><span class='line'> dead3b1: 52                      push   rdx
+</span><span class='line'> dead3b2: f2 48 83 ec 10          repnz sub rsp,0x10
+</span><span class='line'> dead3b7: ba 00 00 00 00          mov    edx,0x0
+</span><span class='line'> dead3bc: be 00 00 00 00          mov    esi,0x0
+</span><span class='line'> dead3c1: bf 03 00 00 00          mov    edi,0x3
+</span><span class='line'> dead3c6: e8 45 33 55 f2          call   400710 &lt;accept@plt&gt;
+</span><span class='line'> dead3cb: 89 45 fc                mov    DWORD PTR [rbp-0x4],eax
+</span><span class='line'> dead3ce: 8b 45 fc                mov    eax,DWORD PTR [rbp-0x4]
+</span><span class='line'> dead3d1: b9 00 00 00 00          mov    ecx,0x0
+</span><span class='line'> dead3d6: ba 00 10 00 00          mov    edx,0x1000
+</span><span class='line'> dead3db: be c0 10 0b 0e          mov    esi,0xe0b10c0
+</span><span class='line'> dead3e0: 89 c7                   mov    edi,eax
+</span><span class='line'> dead3e2: e8 89 32 55 f2          call   400670 &lt;recv@plt&gt;
+</span><span class='line'> dead3e7: 8b 45 fc                mov    eax,DWORD PTR [rbp-0x4]
+</span><span class='line'> dead3ea: 89 c7                   mov    edi,eax
+</span><span class='line'> dead3ec: b8 00 00 00 00          mov    eax,0x0
+</span><span class='line'> dead3f1: e8 ca 32 55 f2          call   4006c0 &lt;close@plt&gt;
+</span><span class='line'> dead3f6: ba a0 f0 0a 0e          mov    edx,0xe0af0a0
+</span><span class='line'> dead3fb: be a0 00 0b 0e          mov    esi,0xe0b00a0
+</span><span class='line'> dead400: b8 00 02 00 00          mov    eax,0x200
+</span><span class='line'> dead405: 48 89 d7                mov    rdi,rdx
+</span><span class='line'> dead408: 48 89 c1                mov    rcx,rax
+</span><span class='line'> dead40b: f3 48 a5                rep movs QWORD PTR es:[rdi],QWORD PTR ds:[rsi]
+</span><span class='line'> dead40e: b8 c0 10 0b 0e          mov    eax,0xe0b10c0
+</span><span class='line'> dead413: 48 89 c7                mov    rdi,rax                  ; input from socket
+</span><span class='line'> dead416: b8 c0 20 0b 0e          mov    eax,0xe0b20c0            ; storage
+</span><span class='line'> dead41b: 48 89 c6                mov    rsi,rax
+</span><span class='line'> dead41e: b8 a0 f8 0a 0e          mov    eax,0xe0af8a0            ; contains a lot of addresses...
+</span><span class='line'> dead423: 48 89 c4                mov    rsp,rax                  ; it's a ROP chain!
+</span><span class='line'> dead426: c3                      ret                             ; this generates a new program & jumps to it
+</span><span class='line'> dead427: c9                      leave  
+</span><span class='line'> dead428: c3                      ret                             </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I set a breakpoint at the <code>ret</code> instruction, just before the ROP chain kicks off. I then dumped and copied the ROP chain and used some shell-fu to clean up the output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>head stackdump
+</span><span class='line'>0xe0af8a0:    0x0dead1f4  0x00000000  0x00000008  0x00000000
+</span><span class='line'>0xe0af8b0:    0x0dead271  0x00000000  0xbeef0095  0x1337dead
+</span><span class='line'>0xe0af8c0:    0x0dead123  0x00000000  0x0dead0ed  0x00000000
+</span><span class='line'>0xe0af8d0:    0x0dead204  0x00000000  0x0dead267  0x00000000
+</span><span class='line'>0xe0af8e0:    0x0dead0f8  0x00000000  0x0dead103  0x00000000
+</span><span class='line'>0xe0af8f0:    0x0dead0ed  0x00000000  0x0dead27a  0x00000000
+</span><span class='line'>0xe0af900:    0x0dead20e  0x00000000  0x0dead0f8  0x00000000
+</span><span class='line'>0xe0af910:    0x0dead1ec  0x00000000  0x0000cafe  0x00000000
+</span><span class='line'>0xe0af920:    0x0dead141  0x00000000  0x0dead0ed  0x00000000
+</span><span class='line'>0xe0af930:    0x0dead204  0x00000000  0x0dead284  0x00000000
+</span><span class='line'><span class="nv">$ </span>cat stackdump <span class="p">|</span> sed <span class="s1">&#39;s/0x//g&#39;</span> <span class="p">|</span> awk <span class="s1">&#39;{print $3 $2&quot;\n&quot; $5 $4}&#39;</span> &gt; ropchain
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, the ropchain contained only bare addresses. This is were the second obfuscation step came into place: each ROP gadget starts with a <code>jmp</code> which jumps in the middle of another instruction. Because of this, the disassembly cannot be trusted. Instead, I manually looked up all the ROP gadgets and pieced them together. The ROP chain is quite ingenious, although it also contains tons of redundant instruction:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>000000000dead1f4 pop rcx
+</span><span class='line'>0000000000000008
+</span><span class='line'>000000000dead271  pop r9                          <span class="p">;</span> <span class="nv">r9</span> <span class="o">=</span> 1337deadbeef0095
+</span><span class='line'>1337deadbeef0095
+</span><span class='line'>000000000dead123  mov    rax,QWORD PTR <span class="o">[</span>rdi<span class="o">]</span>      <span class="p">;</span> <span class="o">[</span>rdi+0<span class="o">]</span> first QWORD of input
+</span><span class='line'>000000000dead0ed  add    rsi,0x8                  <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span>8
+</span><span class='line'>000000000dead204  mov    QWORD PTR <span class="o">[</span>rsi<span class="o">]</span>,rax      <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span>8
+</span><span class='line'>000000000dead267  mov    r8,QWORD PTR <span class="o">[</span>rsi<span class="o">]</span>       <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span><span class="m">8</span> <span class="nv">r8</span> <span class="o">=</span> first QWORD of input
+</span><span class='line'>000000000dead0f8  sub    rsi,0x8                  <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span>0
+</span><span class='line'>000000000dead103  add    rdi,0x8                  <span class="p">;</span> <span class="nv">rdi</span><span class="o">=</span>8
+</span><span class='line'>000000000dead0ed  add    rsi,0x8                  <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span><span class="m">8</span> <span class="o">(</span>no-op<span class="o">)</span>
+</span><span class='line'>000000000dead27a  mov    QWORD PTR <span class="o">[</span>rsi<span class="o">]</span>,r9       <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span><span class="m">8</span> <span class="o">[</span>rsi<span class="o">]</span> <span class="o">=</span> 1337deadbeef0095
+</span><span class='line'>000000000dead20e  mov    rax,QWORD PTR <span class="o">[</span>rsi<span class="o">]</span>      <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span><span class="m">8</span> <span class="nv">rax</span> <span class="o">=</span> 1337deadbeef0095
+</span><span class='line'>000000000dead0f8  sub    rsi,0x8                  <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span>0
+</span><span class='line'>000000000dead1ec  pop    rbx                      <span class="p">;</span> <span class="nv">rbx</span> <span class="o">=</span> cafe
+</span><span class='line'>000000000000cafe
+</span><span class='line'>000000000dead141  imul   rax,rbx                  <span class="p">;</span> <span class="nv">rax</span> <span class="o">==</span>&gt; 0x2724090c079825d6
+</span><span class='line'>000000000dead0ed  add    rsi,0x8                  <span class="p">;</span> <span class="nv">rsi</span><span class="o">=</span>8
+</span><span class='line'>000000000dead204  mov    QWORD PTR <span class="o">[</span>rsi<span class="o">]</span>,rax      <span class="p">;</span> <span class="nv">rax</span> <span class="o">=</span> 0x1337deadbeef0095*0xcafe
+</span><span class='line'>...continues...
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It basically takes the first QWORD of the input, sent over the socket, and then proceeds to generate a special constant. This is used later to compare against. I followed the rest of the ROP chain, and it basically does the following: it repeatedly multiplies the QWORD of our input with itself. At set intervals, it will multiply this value with the original QWORD. After a fixed number of iterations, it compares the resulting QWORD to the generated magic constant. The ROP chain uses a clever mechanism to implement conditional looping:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>000000000dead1ec pop    rbx                      <span class="p">;</span> <span class="nv">rbx</span><span class="o">=</span>0
+</span><span class='line'>0000000000000000
+</span><span class='line'>000000000dead1fc  pop    rdx                      <span class="p">;</span> <span class="nv">rdx</span><span class="o">=</span>1d8<span class="p">;</span> adjustment <span class="k">for</span> rsp!
+</span><span class='line'>00000000000001d8                                    <span class="p">;</span>
+</span><span class='line'>000000000dead19b  0xdead19f:  cmp    rax,rbx      <span class="p">;</span> rax contains a counter used to iterate<span class="p">;</span>
+</span><span class='line'>                  0xdead1a2:  jne    0xdead1a7    <span class="p">;</span> -&gt; ret<span class="p">;</span> <span class="k">if</span> rax !<span class="o">=</span> rbx, <span class="k">continue</span>
+</span><span class='line'>                  0xdead1a4:  add    rsp,rdx      <span class="p">;</span> when it reaches zero, control is passed to the next gadget, located at rsp+0x1d8
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Clever stuff, but horrible to trace. There were a lot of jumps and no ops to throw me off. For instance, a gadget would <code>add rsi, 8</code> and the next one would <code>sub rsi, 8</code>, effectively doing nothing (except annoying me and wearing out my Enter key).</p>
+
+<h2>Breaking the chain</h2>
+
+<p>The ROP chain repeats this process eight times, so we need to send eight QWORDS over the socket. For each QWORD, a new magic constant is generated (taking the former value, multiplying by <code>0xcafe</code> and adding <code>0xbeef</code>). To inspect what was going on, I set breakpoints on two very important ROP gadgets:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>Breakpoint 1, 0x000000000dead145 in ?? <span class="o">()</span>
+</span><span class='line'>1: x/i <span class="nv">$rip</span>
+</span><span class='line'><span class="o">=</span>&gt; 0xdead145:   imul   rax,rbx
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Breakpoint 2, 0x000000000dead1ae in ?? <span class="o">()</span>
+</span><span class='line'>1: x/i <span class="nv">$rip</span>
+</span><span class='line'><span class="o">=</span>&gt; 0xdead1ae:   cmp    rax,rbx
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This allowed me to dump each value that was generated, and finally see which values are being compared by the binary (one of which was the magic constant).</p>
+
+<p>I briefly considered bruteforcing the entire 64-bit range, but this was <em>way</em> too slow, even in C. I focussed on creating a function that emulates what is done with the first QWORD. After squashing a bug, I ended up with the following python code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">while</span> <span class="n">n</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>      <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">x</span>
+</span><span class='line'>  
+</span><span class='line'><span class="k">def</span> <span class="nf">c</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">13</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="nb">hex</span><span class="p">(</span><span class="n">c</span><span class="p">(</span><span class="mh">0x4242424241414141</span><span class="p">))</span> <span class="c"># remember, little endian ;)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I noticed something crucial. As I entered variations of <code>0x4242424241414141</code>, the last byte of the generated value was only dependent on the last byte of the input (by chance it was also <code>0x41</code>)! This gave me an idea&hellip;</p>
+
+<h2>Byte-by-byte</h2>
+
+<p>I found I could bruteforce the correct value for each QWORD, going one byte at a time! After a while (and squashing the aforementioned bug by careful tracing of the ROP chain) I came up with the following python code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">q</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;Q&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">while</span> <span class="n">n</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>      <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">x</span>
+</span><span class='line'>  
+</span><span class='line'><span class="k">def</span> <span class="nf">c</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">13</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">key_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'><span class="n">check</span> <span class="o">=</span> <span class="mh">0x1337deadbeef0095</span>
+</span><span class='line'><span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">check</span> <span class="o">=</span> <span class="p">((</span><span class="n">check</span> <span class="o">*</span> <span class="mh">0xcafe</span><span class="p">)</span> <span class="o">+</span> <span class="mh">0xbeef</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xffffffffffffffff</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">key</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+</span><span class='line'>      <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mh">0xff</span><span class="p">):</span>
+</span><span class='line'>          <span class="c"># ugly, but works: it basically only compares the output of the c() function</span>
+</span><span class='line'>          <span class="c"># up to the byte it&#39;s bruteforcing</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">c</span><span class="p">(</span><span class="n">key</span> <span class="o">|</span> <span class="p">(</span><span class="n">z</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">8</span><span class="p">)))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mh">0xff</span> <span class="o">&lt;&lt;</span> <span class="n">i</span><span class="o">*</span><span class="mi">8</span><span class="p">))</span> <span class="o">==</span> <span class="p">(</span><span class="n">check</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mh">0xff</span> <span class="o">&lt;&lt;</span> <span class="n">i</span><span class="o">*</span><span class="mi">8</span><span class="p">)):</span>
+</span><span class='line'>              <span class="n">key</span> <span class="o">+=</span> <span class="p">(</span><span class="n">z</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="mi">8</span><span class="p">))</span>
+</span><span class='line'>              <span class="k">break</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;[+] key {}: {} -&gt; {} == {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="nb">hex</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="nb">hex</span><span class="p">(</span><span class="n">c</span><span class="p">(</span><span class="n">key</span><span class="p">)),</span> <span class="nb">hex</span><span class="p">(</span><span class="n">check</span><span class="p">))</span>
+</span><span class='line'>  <span class="n">key_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="c"># send all the generated keys as little-endian QWORDS to the binary</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="k">global</span> <span class="n">s</span>
+</span><span class='line'><span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">13337</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+</span><span class='line'><span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">key_list</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">payload</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">payload</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The ROP chain went through its hoops and landed here, dumping the flag!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="mo">000000000</span><span class="n">dead1aa</span>    <span class="mh">0xdead1ae</span><span class="p">:</span>   <span class="nb">cmp</span>    <span class="n">rax</span><span class="p">,</span><span class="n">rbx</span>
+</span><span class='line'>                    <span class="mh">0xdead1b1</span><span class="p">:</span> <span class="n">je</span>     <span class="mh">0xdead1b6</span>  <span class="p">;</span> <span class="k">if</span> <span class="n">rax</span> <span class="o">==</span> <span class="n">rbx</span><span class="p">,</span> <span class="n">the</span> <span class="n">special</span> <span class="n">constant</span> <span class="ow">and</span> <span class="n">the</span> <span class="n">value</span> <span class="n">generated</span> <span class="kn">from</span> <span class="nn">our</span> <span class="nn">QWORD</span> <span class="nn">match</span>
+</span><span class='line'>                    <span class="mh">0xdead1b3</span><span class="p">:</span> <span class="n">add</span>    <span class="n">rsp</span><span class="p">,</span><span class="n">rdx</span>    <span class="p">;</span> <span class="k">if</span> <span class="n">rax</span> <span class="o">==</span> <span class="n">rbx</span><span class="p">,</span> <span class="n">this</span> <span class="ow">is</span> <span class="n">skipped</span><span class="o">...</span>
+</span><span class='line'>                      <span class="mh">0xdead1b6</span><span class="p">:</span>   <span class="n">ret</span>               <span class="p">;</span>
+</span><span class='line'><span class="mo">000000000</span><span class="n">dead1fc</span>   <span class="n">pop</span>    <span class="n">rdx</span>                    <span class="p">;</span> <span class="o">...</span><span class="ow">and</span> <span class="n">the</span> <span class="n">ROP</span> <span class="n">chain</span> <span class="n">continues</span> <span class="n">here</span><span class="o">...</span>
+</span><span class='line'><span class="n">fffffffffffffc38</span>
+</span><span class='line'><span class="mo">000000000</span><span class="n">dead1d7</span>   <span class="n">loop</span>   <span class="mh">0xdead1db</span>              <span class="p">;</span> <span class="o">...</span><span class="k">if</span> <span class="nb">all</span> <span class="n">eight</span> <span class="n">QWORDS</span> <span class="n">check</span> <span class="n">out</span><span class="o">...</span> <span class="p">(</span><span class="n">rcx</span> <span class="n">contained</span> <span class="mi">8</span> <span class="n">at</span> <span class="n">the</span> <span class="n">start</span><span class="p">)</span>
+</span><span class='line'><span class="mo">000000000</span><span class="n">dead33c</span>
+</span><span class='line'>   <span class="mh">0xdead340</span><span class="p">:</span>  <span class="n">sub</span>    <span class="n">rsp</span><span class="p">,</span><span class="mh">0x10</span>                   <span class="p">;</span> <span class="o">...</span><span class="n">then</span> <span class="n">control</span> <span class="ow">is</span> <span class="n">passed</span> <span class="n">here</span>
+</span><span class='line'>   <span class="mh">0xdead344</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">edi</span><span class="p">,</span><span class="mh">0xdead544</span>
+</span><span class='line'>   <span class="mh">0xdead349</span><span class="p">:</span>  <span class="n">call</span>   <span class="mh">0x400680</span> <span class="o">&lt;</span><span class="n">puts</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0xdead34e</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">edi</span><span class="p">,</span><span class="mh">0xdead54e</span>
+</span><span class='line'>   <span class="mh">0xdead353</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="mh">0x0</span>
+</span><span class='line'>   <span class="mh">0xdead358</span><span class="p">:</span>  <span class="n">call</span>   <span class="mh">0x4006a0</span> <span class="o">&lt;</span><span class="n">printf</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0xdead35d</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rbp</span><span class="o">-</span><span class="mh">0x4</span><span class="p">],</span><span class="mh">0x0</span>
+</span><span class='line'>   <span class="mh">0xdead364</span><span class="p">:</span>  <span class="n">jmp</span>    <span class="mh">0xdead38b</span>
+</span><span class='line'>   <span class="mh">0xdead366</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rbp</span><span class="o">-</span><span class="mh">0x4</span><span class="p">]</span>
+</span><span class='line'>   <span class="mh">0xdead369</span><span class="p">:</span>  <span class="n">cdqe</span>
+</span><span class='line'>   <span class="mh">0xdead36b</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">rax</span><span class="p">,</span><span class="n">QWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rax</span><span class="o">*</span><span class="mi">8</span><span class="o">+</span><span class="mh">0xe0b10c0</span><span class="p">]</span>
+</span><span class='line'>   <span class="mh">0xdead373</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="n">eax</span>
+</span><span class='line'>   <span class="mh">0xdead375</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">rsi</span><span class="p">,</span><span class="n">rax</span>
+</span><span class='line'>   <span class="mh">0xdead378</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">edi</span><span class="p">,</span><span class="mh">0xdead55d</span>
+</span><span class='line'>   <span class="mh">0xdead37d</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="mh">0x0</span>
+</span><span class='line'>   <span class="mh">0xdead382</span><span class="p">:</span>  <span class="n">call</span>   <span class="mh">0x4006a0</span> <span class="o">&lt;</span><span class="n">printf</span><span class="nd">@plt</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0xdead387</span><span class="p">:</span>  <span class="n">add</span>    <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rbp</span><span class="o">-</span><span class="mh">0x4</span><span class="p">],</span><span class="mh">0x1</span>
+</span><span class='line'>   <span class="mh">0xdead38b</span><span class="p">:</span>  <span class="nb">cmp</span>    <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rbp</span><span class="o">-</span><span class="mh">0x4</span><span class="p">],</span><span class="mh">0x7</span>
+</span><span class='line'>   <span class="mh">0xdead38f</span><span class="p">:</span>  <span class="n">jle</span>    <span class="mh">0xdead366</span>
+</span><span class='line'>   <span class="mh">0xdead391</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">edi</span><span class="p">,</span><span class="mh">0xdead564</span>
+</span><span class='line'>   <span class="mh">0xdead396</span><span class="p">:</span>  <span class="n">call</span>   <span class="mh">0x400680</span> <span class="o">&lt;</span><span class="n">puts</span><span class="nd">@plt</span><span class="o">&gt;</span>            <span class="p">;</span> <span class="n">dumps</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">console</span><span class="err">!</span>
+</span><span class='line'>   <span class="mh">0xdead39b</span><span class="p">:</span>  <span class="n">mov</span>    <span class="n">eax</span><span class="p">,</span><span class="mh">0x0</span>
+</span><span class='line'>   <span class="mh">0xdead3a0</span><span class="p">:</span>  <span class="n">call</span>   <span class="mh">0xdead3af</span>
+</span><span class='line'>   <span class="mh">0xdead3a5</span><span class="p">:</span>  <span class="n">leave</span>
+</span><span class='line'>   <span class="mh">0xdead3a6</span><span class="p">:</span>  <span class="n">ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The output of the script and binary:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/0ctf/r0ops<span class="nv">$ </span>./r0ops <span class="p">&amp;</span> python ./bf.py
+</span><span class='line'><span class="o">[</span>1<span class="o">]</span> 4471
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 0: 0xd5b028b6c97155a5L -&gt; <span class="nv">0x2724090c0798e4c5L</span> <span class="o">==</span> 0x2724090c0798e4c5L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 1: 0x51a2c3e8e288fa45 -&gt; <span class="nv">0x44e477ee2e372c65L</span> <span class="o">==</span> 0x44e477ee2e372c65L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 2: 0x561720a3f926b105 -&gt; <span class="nv">0xa150eec963c67d25L</span> <span class="o">==</span> 0xa150eec963c67d25L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 3: 0xa325ec548e4e0385L -&gt; <span class="nv">0xeab7d48b9db01ba5L</span> <span class="o">==</span> 0xeab7d48b9db01ba5L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 4: 0x5369761ad6ccde85 -&gt; <span class="nv">0xf01b0cf36a8c5ea5L</span> <span class="o">==</span> 0xf01b0cf36a8c5ea5L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 5: 0x9475802813002885L -&gt; <span class="nv">0x930eeb9679f4d8a5L</span> <span class="o">==</span> 0x930eeb9679f4d8a5L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 6: 0xcadd6a0bdc679485L -&gt; <span class="nv">0xaeb27b8833e1e4a5L</span> <span class="o">==</span> 0xaeb27b8833e1e4a5L
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> key 7: 0x7d67b37124bcbc85 -&gt; <span class="nv">0x2a900a13b88bcca5L</span> <span class="o">==</span> 0x2a900a13b88bcca5L
+</span><span class='line'>
+</span><span class='line'>YOU WIN!
+</span><span class='line'>
+</span><span class='line'>FLAG IS: 0ctf<span class="o">{</span>c97155a5e288fa45f926b1058e4e0385d6ccde8513002885dc67948524bcbc85<span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Good stuff! Funny to see a ROP chain &ldquo;from the other side&rdquo; :)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[0ctf - Login]]></title>
@@ -9173,177 +9653,6 @@
 
 
 <p>This one was tough, but a fun one nonetheless! ROP all the things! =)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Advent CTF 2014 - Rotate]]></title>
-    <link href="http://barrebas.github.io/blog/2014/12/21/advent-ctf-2014-rotate/"/>
-    <updated>2014-12-21T16:09:36+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/12/21/advent-ctf-2014-rotate</id>
-    <content type="html"><![CDATA[<p>A crypto challenge! We&rsquo;re given a zip-file, containing <code>flag.jpg.enc</code> and <code>rotate.py</code>.</p>
-
-<!-- more -->
-
-
-<p><code>rotate.py</code> handles the encryption, but only does so one way:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">math</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;f&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-</span><span class='line'><span class="n">u</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-</span><span class='line'><span class="n">key</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">bs</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span class='line'><span class="n">enc</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s">&#39;.enc&#39;</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bs</span><span class="p">),</span> <span class="mi">2</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">u</span><span class="p">(</span><span class="n">bs</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">u</span><span class="p">(</span><span class="n">bs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
-</span><span class='line'>    <span class="n">enc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">key</span><span class="p">))</span> <span class="o">+</span> <span class="n">p</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">+</span> <span class="n">y</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">key</span><span class="p">)))</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The script takes two bytes at a time and transforms them into two floats via some goniometric functions, using a key. These floats are then dumped as DWORDS into the encrypted output file. Our first job is to determine what key was used.</p>
-
-<p>Assuming the flag really <strong>is</strong> a JPEG, we have some prior knowledge. Namely, the first two bytes are <code>0xff,0xd8</code>. I made a small file that contains only these two bytes and I ripped the first 8 bytes from <code>flag.jpg.enc</code>. I encoded the small 2-byte file with all possible keys and then compared the md5sum of each file to the md5sum of the 8-byte encoded file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/adventctf/rotate<span class="nv">$ </span><span class="k">for</span> i in <span class="sb">`</span>seq <span class="m">0</span> 360<span class="sb">`</span><span class="p">;</span> <span class="k">do</span> python rotate.py ./header_real2 <span class="nv">$i</span><span class="p">;</span> mv header_real2.enc output<span class="nv">$i</span><span class="p">;</span> <span class="k">done</span>
-</span><span class='line'>bas@tritonal:~/adventctf/rotate<span class="nv">$ </span>md5sum header_encoded8
-</span><span class='line'>ed3f26885ebe2ba3ec0aa61215e4dcf2  header_encoded8
-</span><span class='line'>bas@tritonal:~/adventctf/rotate<span class="nv">$ </span>md5sum output* <span class="p">|</span>grep ed3f2
-</span><span class='line'>ed3f26885ebe2ba3ec0aa61215e4dcf2  output123
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So I now know the key that was used was <code>123</code>. I then started building a decoder. I hit a few snags on the way. It turns out that <code>rotate.py</code> doesn&rsquo;t use the literal value of each byte, but instead uses <code>struct.unpack('b', byte)</code> to generate a <strong>signed</strong> representation. That threw me off for a good while.</p>
-
-<p>The decoder first builds a lookup table of each possible two-byte combination. Then, to decode, it reads eight bytes at a time and looks up the corresponding values from the lookup table. If there are no more floats to be read, it catches the error and outputs the decrypted data:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">math</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;f&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-</span><span class='line'><span class="n">u</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-</span><span class='line'><span class="n">key</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">enc</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">lookup</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span class='line'><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">256</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">256</span><span class="p">):</span>
-</span><span class='line'>      <span class="n">x</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="nb">chr</span><span class="p">(</span><span class="n">k</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>      <span class="n">y</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="nb">chr</span><span class="p">(</span><span class="n">l</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">x1</span> <span class="o">=</span> <span class="n">p</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
-</span><span class='line'>      <span class="n">x2</span> <span class="o">=</span> <span class="n">p</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">+</span> <span class="n">y</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">x3</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>      <span class="n">x4</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">lookup</span><span class="p">[</span> <span class="p">(</span><span class="n">x3</span><span class="o">&lt;&lt;</span><span class="mi">32</span><span class="p">)</span><span class="o">+</span><span class="n">x4</span> <span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
-</span><span class='line'>      
-</span><span class='line'><span class="n">going</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'><span class="n">decoded</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
-</span><span class='line'><span class="k">while</span> <span class="n">going</span><span class="p">:</span>
-</span><span class='line'>  <span class="k">try</span><span class="p">:</span>
-</span><span class='line'>      <span class="n">f1</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">enc</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">4</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>      <span class="n">f2</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">enc</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">4</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">=</span> <span class="n">lookup</span><span class="p">[</span> <span class="p">(</span><span class="n">f1</span><span class="o">&lt;&lt;</span><span class="mi">32</span><span class="p">)</span><span class="o">+</span><span class="n">f2</span> <span class="p">]</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">decoded</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">decoded</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">except</span><span class="p">:</span>
-</span><span class='line'>      <span class="n">going</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>      <span class="k">print</span> <span class="n">decoded</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It&rsquo;s <em>horrible</em> code, but it got the job done:</p>
-
-<p><img src="http://barrebas.github.io/assets/adctf/rotate-flag.jpg" alt="" /></p>
-
-<p>The flag was <code>ADCTF_TR0t4T3_f4C3</code>.</p>
 ]]></content>
   </entry>
   
