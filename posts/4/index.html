@@ -9,7 +9,7 @@
   <meta name="author" content="barrebas">
 
   
-  <meta name="description" content="For this challenge, we&rsquo;re given the following clue: My manager lives at 10.13.37.21. Any guest is always welcome. But he has a secret. Can you &hellip;">
+  <meta name="description" content="We are again given an ip address. Upon visiting, it turns out to be some rudimentary page. I immediately spotted a LFI vulnerability, surfing to http &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +65,40 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/10/31/defcamp-ctf-web-300/">Defcamp CTF: Web 300</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-31T15:11:55+01:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>3:11 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>We are again given an ip address. Upon visiting, it turns out to be some rudimentary page. I immediately spotted a LFI vulnerability, surfing to <code>http://10.13.37.13/?page=../../../../../../etc/passwd</code>.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/10/31/defcamp-ctf-web-300/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -388,6 +422,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/03/30/0ctf-login/">0ctf - Login</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/03/30/0ctf-flagen/">0ctf - Flagen</a>
       </li>
     
@@ -401,10 +439,6 @@
     
       <li class="post">
         <a href="/blog/2015/03/18/bsides-vancouver-ctf-sushi/">BSides Vancouver CTF - Sushi</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/02/22/maximum-overkill-two-from-format-string-vulnerability-to-remote-code-execution/">Maximum Overkill Two - From Format String Vulnerability to Remote Code Execution</a>
       </li>
     
   </ul>

