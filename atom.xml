@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-30T22:04:46+02:00</updated>
+  <updated>2015-03-31T07:19:17+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -669,7 +669,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>I won&rsquo;t show the disassembly, but just describe what happens. Locally, the binary takes the md5 of our supplied password, but compares it to <code>0ops{secret_md5}</code>. If it matches, it calls a function to dump the flag. I figured the remote binary would contain the real md5, so I needed a way to read from the process remotely. The vulnerability to do so was found soon enough, it&rsquo;s a format string vulnerability. We get two chances. I used the first to leak a stack address and an address of the binary (because of RELRO, it&rsquo;s loaded at a different address each time). The second printf call is then used to leak the md5 to which our supplied password is compared.</p>
+<p>I won&rsquo;t show the disassembly, but just describe what happens. Locally, the binary takes the md5 of our supplied password, but compares it to <code>0ops{secret_md5}</code>. If it matches, it calls a function to dump the flag. I figured the remote binary would contain the real md5, so I needed a way to read from the process remotely. The vulnerability to do so was found soon enough, it&rsquo;s a format string vulnerability. We get two chances. I used the first to leak a stack address and an address of the binary (because of PIE, it&rsquo;s loaded at a different address each time). The second printf call is then used to leak the md5 to which our supplied password is compared.</p>
 
 <p>Easy, right? Wrong. The remote binary returned the same string, <code>0ops{secret_md5}</code>. Obviously, I had to find another way to break this binary.</p>
 
