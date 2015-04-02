@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Backdoor CTF - LHC - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="LHC was a short &amp; sweet challenge in Backdoor CTF. It had a nice &lsquo;aha-Erlebnis&rsquo; moment. During the CTF, the organizers dropped this &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Backdoor CTF - LHC</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-04-02T19:59:55+02:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2015</span></span> <span class='time'>7:59 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><code>LHC</code> was a short &amp; sweet challenge in Backdoor CTF. It had a nice &lsquo;aha-Erlebnis&rsquo; moment.</p>
+
+<!-- more -->
+
+
+<p>During the CTF, the organizers dropped this challenge. The description mentioned that the flag was hidden in a data file. This data file was kindly provided by the Large Hadron Collider and was 2049 GB large.</p>
+
+<p>I&rsquo;ll let that sink in.</p>
+
+<p>Two-thousand and forty nine <strong>gigabytes</strong>. Downloading it would take more than twenty days. The flag was in the middle of the file, but that still meant downloading more than a terabyte of data.</p>
+
+<p>I fired up <code>curl</code> and looked at the download:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>bas@tritonal:~/tmp/bckdr/medusa$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt &gt; /dev/null
+</span><span class='line'>* About to connect() to lhc-cdn.herokuapp.com port 443 (#0)
+</span><span class='line'>*   Trying 107.21.223.88...
+</span><span class='line'>...snip...
+</span><span class='line'>&gt; GET /data.txt HTTP/1.1
+</span><span class='line'>&gt; User-Agent: curl/7.26.0
+</span><span class='line'>&gt; Host: lhc-cdn.herokuapp.com
+</span><span class='line'>&gt; Accept: */*
+</span><span class='line'>&gt; 
+</span><span class='line'>* additional stuff not fine transfer.c:1037: 0 0
+</span><span class='line'>* HTTP 1.1 or later with persistent connection, pipelining supported
+</span><span class='line'>&lt; HTTP/1.1 200 OK
+</span><span class='line'>&lt; Server: Cowboy
+</span><span class='line'>&lt; Connection: keep-alive
+</span><span class='line'>&lt; X-Powered-By: Express
+</span><span class='line'>&lt; Accept-Ranges: bytes
+</span><span class='line'>&lt; Content-Type: text/plain; charset=utf-8
+</span><span class='line'>&lt; Content-Length: 2200000000000
+</span><span class='line'>&lt; Date: Wed, 01 Apr 2015 21:44:48 GMT
+</span><span class='line'>&lt; Via: 1.1 vegur</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yup, 2200000000000 bytes of data. But wait! <code>curl</code> has the option to resume a broken download; that meant that I could control where the download would start. I issued this command and started searching the output for the flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C <span class="m">1100000000000</span> &gt; lhc-middle
+</span><span class='line'>...snip...
+</span><span class='line'><span class="nv">$ </span>strings -n <span class="m">20</span> ./lhc-middle
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This gave me part of the flag; the description said it was in the middle of the datafile, so I subtracted another 1000 bytes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C <span class="m">1099999998999</span> &gt; lhc-middle
+</span><span class='line'><span class="nv">$ </span>strings lhc-middle -n 20
+</span><span class='line'>              The flag is: <span class="o">[</span>REDACTED<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Simple, really, once you know the trick.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-04-02T19:59:55+02:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2015</span></span> <span class='time'>7:59 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/misc/'>misc</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/04/02/backdoor-ctf-qr/" title="Previous Post: Backdoor CTF - QR">&laquo; Backdoor CTF - QR</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/04/02/backdoor-ctf-judge/" title="Next Post: Backdoor CTF - Judge">Backdoor CTF - Judge &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-judge/">Backdoor CTF - Judge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-lhc/">Backdoor CTF - LHC</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-qr/">Backdoor CTF - QR</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-team/">Backdoor CTF - Team</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/30/0ctf-r0ops/">0ctf - R0ops</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

