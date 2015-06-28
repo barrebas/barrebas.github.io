@@ -3,6 +3,14 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/</loc>
+    
+    <lastmod>2015-06-28T19:45:38+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2015/05/29/legitbs-ctf-r0pbaby/</loc>
     
     <lastmod>2015-05-29T23:07:23+02:00</lastmod>
@@ -373,14 +381,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2015-05-29T23:40:00+02:00</lastmod>
+    <lastmod>2015-06-28T19:53:34+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2015-05-29T23:40:00+02:00</lastmod>
+    <lastmod>2015-06-28T19:53:34+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
