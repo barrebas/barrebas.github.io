@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Misc | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/misc/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-06-28T19:53:34+02:00</updated>
+  <updated>2015-07-12T17:25:36+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,68 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[PoliCTF 2015 - John the Dropper]]></title>
+    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/"/>
+    <updated>2015-07-12T12:00:27+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper</id>
+    <content type="html"><![CDATA[<p>John the Dropper was an interesting 100 point challenge. I&rsquo;d love to see how it was implemented!</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a host, <code>dropper.polictf.it</code>. It has no open ports, but the challenge description mentioned that John did not need ports to communicate. I left this challenge for a while, focusing on others. When I got back, superkojiman noticed that pinging this host dropped a lot of packets. He saw patterns: sometimes one packet dropped, sometimes three in a row. This made me think of Morse immediately.</p>
+
+<p>I started pinging the host and grabbed the output of <code>ping</code>:</p>
+
+<pre><code>PING dropper.polictf.it (52.18.119.20) 56(84) bytes of data.
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=1 ttl=50 time=23.8 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=3 ttl=50 time=24.2 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=5 ttl=50 time=24.1 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=7 ttl=50 time=23.8 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=8 ttl=50 time=23.9 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=12 ttl=50 time=23.8 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=16 ttl=50 time=24.2 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=20 ttl=50 time=23.9 ms
+64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=21 ttl=50 time=24.0 ms
+...snip...
+</code></pre>
+
+<p>As you can see, request 2, 4 and 6 are dropped. With the following one-liner, I extracted the icmp_req numbers:</p>
+
+<pre><code class="bash">cat pings.txt |awk '{print $6}' |awk '{split($0,a,"="); print a[2]}' &gt; sequence.txt
+</code></pre>
+
+<p>I wrote a python script to translate the drops to Morse:</p>
+
+<pre><code class="python">seq = []
+
+with open('sequence.txt') as f:
+    lines = f.readlines()
+    for l in lines:
+        seq.append(int(l))
+    f.close()
+
+msg = ""
+for i in range(len(seq)-2):
+    if seq[i+1] - seq[i] - 1 == 0:
+        count += ' '
+    if seq[i+1] - seq[i] - 1 == 1:
+        msg += '.'
+    if seq[i+1] - seq[i] - 1 == 3:
+        msg += '-'
+print msg
+</code></pre>
+
+<p>Which yielded:</p>
+
+<pre><code>... --- ...    - .... .. ...    .. ...    - .... .    ..-. .-.. .- --. .--.- .. - -....- .. ... -....- -. . ...- . .-. -....- - --- --- -....- .-.. .- - . -....- ..-. --- .-. -....- .- -....- -.. .-. --- .--. .--.--   
+</code></pre>
+
+<p>The first three characters spell out &ldquo;SOS&rdquo;. I translated the rest by hand and found: <code>SOS THIS IS THE FLAG?IT?IS?NEVER?TOO?LATE?FOR?A?DROP?</code>. I couldn&rsquo;t really figure out the characters that are marked <code>?</code>. I guessed them to be underscores, but in the end, <a href="https://duckduckgo.com/?q=...+---+...++++-+....+..+...++++..+...++++-+....+.++++..-.+.-..+.-+--.+.--.-+..+-+-....-+..+...+-....-+-.+.+...-+.+.-.+-....-+-+---+---+-....-+.-..+.-+-+.+-....-+..-.+---+.-.+-....-+.-+-....-+-..+.-.+---+.--.+.--.--++++morse&amp;ia=answer">duckduckgo</a> came to the rescue. The final flag was lowercase: <code>flag{it-is-never-too-late-for-a-drop}</code>.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Backdoor CTF - LHC]]></title>

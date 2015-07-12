@@ -3,6 +3,62 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/</loc>
+    
+    <lastmod>2015-07-12T17:06:29+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-library/</loc>
+    
+    <lastmod>2015-07-12T16:45:04+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/</loc>
+    
+    <lastmod>2015-07-12T16:30:31+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-crack-me-if-you-can/</loc>
+    
+    <lastmod>2015-07-12T12:12:22+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/</loc>
+    
+    <lastmod>2015-07-12T12:00:27+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-and-the-prophet-said/</loc>
+    
+    <lastmod>2015-07-12T11:47:44+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/07/12/polictf-2015-exorcise/</loc>
+    
+    <lastmod>2015-07-12T11:39:10+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2015/06/28/rop-primer-level0/</loc>
     
     <lastmod>2015-06-28T19:45:38+02:00</lastmod>
@@ -381,14 +437,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2015-06-28T19:53:34+02:00</lastmod>
+    <lastmod>2015-07-12T17:25:36+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2015-06-28T19:53:34+02:00</lastmod>
+    <lastmod>2015-07-12T17:25:36+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

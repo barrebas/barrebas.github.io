@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>PoliCTF 2015 - John the Dropper - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="John the Dropper was an interesting 100 point challenge. I&rsquo;d love to see how it was implemented! We&rsquo;re given a host, dropper.polictf.it. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">PoliCTF 2015 - John the Dropper</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T12:00:27+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>John the Dropper was an interesting 100 point challenge. I&rsquo;d love to see how it was implemented!</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a host, <code>dropper.polictf.it</code>. It has no open ports, but the challenge description mentioned that John did not need ports to communicate. I left this challenge for a while, focusing on others. When I got back, superkojiman noticed that pinging this host dropped a lot of packets. He saw patterns: sometimes one packet dropped, sometimes three in a row. This made me think of Morse immediately.</p>
+
+<p>I started pinging the host and grabbed the output of <code>ping</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PING dropper.polictf.it (52.18.119.20) 56(84) bytes of data.
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=1 ttl=50 time=23.8 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=3 ttl=50 time=24.2 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=5 ttl=50 time=24.1 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=7 ttl=50 time=23.8 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=8 ttl=50 time=23.9 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=12 ttl=50 time=23.8 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=16 ttl=50 time=24.2 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=20 ttl=50 time=23.9 ms
+</span><span class='line'>64 bytes from ec2-52-18-119-20.eu-west-1.compute.amazonaws.com (52.18.119.20): icmp_req=21 ttl=50 time=24.0 ms
+</span><span class='line'>...snip...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see, request 2, 4 and 6 are dropped. With the following one-liner, I extracted the icmp_req numbers:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>cat pings.txt <span class="p">|</span>awk <span class="s1">&#39;{print $6}&#39;</span> <span class="p">|</span>awk <span class="s1">&#39;{split($0,a,&quot;=&quot;); print a[2]}&#39;</span> &gt; sequence.txt
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I wrote a python script to translate the drops to Morse:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">seq</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;sequence.txt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">seq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>
+</span><span class='line'>  <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span><span class="o">-</span><span class="mi">2</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">count</span> <span class="o">+=</span> <span class="s">&#39; &#39;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;.&#39;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">seq</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;-&#39;</span>
+</span><span class='line'><span class="k">print</span> <span class="n">msg</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Which yielded:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="o">...</span> <span class="o">---</span> <span class="o">...</span>    <span class="o">-</span> <span class="o">....</span> <span class="o">..</span> <span class="o">...</span>    <span class="o">..</span> <span class="o">...</span>    <span class="o">-</span> <span class="o">....</span> <span class="o">.</span>    <span class="o">..-.</span> <span class="o">.-..</span> <span class="o">.-</span> <span class="o">--.</span> <span class="o">.--.-</span> <span class="o">..</span> <span class="o">-</span> <span class="o">-....-</span> <span class="o">..</span> <span class="o">...</span> <span class="o">-....-</span> <span class="o">-.</span> <span class="o">.</span> <span class="o">...-</span> <span class="o">.</span> <span class="o">.-.</span> <span class="o">-....-</span> <span class="o">-</span> <span class="o">---</span> <span class="o">---</span> <span class="o">-....-</span> <span class="o">.-..</span> <span class="o">.-</span> <span class="o">-</span> <span class="o">.</span> <span class="o">-....-</span> <span class="o">..-.</span> <span class="o">---</span> <span class="o">.-.</span> <span class="o">-....-</span> <span class="o">.-</span> <span class="o">-....-</span> <span class="o">-..</span> <span class="o">.-.</span> <span class="o">---</span> <span class="o">.--.</span> <span class="o">.--.--</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The first three characters spell out &ldquo;SOS&rdquo;. I translated the rest by hand and found: <code>SOS THIS IS THE FLAG?IT?IS?NEVER?TOO?LATE?FOR?A?DROP?</code>. I couldn&rsquo;t really figure out the characters that are marked <code>?</code>. I guessed them to be underscores, but in the end, <a href="https://duckduckgo.com/?q=...+---+...++++-+....+..+...++++..+...++++-+....+.++++..-.+.-..+.-+--.+.--.-+..+-+-....-+..+...+-....-+-.+.+...-+.+.-.+-....-+-+---+---+-....-+.-..+.-+-+.+-....-+..-.+---+.-.+-....-+.-+-....-+-..+.-.+---+.--.+.--.--++++morse&amp;ia=answer">duckduckgo</a> came to the rescue. The final flag was lowercase: <code>flag{it-is-never-too-late-for-a-drop}</code>.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-07-12T12:00:27+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/misc/'>misc</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/07/12/polictf-2015-and-the-prophet-said/" title="Previous Post: PoliCTF 2015 - And the Prophet Said">&laquo; PoliCTF 2015 - And the Prophet Said</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/07/12/polictf-2015-crack-me-if-you-can/" title="Next Post: PoliCTF 2015 - Crack Me If You Can">PoliCTF 2015 - Crack Me If You Can &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-shuffle/">PoliCTF 2015 - John&#8217;s Shuffle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-johns-library/">PoliCTF 2015 - John&#8217;s Library</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-hanoi-as-a-service/">PoliCTF 2015 - Hanoi as a Service</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-crack-me-if-you-can/">PoliCTF 2015 - Crack Me if You Can</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/12/polictf-2015-john-the-dropper/">PoliCTF 2015 - John the Dropper</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/07/12/polictf-2015-john-the-dropper/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
