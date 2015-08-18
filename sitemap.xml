@@ -3,6 +3,54 @@
   
   
   <url>
+    <loc>http://barrebas.github.io/blog/2015/08/18/camp-ctf-dkm/</loc>
+    
+    <lastmod>2015-08-18T21:36:14+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/08/18/camp-ctf-ropcalc/</loc>
+    
+    <lastmod>2015-08-18T21:35:34+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file/</loc>
+    
+    <lastmod>2015-08-18T21:35:08+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/08/18/camp-ctf-hacker-level/</loc>
+    
+    <lastmod>2015-08-18T21:34:00+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos/</loc>
+    
+    <lastmod>2015-08-18T21:32:18+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>http://barrebas.github.io/blog/2015/08/18/camp-ctf-shell/</loc>
+    
+    <lastmod>2015-08-18T21:30:07+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://barrebas.github.io/blog/2015/07/25/whitehat-ctf-pwn100/</loc>
     
     <lastmod>2015-07-25T21:17:14+02:00</lastmod>
@@ -445,14 +493,14 @@
   
   <url>
     <loc>http://barrebas.github.io/blog/archives/</loc>
-    <lastmod>2015-07-25T22:02:43+02:00</lastmod>
+    <lastmod>2015-08-18T21:42:50+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://barrebas.github.io/</loc>
-    <lastmod>2015-07-25T22:02:43+02:00</lastmod>
+    <lastmod>2015-08-18T21:42:50+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

