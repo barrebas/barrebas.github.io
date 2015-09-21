@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Pwn | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/pwn/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-09-21T23:59:38+02:00</updated>
+  <updated>2015-09-22T00:08:41+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -221,10 +221,9 @@ Enter your name:
 <p>We had the address of system! Now, the plan of attack was as follows:</p>
 
 <ul>
+<li>write <code>/bin/sh</code> to 0x13373008, which gets used in a free() call</li>
 <li>overwrite free@got with system</li>
 <li>set strcmp to the <code>xor eax, eax; ret</code> gadget</li>
-<li>supply <code>/bin/sh</code> as input</li>
-<li>trigger free() with input, which is now system()</li>
 <li>receive shell</li>
 </ul>
 
