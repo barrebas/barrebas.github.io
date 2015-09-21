@@ -1,0 +1,423 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Ekoparty - Cry100 - staring into /dev/null</title>
+  <meta name="author" content="barrebas">
+
+  
+  <meta name="description" content="We&rsquo;re given a public key and a encrypted flag, with the task to get the private key. I&rsquo;m not very good at crypto challenges so I wanted &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="staring into /dev/null" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">staring into /dev/null</a></h1>
+  
+    <h2>barrebas</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:barrebas.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Ekoparty - Cry100</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-09-21T23:54:27+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>11:54 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>We&rsquo;re given a public key and a encrypted flag, with the task to get the private key. I&rsquo;m not very good at crypto challenges so I wanted to see if I could break this one and learn something in the process.</p>
+
+<!--more-->
+
+
+<p>The public key is an RSA key:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>openssl rsa -inform PEM -pubin -in public.key -text -noout
+</span><span class='line'>Public-Key: <span class="o">(</span><span class="m">2070</span> bit<span class="o">)</span>
+</span><span class='line'>Modulus:
+</span><span class='line'>    25:b1:8b:f5:f3:89:09:7d:17:23:78:66:bb:51:cf:
+</span><span class='line'>    f8:de:92:24:53:74:9e:bc:40:3b:09:95:c9:7c:0e:
+</span><span class='line'>    38:6d:46:c1:61:ca:df:f7:7c:69:86:0d:ae:47:91:
+</span><span class='line'>    c2:14:cf:84:87:aa:aa:9f:26:e9:20:a9:77:83:49:
+</span><span class='line'>    06:03:8a:ef:b5:c3:08:27:df:cf:3f:c9:e9:76:95:
+</span><span class='line'>    44:f9:4e:07:cd:fe:08:72:03:9a:3a:62:62:11:66:
+</span><span class='line'>    78:b2:61:fb:2d:6b:9d:32:53:9e:92:a1:53:b3:67:
+</span><span class='line'>    56:29:ba:b3:94:2e:7d:35:e3:0f:7e:ef:5a:bf:1c:
+</span><span class='line'>    50:d7:97:d0:cc:88:e1:bd:cc:fd:1a:12:ea:6f:7e:
+</span><span class='line'>    f7:5c:37:27:db:df:2e:78:0f:34:28:ae:8f:7a:4f:
+</span><span class='line'>    b7:a8:9f:18:4a:36:50:32:b1:53:f8:42:5e:84:57:
+</span><span class='line'>    50:eb:2b:7a:bc:02:dc:15:ce:02:07:50:7a:a9:50:
+</span><span class='line'>    86:3b:b8:48:0a:78:02:8d:d6:29:79:94:4d:6c:63:
+</span><span class='line'>    3f:af:a1:03:e4:db:28:ce:87:f5:a0:c6:ed:4a:2f:
+</span><span class='line'>    26:64:42:7f:56:5c:77:81:ab:61:91:45:6d:97:1c:
+</span><span class='line'>    7f:fa:39:52:72:37:4c:ec:01:55:e5:f9:11:89:db:
+</span><span class='line'>    74:2e:4c:28:b0:3a:0f:a1:1c:ff:b0:31:73:d2:a4:
+</span><span class='line'>    cc:e6:ae:53
+</span><span class='line'>Exponent: <span class="m">65537</span> <span class="o">(</span>0x10001<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It has a rather weird number of bits, not a multiple of 256. The modulus is converted to hex using python and yields:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">n</span> <span class="o">=</span> 79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hmm. Since the modulus <code>n</code> is made from the product of two primes, we&rsquo;d better find those primes. Luckily, I found another <a href="http://hacktracking.blogspot.nl/2013/11/cscamp-ctf-quals-2k13-crypto-public-is.html">writeup</a> and a website called <a href="http://factordb.com/index.php?query=79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443">factordb.com</a>. Factordb does <em>exactly</em> what it says on the box and yields two factors, <code>3133337</code> and another large number. The first number made me think I was on the right way!</p>
+
+<p>Now, we need to reconstruct the key. We have <code>n</code>, <code>p</code> and <code>q</code> which is all we need. I couldn&rsquo;t decrypt the message in Python, as Python&rsquo;s cryptolib requires the modulus to be a multiple of 256 bits. So I resorted to the voodoo magic that is <code>openssl</code>. I found this nice post on stackoverflow <a href="https://stackoverflow.com/questions/19850283/how-to-generate-rsa-keys-using-specific-input-numbers-in-openssl">about creating specific rsa keys</a>.</p>
+
+<p>I followed that post, computing:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>d mod<span class="o">(</span>p-1<span class="o">)</span> <span class="o">=</span> e1
+</span><span class='line'>d mod<span class="o">(</span>q-1<span class="o">)</span> <span class="o">=</span> e2
+</span><span class='line'>q^-1 mod <span class="nv">p</span> <span class="o">=</span> coeff
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>for which I needed</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">g</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">b</span> <span class="o">%</span> <span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">b</span> <span class="o">//</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">modinv</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">g</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">g</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;modular inverse does not exist&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">x</span> <span class="o">%</span> <span class="n">m</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I put everything in a file called <code>newkey.der</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">asn1</span><span class="o">=</span><span class="n">SEQUENCE</span><span class="p">:</span><span class="n">rsa_key</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">[</span><span class="n">rsa_key</span><span class="p">]</span>
+</span><span class='line'><span class="n">version</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">0</span>
+</span><span class='line'><span class="n">modulus</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">79832181757332818552764610761349592984614744432279135328398999801627880283610900361281249973175805069916210179560506497075132524902086881120372213626641879468491936860976686933630869673826972619938321951599146744807653301076026577949579618331502776303983485566046485431039541708467141408260220098592761245010678592347501894176269580510459729633673468068467144199744563731826362102608811033400887813754780282628099443490170016087838606998017490456601315802448567772411623826281747245660954245413781519794295336197555688543537992197142258053220453757666537840276416475602759374950715283890232230741542737319569819793988431443</span>
+</span><span class='line'><span class="n">pubExp</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">65537</span>  
+</span><span class='line'><span class="n">privExp</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">406853230956379689450620815713768871010712825839536410687962650677800895818003893712259622281477453292088146173840036827322518131453630576229976208523593618949818777897059256426591560532784635697190752924923710375949616954069804342573867253630978123632384795587951365482103468722384133084798614863870775897915929475258974188300927376911833763105616386167881813301748585233563049693794370642976326692672223638908164822104832415788577945314264232531947860576966629150456995512932232264881080618006698700677529111454508900582785420549466798020451488168615035256292977390692401388790460066327347700109341639992159475755036449</span>
+</span><span class='line'><span class="n">p</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">25478326064937419292200172136399497719081842914528228316455906211693118321971399936004729134841162974144246271486439695786036588117424611881955950996219646807378822278285638261582099108339438949573034101215141156156408742843820048066830863814362379885720395082318462850002901605689761876319151147352730090957556940842144299887394678743607766937828094478336401159449035878306853716216548374273462386508307367713112073004011383418967894930554067582453248981022011922883374442736848045920676341361871231787163441467533076890081721882179369168787287724769642665399992556052144845878600126283968890273067575342061776244939</span>
+</span><span class='line'><span class="n">q</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">3133337</span>
+</span><span class='line'><span class="n">e1</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">15320351458978192768467039741691432413958180349660930794740289485182452764579534136107456333762920952821710744567765011085892394594373698903583015958298729593743757394184665648601970820474550408544396720336394444082148339685815042712020243239641617201526913490150693257135882730015443734409342942381805505660243891614007699009146733904940642377373537806159587666380328759209553248526202577679304907571591265191240376778645354498599063176881375334380848007142765855272411310242667619720799140338871500103278100940728801960485534826631133256077779493381175185896255651752489800973249824932460228998596930117032675866465</span>
+</span><span class='line'><span class="n">e2</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">817841</span>
+</span><span class='line'><span class="n">coeff</span><span class="o">=</span><span class="n">INTEGER</span><span class="p">:</span><span class="mi">0</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>privExp</code> was calculated like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">gmpy</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="n">g</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">b</span> <span class="o">%</span> <span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">return</span> <span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">b</span> <span class="o">//</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">modinv</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+</span><span class='line'>  <span class="n">g</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">g</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;modular inverse does not exist&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">x</span> <span class="o">%</span> <span class="n">m</span>
+</span><span class='line'>      
+</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="mi">25478326064937419292200172136399497719081842914528228316455906211693118321971399936004729134841162974144246271486439695786036588117424611881955950996219646807378822278285638261582099108339438949573034101215141156156408742843820048066830863814362379885720395082318462850002901605689761876319151147352730090957556940842144299887394678743607766937828094478336401159449035878306853716216548374273462386508307367713112073004011383418967894930554067582453248981022011922883374442736848045920676341361871231787163441467533076890081721882179369168787287724769642665399992556052144845878600126283968890273067575342061776244939</span>
+</span><span class='line'><span class="n">q</span> <span class="o">=</span> <span class="mi">3133337</span>
+</span><span class='line'><span class="n">totien</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">q</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'><span class="n">e</span> <span class="o">=</span> <span class="mi">65537</span>
+</span><span class='line'><span class="n">d</span> <span class="o">=</span> <span class="n">modinv</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="n">totien</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="n">d</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I then ran <code>$ openssl asn1parse -genconf  newkey.der -out key.der</code>. After mucking around with the flag, I verified I had the right private key by encrypting a test message with the public key. I noticed that the flag was base64 encoded whereas my encrypted message wasn&rsquo;t&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>cat flag.enc <span class="p">|</span>base64 -d &gt; test.enc
+</span><span class='line'><span class="nv">$ </span>openssl rsautl -in test.enc -out /dev/tty -inkey private.key -decrypt -oaep
+</span><span class='line'>EKO<span class="o">{</span>classic_rsa_challenge_is_boring_but_necessary<span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That last <code>openssl</code> command was just tested with <code>-raw</code> and -<code>oaep</code> (options for padding). <code>-oaep</code> worked!</p>
+
+<p>Flag was <code>EKO{classic_rsa_challenge_is_boring_but_necessary}</code>. I learned something \o/</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">barrebas</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-09-21T23:54:27+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>11:54 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/crypto/'>crypto</a>, <a class='category' href='/blog/categories/ctf/'>ctf</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100/" data-via="barrebas" data-counturl="http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/09/21/ekoparty-pwn200/" title="Previous Post: ekoparty - pwn200">&laquo; ekoparty - pwn200</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/09/21/ekoparty-cry100/">Ekoparty - Cry100</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/21/ekoparty-pwn200/">Ekoparty - Pwn200</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-dkm/">CAMP CTF - Dkm</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-ropcalc/">CAMP CTF - Ropcalc</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/18/camp-ctf-secret-file/">CAMP CTF - Secret_File</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - barrebas -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'barrebas';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100/';
+        var disqus_url = 'http://barrebas.github.io/blog/2015/09/21/ekoparty-cry100/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

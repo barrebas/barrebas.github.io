@@ -9,7 +9,7 @@
   <meta name="author" content="barrebas">
 
   
-  <meta name="description" content="Writeup coming soon! For now, here&rsquo;s the exploit. ">
+  <meta name="description" content="We&rsquo;re given a public key and a encrypted flag, with the task to get the private key. I&rsquo;m not very good at crypto challenges so I wanted &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +65,74 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/09/21/ekoparty-cry100/">Ekoparty - Cry100</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-09-21T23:54:27+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>11:54 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>We&rsquo;re given a public key and a encrypted flag, with the task to get the private key. I&rsquo;m not very good at crypto challenges so I wanted to see if I could break this one and learn something in the process.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/09/21/ekoparty-cry100/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/09/21/ekoparty-pwn200/">Ekoparty - Pwn200</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-09-21T23:47:44+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>11:47 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Where on earth shall we begin? This one kept us busy for quite some time. The challenge gives no binary, just an address to connect to. Upon connecting, we get some kind of echo server. We quickly noticed a string format vulnerability:</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/09/21/ekoparty-pwn200/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -338,74 +406,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/07/12/polictf-2015-johns-library/">PoliCTF 2015 - John&#8217;s Library</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-07-12T16:45:04+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>4:45 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Finally, pwnables! John&rsquo;s Library was worth 150 points. I was a bit rusty but I managed to grab this flag.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/07/12/polictf-2015-johns-library/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/07/12/polictf-2015-hanoi-as-a-service/">PoliCTF 2015 - Hanoi as a Service</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-07-12T16:30:31+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>4:30 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Hanoi As A Service was a 50 point pwnable in PoliCTF and gave me a reason to hate PROLOG.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/07/12/polictf-2015-hanoi-as-a-service/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -421,6 +421,14 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/09/21/ekoparty-cry100/">Ekoparty - Cry100</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/21/ekoparty-pwn200/">Ekoparty - Pwn200</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/08/18/camp-ctf-dkm/">CAMP CTF - Dkm</a>
       </li>
     
@@ -430,14 +438,6 @@
     
       <li class="post">
         <a href="/blog/2015/08/18/camp-ctf-secret-file/">CAMP CTF - Secret_File</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/08/18/camp-ctf-hacker-level/">CAMP CTF - Hacker_Level</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/08/18/camp-ctf-bitterman-and-phobos/">CAMP CTF - Bitterman &amp; Phobos</a>
       </li>
     
   </ul>
